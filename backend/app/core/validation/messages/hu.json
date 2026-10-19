@@ -1,4 +1,76 @@
 {
+  "cost_control": {
+    "unassigned_money": {
+      "fail": "A lekötött összeg nincs hozzárendelve egyetlen költségsorhoz sem.",
+      "suggestion": "Kapcsolja a szerződés vagy a megrendelés sorait költségsorokhoz, hogy az összeg a megfelelő helyen jelenjen meg."
+    },
+    "certified_over_committed": {
+      "fail": "Az igazolt teljesítés meghaladja az odaítélt összeget és a jóváhagyott módosításokat.",
+      "suggestion": "Hagyja jóvá a pótmunkát fedező módosítást, vagy ellenőrizze a számlát."
+    },
+    "forecast_over_plan": {
+      "fail": "Az előrejelzés meghaladja a tervezett összeget.",
+      "suggestion": "Ellenőrizze az előrejelzés forrását; ha megtakarításra számít, rögzítsen indoklással kézi előrejelzést."
+    },
+    "partly_awarded": {
+      "fail": "A tervezett összegnek csak egy része van odaítélve; az előrejelzésből hiányozhat a még kiadandó munka.",
+      "suggestion": "Ha ezen a soron még kiadandó munka van, adjon meg kézi előrejelzést."
+    },
+    "pending_changes": {
+      "fail": "Módosítási megrendelések döntésre várnak.",
+      "suggestion": "Döntsön a függő módosítási megrendelésekről; az előrejelzés még nem tartalmazza őket."
+    },
+    "snapshot_stale": {
+      "fail": "Több mint egy hónapja nem készült előrejelzés-mentés.",
+      "suggestion": "Mentsen előrejelzés-pillanatképet, hogy a költségtörténet olvasható maradjon."
+    }
+  },
+  "cost_structure": {
+    "account_code_duplicate": {
+      "fail": "A(z) {code} számlakód többször szerepel a költségstruktúrában.",
+      "suggestion": "Kódonként tartson meg egy számlát, és helyezze át rá a költségsorait."
+    },
+    "mixed_standard": {
+      "fail": "A költségstruktúra több kódrendszert kever: {standards}.",
+      "suggestion": "Építse fel a struktúrát egyetlen kódrendszerből; a többi kódot képezze le rá."
+    },
+    "account_parent_cycle": {
+      "fail": "A(z) {code} számla {count} számlán keresztül a saját őse.",
+      "suggestion": "Adjon az egyik számlának a hurkon kívüli szülőt."
+    },
+    "account_too_deep": {
+      "fail": "A(z) {code} számla a(z) {level}. szinten van, mélyebben, mint a kódrendszer {max} szintje.",
+      "suggestion": "Csatolja a számlát a kódrendszer mélységén belüli szülőhöz."
+    },
+    "no_account": {
+      "fail": "{count} db, {amount} értékű költségsor egyetlen számlán sincs (első: {code}).",
+      "suggestion": "Adjon ezeknek a tételeknek a struktúra kódrendszeréből való kódot, vagy rendelje a költségsorokat számlához."
+    },
+    "invalid_account": {
+      "fail": "{count} db, {amount} értékű költségsor lezárt vagy könyvelést nem fogadó számlán van (első: {code}).",
+      "suggestion": "Helyezze át a költségsorokat nyitott, könyvelést fogadó számlára."
+    },
+    "own_amount_on_parent": {
+      "fail": "A(z) {code} számlának vannak alszámlái, és saját összege is van: {amount}.",
+      "suggestion": "Helyezze át a saját összeget alszámlára, vagy tartsa meg tudatos tartalékként."
+    },
+    "rollup_mismatch": {
+      "fail": "A struktúra összege ({reported}) {difference} összeggel eltér a részek összegétől ({expected}).",
+      "suggestion": "Töltse újra a struktúrát; ha az eltérés megmarad, ellenőrizze a szülő nélküli számlákat."
+    },
+    "allocation_incomplete": {
+      "fail": "A(z) {ordinal} tétel részarányai {total}{unit} összeget adnak {expected}{unit} helyett.",
+      "suggestion": "Igazítsa a részarányokat úgy, hogy a teljes tétel szétosztásra kerüljön, se több, se kevesebb."
+    },
+    "allocation_mixed_modes": {
+      "fail": "A(z) {ordinal} tétel részben százalék, részben mennyiség szerint van felosztva.",
+      "suggestion": "A tételt csak egyféleképpen ossza fel."
+    },
+    "vector_not_inherited": {
+      "fail": "A(z) {code} szerződéssor olyan költségsoron van, amelyhez a költségvetési tétele nincs hozzárendelve.",
+      "suggestion": "Tegye vissza a sort a tétel költségsoraira, vagy rögzítse az eltérést indoklással."
+    }
+  },
   "boq_markup": {
     "contingency_not_on_profit": {
       "fail": "A(z) „{markup}” kockázati tartalék alapja már tartalmazza a(z) „{profit}” nyereségtételt, így a kockázatra félretett összegre is árrés kerül",
@@ -59,6 +131,10 @@
     "offline_sync_delay": {
       "fail": "A munkavégzés napja {date}, de az adatok csak {days} nappal később érkeztek meg az irodába",
       "suggestion": "Jóváhagyás előtt vesse össze az órákat a tényleges munkanappal; az elszámolási időszak már lezárulhatott"
+    },
+    "outdoor_heat_ban": {
+      "fail": "A(z) {line}. sor munkát rögzít {start} és {end} között, {date} napon, ami beleesik a déli, szabadtéri munkavégzési tilalomba ({ban_from} - {ban_to})",
+      "suggestion": "Ha a munka szabadtéren, közvetlen napsütésben folyt, vigye a tiltási időszakon kívülre; a beltéri munkát és a mentesített ágazatokat ez nem érinti"
     }
   },
   "ai_takeoff": {
@@ -521,6 +597,20 @@
       "suggestion": "Az irreális telekárak elkerüléséhez korlátozza a módosítókat -50% és +200% közé"
     }
   },
+  "schedule_5d": {
+    "boq_coverage": {
+      "fail": "A(z) {ordinal}. tétel „{description}” ({amount}) árazott a költségvetésben, de egyetlen tevékenység sem viszi, ezért a költsége nincs benne az ütemtervben",
+      "suggestion": "Adjon a tételnek mennyiséget, vagy kapcsolja tevékenységhez, majd generálja újra az ütemtervet."
+    },
+    "cost_reconciliation": {
+      "fail": "Az ütemterv a költségvetés {bill} összegéből {planned} összeget tartalmaz: az árazott munka {difference} összege egyetlen tevékenységen sincs",
+      "suggestion": "Ellenőrizze a lefedettségi vizsgálat által felsorolt tételeket, majd generálja újra az ütemtervet."
+    },
+    "duration_vs_norm": {
+      "fail": "A(z) „{activity}” tevékenység {duration} munkanapig tart, míg a munkaerő- és gépnormák {norm} napot adnak",
+      "suggestion": "Ellenőrizze a tétel mennyiségét, a brigádot és a normaidőt, vagy a kézzel módosított időtartamot."
+    }
+  },
   "schedule_quality": {
     "open_ends": {
       "fail": "A(z) „{activity}” tevékenységhez hiányzik a következő logikai kapcsolat: {ends} (nyitott végű, be nem kötött tevékenység)",
@@ -656,6 +746,42 @@
     "requisition_line_cost_line": {
       "fail": "A(z) {line}. sor nincs költségsorhoz kapcsolva, így a rendelése nem jelenik meg a költségvetés terhére lekötöttként",
       "suggestion": "Hozza létre a sort a BOQ-ból, vagy rendelés előtt kapcsolja költségsorhoz"
+    },
+    "requisition_suggested_vendor_in_directory": {
+      "fail": "A(z) {line}. sor a(z) {vendor} szállítót javasolja, amely nincs a szállítói törzsben",
+      "suggestion": "Válassza ki a javasolt szállítót a szállítói törzsből, vagy törölje a javaslatot"
+    },
+    "requisition_suggested_vendor_active": {
+      "fail": "A(z) {line}. sor a(z) {vendor} szállítót javasolja, amely nem aktív a szállítói törzsben",
+      "suggestion": "Javasoljon aktív szállítót, vagy hagyja a választást a beszerzőre"
+    },
+    "requisition_suggestion_conflict": {
+      "fail": "A(z) {line}. sor BOQ forrásai {count} különböző szállítót javasolnak",
+      "suggestion": "Válasszon egy szállítót a sorhoz, vagy ossza fel úgy, hogy minden szállítónak saját sora legyen"
+    },
+    "requisition_suggested_vendor_differs": {
+      "fail": "A(z) {line}. sor a(z) {vendor} szállítót javasolja, de az igénylést másik szállítótól kell megrendelni",
+      "suggestion": "Ellenőrizze, hogy a kiválasztott szállító tudja-e szállítani ezt a sort, vagy rendelje meg külön"
+    },
+    "requisition_line_needed_by_not_past": {
+      "fail": "A(z) {line}. sor szükséglete {date} napra szól, ami már elmúlt (ma {today} van)",
+      "suggestion": "Adja meg azt a dátumot, amikor az anyagra a munkaterületen ténylegesen szükség van"
+    },
+    "requisition_line_schedule_moved": {
+      "fail": "A(z) {line}. sort olyan tevékenységre tervezték, amely {anchor} napon kezdődött, de a tevékenység most {start} napon kezdődik",
+      "suggestion": "Vesse össze a sor szükséglet-időpontját az aktuális ütemtervvel, és szükség esetén módosítsa"
+    },
+    "requisition_approver_not_requester": {
+      "fail": "A(z) {req} anyagigénylést létrehozó személy egyben a kijelölt {step}. jóváhagyó is",
+      "suggestion": "Jelöljön ki más jóváhagyót ehhez a lépéshez, hogy ne az igénylő döntsön"
+    },
+    "requisition_line_over_ordered": {
+      "fail": "A(z) {line}. sorból {ordered} {unit} szerepel megrendeléseken, több mint a kért {requested} {unit}",
+      "suggestion": "Ellenőrizze, hogy a többletmennyiség szándékos-e, vagy csökkentse a rendelési sort"
+    },
+    "requisition_order_unit_mismatch": {
+      "fail": "A(z) {order} megrendelés a(z) {line}. sort {unit} egységben tartalmazza, amely nem váltható át a sor {line_unit} egységére",
+      "suggestion": "Javítsa a mértékegységet a rendelési soron, hogy a mennyisége megrendeltnek számítson"
     },
     "receipt_certificate_present": {
       "fail": "A(z) {line} tétel megrendelésében {required} szerepelt, a szállítmányban viszont {delivered} van",
@@ -973,5 +1099,184 @@
     "parent_not_found": "Az a modell, amelynek ez a feltöltés az új verziója lenne, nincs ebben a projektben. Válasszon másikat, vagy töltse fel különálló modellként.",
     "parent_not_ready": "A(z) \"{name}\" importálása még nem fejeződött be, ezért még nem fogadhat új verziót. Várja meg, amíg elkészül, vagy töltse fel ezt különálló modellként.",
     "parent_superseded": "A(z) \"{name}\" modellnek már van újabb verziója: {version}. Inkább ezt töltse fel a legújabb új verziójaként."
+  },
+  "cost_chain": {
+    "contract_without_schedule": {
+      "fail": "A(z) {code} szerződés értéke {amount}, de nincsenek ütemezési tételei, ezért a pénze egyetlen költségsoron sincs.",
+      "suggestion": "Rendeljen a szerződéshez számlát a költségkövetésben, vagy vegye fel a tételeit."
+    },
+    "contract_sum_differs": {
+      "fail": "A(z) {code} szerződés értéke {total}, de a tételei összege {lines} (eltérés: {difference}).",
+      "suggestion": "Javítsa a szerződés értékét vagy a tételeket, hogy egyezzenek."
+    },
+    "change_without_agreed_amount": {
+      "fail": "A(z) {code} pótmunka jóvá van hagyva egyeztetett összeg nélkül.",
+      "suggestion": "Rögzítse a kivitelezővel egyeztetett összeget, mielőtt jóváhagyja a pótmunkát."
+    },
+    "change_without_approval_date": {
+      "fail": "A(z) {code} pótmunka jóvá van hagyva jóváhagyási dátum nélkül.",
+      "suggestion": "Rögzítse, mikor hagyták jóvá a pótmunkát."
+    },
+    "billed_before_approval": {
+      "fail": "A(z) {contract} szerződésen {amount} van számlázva a(z) {code} pótmunkára, amely {status} állapotú, nem jóváhagyott.",
+      "suggestion": "Először hagyja jóvá a pótmunkát, vagy vegye le a számlázást a kifizetési kérelemről."
+    },
+    "contract_over_target": {
+      "fail": "A(z) {code} szerződés {committed} kötelezettséget vállal, ez {difference} a(z) {target} feletti összeg ahhoz a költségvetéshez képest, amelyből kiadták (több mint {tolerance} %).",
+      "suggestion": "Vesse össze a kiadást és a pótmunkákat a költségvetéssel, és jegyezze fel, miért kerül többe a munka."
+    },
+    "account_over_plan": {
+      "fail": "A(z) {code} számlán {committed} kötelezettség van, ez {difference} a(z) {planned} terv felett (több mint {tolerance} %).",
+      "suggestion": "Ellenőrizze a számla kötelezettségeit, vagy frissítse a tervet indoklással."
+    },
+    "quantity_overrun": {
+      "fail": "A(z) {contract} szerződés {code} tétele {measured} {unit} mért mennyiség a szerződött {contracted} {unit} helyett, {over} % többlet (megengedett: {tolerance} %).",
+      "suggestion": "Ellenőrizze a felmérést, vagy egyeztesse a többletmennyiséget pótmunkaként."
+    },
+    "measurement_exceeds_commitment": {
+      "fail": "A(z) {code} szerződés mért értéke {measured}, ez {difference} a jóváhagyott pótmunkákkal növelt {committed} érték felett.",
+      "suggestion": "Hagyja jóvá a többletmunkát fedező pótmunkát, vagy ellenőrizze a felmérést."
+    },
+    "invoice_without_contract": {
+      "fail": "A(z) {number} beszállítói számla ({amount}) nem tartozik egyetlen szerződéshez vagy megrendeléshez sem.",
+      "suggestion": "Kapcsolja a sorait szerződéshez, vagy rögzítse közvetlen költségként egy számlán."
+    }
+  },
+  "payment_release": {
+    "cumulative_total_fell": {
+      "fail": "A(z) {contract} szerződés {number} számlája a mai napig {net} összeget mutat, ami kevesebb, mint a megelőző {previous_number} számla {previous} összege, pedig a szerződés halmozottan van számlázva.",
+      "suggestion": "Ha a számla csak az új munkát számlázza, a szerződés növekményesen van számlázva; ha csökkenti az összeget, rögzítse jóváíró számlaként."
+    },
+    "invoice_after_final": {
+      "fail": "A(z) {contract} szerződés {number} számlája a(z) {final} végszámla után következik.",
+      "suggestion": "A későbbi munkákat rögzítse előre nem tervezett (naplóban elszámolt) munkaként vagy jóváíró számlaként, vagy jelölje a megfelelő számlát végszámlának."
+    },
+    "claim_invoice_in_cumulative": {
+      "fail": "A(z) {contract} szerződés {number} számlája igényből készült és egy időszakot számláz, de a szerződés halmozottan van számlázva.",
+      "suggestion": "Szerződésenként egy számlázási módot használjon: állítsa át a szerződést növekményes számlázásra, vagy rögzítse helyette a vállalkozó halmozott számláit."
+    },
+    "release_differs": {
+      "fail": "A(z) {contract} szerződés {number} számlájához jóváhagyott kifizetési felszabadítás {stored}, de a szerződés feltételei ma {computed} összeget adnak.",
+      "suggestion": "Ellenőrizze, mi változott a felszabadítás óta (feltételek, számlaösszegek, levonások), majd nyissa meg újra a felszabadítást és hagyja jóvá ismét."
+    },
+    "rounding_out_of_range": {
+      "fail": "A(z) {number} számla kerekítése {rounding}, ami kívül esik a megállapodott {step} kerekítési lépésen.",
+      "suggestion": "A kerekítés egy lépésnél kisebb összeggel csökkenti a felszabadítást; kapcsolja be a kerekítést a fizetési feltételekben, vagy nyissa meg újra a felszabadítást."
+    },
+    "final_retention_without_warranty": {
+      "fail": "A(z) {contract} szerződés {number} végszámlája {amount} visszatartást tart vissza, de jótállási visszatartásban nem állapodtak meg.",
+      "suggestion": "Állapodjon meg jótállási visszatartásban a fizetési feltételekben, vagy nyissa meg újra a felszabadítást, hogy a teljes visszatartást a végszámlával fizessék ki."
+    },
+    "posting_exceeds_held": {
+      "fail": "A(z) {contract} szerződésen több visszatartást fizettek vissza, mint amennyi vissza van tartva: {amount} többlet.",
+      "suggestion": "Sztornózza a túl magas visszatartás-könyvelést, és könyvelje a ténylegesen visszatartott összeget."
+    },
+    "posting_before_event": {
+      "fail": "A(z) {contract} szerződés {amount} visszatartását {posted} napján fizették vissza, még a felszabadítási esemény {due} napi esedékessége előtt.",
+      "suggestion": "Ellenőrizze a felszabadítási esemény dátumát, vagy az esemény bekövetkezte után könyvelje a felszabadítást."
+    },
+    "posting_without_event_date": {
+      "fail": "A(z) {contract} szerződés {amount} visszatartását visszafizették, de a felszabadítási esemény dátuma nincs rögzítve.",
+      "suggestion": "Rögzítse a felszabadítási esemény bekövetkezésének dátumát, hogy a kifizetést ahhoz lehessen mérni."
+    },
+    "retention_still_held": {
+      "fail": "A(z) {contract} szerződés befejeződött, és még mindig {amount} visszatartást tart.",
+      "suggestion": "Szabadítsa fel a visszatartást az eseményénél a visszatartási nyilvántartásban, vagy tartsa vissza a jótállási időszakra."
+    },
+    "discount_not_agreed": {
+      "fail": "A(z) {contract} szerződés {number} számlájának felszabadítása {amount} korai fizetési engedményt vesz igénybe, de a szerződés nem enged ilyet.",
+      "suggestion": "Kapcsolja be a korai fizetési engedményt a fizetési feltételekben, vagy nyissa meg újra a felszabadítást engedmény nélkül."
+    },
+    "discount_after_deadline": {
+      "fail": "A(z) {number} számlán {amount} engedményt tartottak vissza, de a(z) {paid_on} napi fizetés az engedmény {until} határnapja után érkezett.",
+      "suggestion": "Fizesse ki az engedmény összegét is, vagy rögzítse, miért fogadta el a vállalkozó a késői engedményt."
+    },
+    "invoiced_over_measured": {
+      "fail": "A(z) {contract} szerződés számlázása {invoiced}, ami {difference} összeggel meghaladja a felmért {measured} értéket (mennyiség szorozva egységárral).",
+      "suggestion": "Ellenőrizze a felmérést, mielőtt további pénzt szabadít fel, vagy tartsa vissza a különbözetet a következő felszabadításnál."
+    },
+    "invoiced_over_contract": {
+      "fail": "A(z) {contract} szerződés számlázása {invoiced}, ami {difference} összeggel meghaladja az értékét ({value}), és nincs rajta felmérés.",
+      "suggestion": "Rögzítse a többletet fedező felmérést vagy pótmunkát, mielőtt további pénzt szabadít fel."
+    },
+    "reverse_charge_with_vat": {
+      "fail": "A(z) {number} számla fordított adózású, de {vat} áfát tartalmaz.",
+      "suggestion": "A fordított adózású számla nem tartalmaz áfát; javítsa az áfa összegét vagy a tételek áfakategóriáját."
+    },
+    "line_without_vat_rate": {
+      "fail": "A(z) {number} számla áfát tartalmaz, de {count} tételén nincs áfakulcs megadva.",
+      "suggestion": "Adja meg az áfakulcsot minden tételnél, hogy a levonások és az exportok a helyes adót használják."
+    },
+    "duplicate_number": {
+      "fail": "Ugyanazon vállalkozó {number} számlaszáma {count} alkalommal van rögzítve.",
+      "suggestion": "Sztornózza a másolatot, vagy javítsa a számlaszámot, ha különböző számlákról van szó."
+    },
+    "possible_duplicate": {
+      "fail": "A(z) {number} számla vállalkozója, összege ({amount}) és dátuma ({on}) megegyezik a(z) {other} számláéval.",
+      "suggestion": "Ellenőrizze, hogy nem ugyanaz a számla szerepel-e kétszer, más számlaszámmal."
+    },
+    "certificate_missing": {
+      "fail": "{number} számla a(z) {contract} szerződésen: a kedvezményezettnek {on} napján nincs érvényes igazolása ({certificate}), amelyet {reference} a kifizetés felszabadítása előtt megkövetel.",
+      "suggestion": "Rögzítse az igazolást a kedvezményezett alvállalkozói nyilvántartásában, vagy tartsa vissza a kifizetést, amíg be nem mutatják."
+    },
+    "split_payment_annotation_missing": {
+      "fail": "A(z) {number} számla építési munkákat vagy más split payment alá tartozó árut tartalmaz, és meghaladja a(z) {threshold} összeget, de nem szerepel rajta a «{annotation}» megjegyzés.",
+      "suggestion": "Kérjen a szállítótól a megjegyzéssel javított számlát, és mindenképp split payment útján fizesse ki: az így fizetés kötelezettsége nem függ a megjegyzéstől."
+    },
+    "split_payment_not_used": {
+      "fail": "A(z) {number} számla split payment alá tartozik, de kifizetését más módszerrel rögzítették. A vevő emellett felel a következőért: {sanction}, az áfa 30 százaléka.",
+      "suggestion": "Az ilyen számlákat az áfaszámláról split payment útján fizesse, és a fizetésen a módszert split_payment-ként rögzítse."
+    },
+    "split_payment_annex_unknown": {
+      "fail": "A(z) {number} számla meghaladja a(z) {threshold} összeget, és nincs rögzítve, hogy tartalmaz-e a split payment mellékletében szereplő árut vagy szolgáltatást.",
+      "suggestion": "Rögzítse a számlán, hogy tartalmaz-e a mellékletben szereplő árut vagy szolgáltatást (annex_15), vagy ezek kódjait (pkwiu_codes), hogy a fizetési mód ellenőrizhető legyen."
+    },
+    "reduced_rate_above_area_limit": {
+      "fail": "A(z) {number} számla a teljes árra {rate} százalék áfát számít fel, de a lakás hasznos alapterülete {area_m2} m2, a kedvezményes kulcs pedig legfeljebb {limit_m2} m2-ig érvényes ({reference}).",
+      "suggestion": "A kedvezményes kulcsot az ár {reduced_share_percent} százalékára, az általános kulcsot a többire számítsa fel."
+    },
+    "reduced_rate_object_unknown": {
+      "fail": "A(z) {number} számla a {rate} százalékos kedvezményes lakásáfa-kulcsot számítja fel, de a projektben nincs rögzítve, melyik lakásra vonatkozik, sem a hasznos alapterülete ({reference}).",
+      "suggestion": "Rögzítse a projekten a lakás típusát és a hasznos alapterületet (vat_housing), hogy a kulcs és a területhatár ellenőrizhető legyen."
+    },
+    "reduced_rate_not_eligible": {
+      "fail": "A(z) {number} számla a {rate} százalékos kedvezményes lakásáfa-kulcsot a(z) {object} tételre számítja fel, amely nem jogosult rá ({reference}).",
+      "suggestion": "Számítsa fel az általános kulcsot, vagy javítsa a projekten rögzített lakást."
+    },
+    "domestic_reverse_charge_ended": {
+      "fail": "A(z) {number} számla {count} soron alkalmaz fordított adózást, de az építési szolgáltatások belföldi fordított adózása ebben az országban megszűnt.",
+      "suggestion": "Ha a szállító nem külföldön letelepedett, kérjen áfás számlát; az ilyen számlákat split payment útján kell fizetni."
+    },
+    "payment_term_over_cap": {
+      "fail": "A(z) {contract} szerződés {days} napos fizetési határidőt köt ki, ami hosszabb a vállalkozások között a késedelmes fizetésről szóló törvény által megengedett {cap} napnál.",
+      "suggestion": "Rövidítse a határidőt {cap} napra, vagy rögzítse, miért állapodtak meg kifejezetten a hosszabb határidőben, és miért nem durván tisztességtelen az alvállalkozóval szemben."
+    }
+  },
+  "cost_forecast": {
+    "below_commitment": {
+      "fail": "{code}: a(z) {forecast} előrebecslés alacsonyabb, mint a már lekötött vagy függő módosításokban kért {owed} ({difference} különbség), és semmi nem magyarázza.",
+      "suggestion": "Csatold az alacsonyabb érték mögötti dokumentumot (jóváíró számla, elszámolás, jegyzőkönyv), vagy írd a sorhoz, miért ad a módszere kevesebbet."
+    },
+    "move_without_evidence": {
+      "fail": "{code}: az előrebecslés az utolsó lezárt pillanatkép óta {previous} értékről {current} értékre változott ({delta}), meghaladja a projekt küszöbét, és még nincs hozzá megjegyzés és alátámasztás.",
+      "suggestion": "Írd le, miért változott az érték, és csatold a mögötte álló dokumentumot vagy jegyzőkönyvet a pillanatkép lezárása előtt."
+    },
+    "method_override_without_comment": {
+      "fail": "{code} előrebecslése a projekt {project_method} módszere helyett {method} módszerrel készül, és nincs megjegyzés az okról.",
+      "suggestion": "Írj rövid megjegyzést a sor módszeréhez, vagy állítsd vissza a sort a projekt módszerére."
+    },
+    "method": {
+      "best_available": "legjobb elérhető forrás",
+      "maximum": "legnagyobb érték",
+      "evm_cpi": "költséghatékonyság (CPI)",
+      "manual": "kézi összeg"
+    }
+  },
+  "payment_release_certificate_types": {
+    "social_security_clearance": "társadalombiztosítási tartozásmentességi igazolás",
+    "construction_tax_exemption": "építési adó alóli mentességi igazolás",
+    "employers_liability_clearance": "munkáltatói felelősségi tartozásmentességi igazolás",
+    "insurance": "biztosítási igazolás",
+    "license": "vállalkozói engedély"
   }
 }

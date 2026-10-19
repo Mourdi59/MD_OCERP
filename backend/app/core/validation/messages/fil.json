@@ -1,4 +1,76 @@
 {
+  "cost_control": {
+    "unassigned_money": {
+      "fail": "Ang committed na pera ay hindi naitalaga sa anumang cost line.",
+      "suggestion": "I-link ang mga linya ng kontrata o order sa mga cost line para lumabas ang pera sa tamang lugar."
+    },
+    "certified_over_committed": {
+      "fail": "Ang na-certify na gawa ay lampas sa award kasama ang mga aprubadong pagbabago.",
+      "suggestion": "Aprubahan ang pagbabagong sumasaklaw sa karagdagang gawa, o suriin ang claim."
+    },
+    "forecast_over_plan": {
+      "fail": "Mas mataas ang forecast kaysa sa nakaplanong halaga.",
+      "suggestion": "Suriin ang pinagmulan ng forecast; magtala ng manual na forecast na may dahilan kung inaasahan mong may matitipid."
+    },
+    "partly_awarded": {
+      "fail": "Bahagi lamang ng nakaplanong halaga ang na-award; maaaring kulang ang forecast sa mga gawang ia-award pa lang.",
+      "suggestion": "Kung may gawa pang ia-award sa linyang ito, maglagay ng manual na forecast."
+    },
+    "pending_changes": {
+      "fail": "May mga change order na naghihintay ng desisyon.",
+      "suggestion": "Magdesisyon sa mga nakabinbing change order; hindi pa kasama ang mga ito sa forecast."
+    },
+    "snapshot_stale": {
+      "fail": "Wala pang naiimbak na forecast sa loob ng mahigit isang buwan.",
+      "suggestion": "Mag-save ng forecast snapshot para manatiling nababasa ang kasaysayan ng gastos."
+    }
+  },
+  "cost_structure": {
+    "account_code_duplicate": {
+      "fail": "Ang account code na {code} ay lumalabas nang higit sa isang beses sa cost structure.",
+      "suggestion": "Mag-iwan ng isang account bawat code at ilipat dito ang mga cost line nito."
+    },
+    "mixed_standard": {
+      "fail": "Pinaghahalo ng cost structure ang mga code list: {standards}.",
+      "suggestion": "Buuin ang structure mula sa isang code list; i-map ang iba pang code dito."
+    },
+    "account_parent_cycle": {
+      "fail": "Ang account na {code} ay sarili nitong ninuno sa pamamagitan ng {count} account.",
+      "suggestion": "Bigyan ang isa sa mga account na ito ng parent sa labas ng loop."
+    },
+    "account_too_deep": {
+      "fail": "Ang account na {code} ay nasa level {level}, mas malalim kaysa sa {max} level ng code list nito.",
+      "suggestion": "Ikabit ang account sa parent na nasa loob ng lalim ng code list."
+    },
+    "no_account": {
+      "fail": "{count} cost line na nagkakahalaga ng {amount} ang wala sa anumang account (una: {code}).",
+      "suggestion": "Bigyan ang mga item na ito ng code mula sa code list ng structure, o italaga ang mga cost line sa isang account."
+    },
+    "invalid_account": {
+      "fail": "{count} cost line na nagkakahalaga ng {amount} ang nasa saradong account o account na hindi tumatanggap ng posting (una: {code}).",
+      "suggestion": "Ilipat ang mga cost line sa bukas na account na tumatanggap ng posting."
+    },
+    "own_amount_on_parent": {
+      "fail": "Ang account na {code} ay may mga sub-account at may sarili ring halagang {amount}.",
+      "suggestion": "Ilipat ang sariling halaga sa isang sub-account, o panatilihin ito bilang sinadyang allowance."
+    },
+    "rollup_mismatch": {
+      "fail": "Ang kabuuan ng structure na {reported} ay iba ng {difference} sa kabuuan ng mga bahagi nito na {expected}.",
+      "suggestion": "I-reload ang structure; kung nananatili ang agwat, suriin ang mga account na walang parent."
+    },
+    "allocation_incomplete": {
+      "fail": "Ang mga share ng item {ordinal} ay umaabot sa {total}{unit} sa halip na {expected}{unit}.",
+      "suggestion": "Ayusin ang mga share para maipamahagi ang buong item, hindi sobra at hindi kulang."
+    },
+    "allocation_mixed_modes": {
+      "fail": "Ang item {ordinal} ay hinati nang bahagya ayon sa porsiyento at bahagya ayon sa dami.",
+      "suggestion": "Hatiin ang item sa iisang paraan lamang."
+    },
+    "vector_not_inherited": {
+      "fail": "Ang linya ng kontrata na {code} ay nasa cost line na hindi pinaglaanan ng BOQ item nito.",
+      "suggestion": "Ibalik ang linya sa mga cost line ng item, o itala ang exception na may dahilan."
+    }
+  },
   "boq_markup": {
     "contingency_not_on_profit": {
       "fail": "Ang contingency na \"{markup}\" ay kinukuwenta sa base na kasama na ang linya ng tubo na \"{profit}\", kaya pinapatungan ng tubo ang perang nakalaan para sa panganib",
@@ -59,6 +131,10 @@
     "offline_sync_delay": {
       "fail": "Ginawa ang trabahong ito noong {date} ngunit nakarating lamang sa opisina pagkalipas ng {days} araw",
       "suggestion": "Ihambing ang mga oras sa mismong araw ng trabaho bago aprubahan; maaaring sarado na ang valuation period"
+    },
+    "outdoor_heat_ban": {
+      "fail": "Ang linya {line} ay may naitalang trabaho mula {start} hanggang {end} noong {date}, na pasok sa pagbabawal sa trabaho sa labas tuwing tanghali mula {ban_from} hanggang {ban_to}",
+      "suggestion": "Kung ang trabahong ito ay isinagawa sa labas sa ilalim ng direktang araw, ilipat ito sa labas ng oras ng pagbabawal; hindi sakop ang trabaho sa loob ng gusali at ang mga sektor na exempted"
     }
   },
   "ai_takeoff": {
@@ -521,6 +597,20 @@
       "suggestion": "Limitahan ang mga adjustment sa -50% hanggang +200% upang maiwasan ang hindi makatotohanang presyo ng lote"
     }
   },
+  "schedule_5d": {
+    "boq_coverage": {
+      "fail": "Ang item {ordinal} '{description}' ({amount}) ay may presyo sa bill of quantities, pero walang activity na may dala nito, kaya wala sa schedule ang gastos nito",
+      "suggestion": "Bigyan ng dami ang item o iugnay ito sa isang activity, saka buuin muli ang schedule."
+    },
+    "cost_reconciliation": {
+      "fail": "Ang schedule ay may {planned} mula sa {bill} ng bill: {difference} ng may presyong gawain ay wala sa anumang activity",
+      "suggestion": "Suriin ang mga item na inililista ng coverage check, saka buuin muli ang schedule."
+    },
+    "duration_vs_norm": {
+      "fail": "Ang activity na '{activity}' ay tumatagal ng {duration} araw ng trabaho, habang ang norm ng labor at makinarya ay nagbibigay ng {norm}",
+      "suggestion": "Suriin ang dami, ang crew at ang norm hours ng item, o ang tagal na binago nang mano-mano."
+    }
+  },
   "schedule_quality": {
     "open_ends": {
       "fail": "Walang logic link sa {ends} ang activity na '{activity}' (bukas na dulo / hindi kumpletong konektadong activity)",
@@ -656,6 +746,42 @@
     "requisition_line_cost_line": {
       "fail": "Hindi nakakabit ang linya {line} sa isang cost line, kaya hindi lalabas ang order nito bilang committed sa budget",
       "suggestion": "Buuin ang linya mula sa BOQ, o ikabit ito sa isang cost line bago mag-order"
+    },
+    "requisition_suggested_vendor_in_directory": {
+      "fail": "Iminumungkahi ng linya {line} ang supplier na {vendor}, na wala sa Vendor directory",
+      "suggestion": "Piliin ang iminungkahing supplier mula sa Vendor directory, o alisin ang mungkahi"
+    },
+    "requisition_suggested_vendor_active": {
+      "fail": "Iminumungkahi ng linya {line} ang {vendor}, isang supplier na hindi aktibo sa Vendor directory",
+      "suggestion": "Magmungkahi ng aktibong supplier, o ipaubaya ang pagpili sa buyer"
+    },
+    "requisition_suggestion_conflict": {
+      "fail": "Ang mga BOQ source ng linya {line} ay nagmumungkahi ng {count} magkakaibang supplier",
+      "suggestion": "Pumili ng isang supplier para sa linya, o hatiin ito para may sariling linya ang bawat supplier"
+    },
+    "requisition_suggested_vendor_differs": {
+      "fail": "Iminumungkahi ng linya {line} ang {vendor}, pero iuutos ang requisition sa ibang supplier",
+      "suggestion": "Tiyaking kaya ng napiling supplier na ihatid ang linyang ito, o iutos ito nang hiwalay"
+    },
+    "requisition_line_needed_by_not_past": {
+      "fail": "Kailangan ang linya {line} sa {date}, na lampas na (ngayon ay {today})",
+      "suggestion": "Ilagay ang petsa kung kailan talaga kailangan ang materyales sa site"
+    },
+    "requisition_line_schedule_moved": {
+      "fail": "Ang linya {line} ay planado para sa activity na magsisimula sa {anchor}, pero magsisimula na ngayon ang activity sa {start}",
+      "suggestion": "Suriin ang petsang kailangan ng linya laban sa kasalukuyang schedule at baguhin ito kung kinakailangan"
+    },
+    "requisition_approver_not_requester": {
+      "fail": "Ang gumawa ng requisition {req} ay siya ring itinalagang approver bilang {step}",
+      "suggestion": "Magtalaga ng ibang approver para sa hakbang na iyon, para ibang tao maliban sa humiling ang magpasya"
+    },
+    "requisition_line_over_ordered": {
+      "fail": "Ang linya {line} ay may {ordered} {unit} sa mga order, higit sa hiniling na {requested} {unit}",
+      "suggestion": "Suriin kung sinadya ang sobrang dami, o bawasan ang linya ng order"
+    },
+    "requisition_order_unit_mismatch": {
+      "fail": "Ang order na {order} ay may linya {line} sa {unit}, na hindi mako-convert sa unit ng linya na {line_unit}",
+      "suggestion": "Itama ang unit sa linya ng order para mabilang ang dami nito bilang na-order"
     },
     "receipt_certificate_present": {
       "fail": "Ang linya {line} ay in-order na may {required}, pero ang delivery ay may {delivered}",
@@ -973,5 +1099,184 @@
     "parent_not_found": "Wala sa proyektong ito ang modelong dapat ay pagmulan ng bagong bersyon ng upload na ito. Pumili ng iba, o i-upload ito bilang hiwalay na modelo.",
     "parent_not_ready": "Hindi pa tapos ang pag-import ng \"{name}\", kaya hindi pa ito makakatanggap ng bagong bersyon. Hintaying maging handa, o i-upload ito bilang hiwalay na modelo.",
     "parent_superseded": "May mas bago nang bersyon ang \"{name}\", ang {version}. I-upload na lang ito bilang bagong bersyon ng pinakabago."
+  },
+  "cost_chain": {
+    "contract_without_schedule": {
+      "fail": "Ang kontrata {code} ay nagkakahalaga ng {amount} pero walang schedule lines, kaya wala sa anumang cost line ang pera nito.",
+      "suggestion": "Bigyan ang kontrata ng isang account sa cost control, o idagdag ang schedule lines nito."
+    },
+    "contract_sum_differs": {
+      "fail": "Ang kontrata {code} ay nagkakahalaga ng {total}, pero ang schedule lines nito ay umaabot lang sa {lines} (may pagkakaiba na {difference}).",
+      "suggestion": "Ayusin ang halaga ng kontrata o ang schedule lines para magtugma."
+    },
+    "change_without_agreed_amount": {
+      "fail": "Aprubado na ang change order {code} pero walang napagkasunduang halaga.",
+      "suggestion": "I-record ang halagang napagkasunduan sa kontratista bago aprubahan ang change."
+    },
+    "change_without_approval_date": {
+      "fail": "Aprubado na ang change order {code} pero walang petsa ng pag-apruba.",
+      "suggestion": "I-record kung kailan inaprubahan ang change."
+    },
+    "billed_before_approval": {
+      "fail": "May siningil na {amount} sa kontrata {contract} para sa change {code}, na may status na {status} at hindi pa aprubado.",
+      "suggestion": "Aprubahan muna ang change, o alisin ang singil sa claim."
+    },
+    "contract_over_target": {
+      "fail": "Ang kontrata {code} ay may commitment na {committed}, lampas ng {difference} sa {target} ng bill of quantities na pinagmulan nito (higit sa {tolerance} %).",
+      "suggestion": "Suriin ang award at mga change nito laban sa bill of quantities, at itala kung bakit mas mahal ang gawa."
+    },
+    "account_over_plan": {
+      "fail": "Ang account {code} ay may commitments na {committed}, lampas ng {difference} sa plano nitong {planned} (higit sa {tolerance} %).",
+      "suggestion": "Suriin ang commitments sa account na ito, o i-update ang plano kasama ang dahilan."
+    },
+    "quantity_overrun": {
+      "fail": "Ang line {code} ng kontrata {contract} ay nasukat sa {measured} {unit} kontra sa {contracted} {unit} na nasa kontrata, lampas ng {over} % (pinapayagan ang {tolerance} %).",
+      "suggestion": "Suriin ang sukat, o pagkasunduan ang dagdag na dami bilang change."
+    },
+    "measurement_exceeds_commitment": {
+      "fail": "Ang kontrata {code} ay nasukat sa {measured}, lampas ng {difference} sa halaga nito kasama ang aprubadong changes na {committed}.",
+      "suggestion": "Aprubahan ang change na sumasaklaw sa dagdag na gawa, o suriin ang sukat."
+    },
+    "invoice_without_contract": {
+      "fail": "Ang supplier invoice {number} na {amount} ay hindi kabilang sa anumang kontrata o order.",
+      "suggestion": "Iugnay ang mga line nito sa isang kontrata, o i-record bilang direct cost sa isang account."
+    }
+  },
+  "payment_release": {
+    "cumulative_total_fell": {
+      "fail": "Ang invoice {number} sa kontrata {contract} ay nagsasaad ng {net} hanggang ngayon, mas mababa sa {previous} ng naunang invoice {previous_number}, kahit cumulative ang pag-invoice ng kontrata.",
+      "suggestion": "Kung bagong trabaho lang ang sinisingil ng invoice, incremental ang pag-invoice ng kontrata; kung binabawasan nito ang total, ilagay ito bilang credit note."
+    },
+    "invoice_after_final": {
+      "fail": "Ang invoice {number} sa kontrata {contract} ay sumusunod sa final invoice {final}.",
+      "suggestion": "Ilagay ang mga susunod na trabaho bilang day work o credit note, o markahan ang tamang invoice bilang final."
+    },
+    "claim_invoice_in_cumulative": {
+      "fail": "Ang invoice {number} sa kontrata {contract} ay ginawa mula sa isang claim at naniningil ng isang panahon, pero cumulative ang pag-invoice ng kontrata.",
+      "suggestion": "Gumamit ng iisang paraan ng pag-invoice kada kontrata: ilipat ang kontrata sa incremental na pag-invoice, o ilagay na lang ang mga cumulative invoice ng kontratista."
+    },
+    "release_differs": {
+      "fail": "Ang kinumpirmang release para sa invoice {number} sa kontrata {contract} ay {stored}, pero ang terms ng kontrata ay nagbibigay ngayon ng {computed}.",
+      "suggestion": "Tingnan kung ano ang nagbago mula nang ma-release (terms, halaga ng invoice, mga bawas), saka buksan muli ang release at kumpirmahin ito ulit."
+    },
+    "rounding_out_of_range": {
+      "fail": "Ang invoice {number} ay na-round ng {rounding}, labas sa napagkasunduang rounding step na {step}.",
+      "suggestion": "Binabawasan lang ng rounding ang release nang mas mababa sa isang step; i-on ang rounding sa payment terms o buksan muli ang release."
+    },
+    "final_retention_without_warranty": {
+      "fail": "Ang final invoice {number} sa kontrata {contract} ay may hawak na {amount} na retention, pero walang napagkasunduang warranty retention.",
+      "suggestion": "Pagkasunduan ang warranty retention sa payment terms, o buksan muli ang release para mabayaran ang buong retention kasama ng final invoice."
+    },
+    "posting_exceeds_held": {
+      "fail": "Mas maraming retention ang naibalik sa kontrata {contract} kaysa sa hawak nito: sobra ng {amount}.",
+      "suggestion": "I-void ang retention posting na sobra at i-post ang halagang talagang hawak."
+    },
+    "posting_before_event": {
+      "fail": "Ang {amount} na retention sa kontrata {contract} ay naibalik noong {posted}, bago ang release event nito na due sa {due}.",
+      "suggestion": "Tingnan ang petsa ng release event, o i-post ang release kapag nangyari na ang event."
+    },
+    "posting_without_event_date": {
+      "fail": "Ang {amount} na retention sa kontrata {contract} ay naibalik, pero hindi naitala ang petsa ng release event nito.",
+      "suggestion": "Itala ang petsa kung kailan naabot ang release event, para masuri ang bayad laban dito."
+    },
+    "retention_still_held": {
+      "fail": "Tapos na ang kontrata {contract} at may hawak pa itong {amount} na retention.",
+      "suggestion": "I-release ang retention sa event nito sa retention register, o panatilihin itong hawak para sa warranty period."
+    },
+    "discount_not_agreed": {
+      "fail": "Ang release ng invoice {number} sa kontrata {contract} ay kumukuha ng early payment discount na {amount}, pero walang pinapayagan ang kontrata.",
+      "suggestion": "I-on ang early payment discount sa payment terms, o buksan muli ang release nang wala ito."
+    },
+    "discount_after_deadline": {
+      "fail": "May discount na {amount} na itinabi sa invoice {number}, pero ang bayad noong {paid_on} ay lampas sa discount date na {until}.",
+      "suggestion": "Bayaran din ang halaga ng discount, o itala kung bakit tinanggap ng kontratista ang huling discount."
+    },
+    "invoiced_over_measured": {
+      "fail": "Ang kontrata {contract} ay na-invoice ng {invoiced}, {difference} na higit sa {measured} na nasukat (dami beses rate).",
+      "suggestion": "Suriin ang measurement bago mag-release ng dagdag na pera, o hawakan ang pagkakaiba sa susunod na release."
+    },
+    "invoiced_over_contract": {
+      "fail": "Ang kontrata {contract} ay na-invoice ng {invoiced}, {difference} na higit sa halaga nitong {value}, at walang nasukat dito.",
+      "suggestion": "Itala ang measurement o ang change order na sumasaklaw sa dagdag na pera bago mag-release ng higit pa."
+    },
+    "reverse_charge_with_vat": {
+      "fail": "Ang invoice {number} ay reverse charge pero may kasamang {vat} na VAT.",
+      "suggestion": "Walang VAT ang reverse charge na invoice; itama ang halaga ng VAT o ang VAT category ng mga line nito."
+    },
+    "line_without_vat_rate": {
+      "fail": "May VAT ang invoice {number}, pero {count} sa mga line nito ay walang VAT rate.",
+      "suggestion": "Ilagay ang VAT rate sa bawat line para tamang buwis ang makuha ng mga bawas at export."
+    },
+    "duplicate_number": {
+      "fail": "Ang invoice number {number} mula sa parehong kontratista ay naipasok nang {count} beses.",
+      "suggestion": "Kanselahin ang kopya, o itama ang invoice number kung magkaibang invoice ang mga ito."
+    },
+    "possible_duplicate": {
+      "fail": "Ang invoice {number} ay may parehong kontratista, halaga ({amount}) at petsa ({on}) gaya ng invoice {other}.",
+      "suggestion": "Tiyaking hindi ito iisang invoice na dalawang beses naipasok sa ibang numero."
+    },
+    "certificate_missing": {
+      "fail": "Invoice {number} sa kontratang {contract}: walang {certificate} na may bisa sa {on} ang tumatanggap ng bayad, na hinihingi ng {reference} bago ilabas ang bayad.",
+      "suggestion": "Itala ang sertipiko sa talaan ng subcontractor ng tumatanggap, o ipagpaliban ang bayad hanggang maipakita ito."
+    },
+    "split_payment_annotation_missing": {
+      "fail": "Ang invoice {number} ay may construction works o ibang kalakal na sakop ng split payment at lampas sa {threshold}, pero walang annotation na «{annotation}».",
+      "suggestion": "Humingi sa supplier ng itinamang invoice na may annotation, at bayaran ito sa anumang kaso sa pamamagitan ng split payment: ang obligasyong magbayad sa ganitong paraan ay hindi nakadepende sa annotation."
+    },
+    "split_payment_not_used": {
+      "fail": "Ang invoice {number} ay sakop ng split payment, pero may naitalang bayad nito sa ibang paraan. Ang buyer ay mananagot pa sa {sanction}, 30 porsiyento ng VAT nito.",
+      "suggestion": "Bayaran ang ganitong mga invoice mula sa VAT account sa pamamagitan ng split payment, at itala ang paraan sa bayad bilang split_payment."
+    },
+    "split_payment_annex_unknown": {
+      "fail": "Ang invoice {number} ay lampas sa {threshold}, at hindi naitala kung may laman itong kalakal o serbisyo mula sa annex ng split payment.",
+      "suggestion": "Itala sa invoice kung may laman itong kalakal o serbisyo mula sa annex (annex_15), o ang mga code ng mga ito (pkwiu_codes), para masuri ang paraan ng pagbabayad."
+    },
+    "reduced_rate_above_area_limit": {
+      "fail": "Ang invoice {number} ay naniningil ng {rate} porsiyentong VAT sa buong presyo, pero ang tirahan ay may {area_m2} m2 na usable area at ang reduced rate ay hanggang {limit_m2} m2 lang ({reference}).",
+      "suggestion": "Ipataw ang reduced rate sa {reduced_share_percent} porsiyento ng presyo at ang standard rate sa natitira."
+    },
+    "reduced_rate_object_unknown": {
+      "fail": "Ang invoice {number} ay naniningil ng reduced housing rate na {rate} porsiyento, pero hindi naitala ng proyekto kung aling tirahan ito o ang usable area nito ({reference}).",
+      "suggestion": "Itala sa proyekto ang uri ng tirahan at usable area (vat_housing) para masuri ang rate at ang limitasyon sa area."
+    },
+    "reduced_rate_not_eligible": {
+      "fail": "Ang invoice {number} ay naniningil ng reduced housing rate na {rate} porsiyento sa {object}, na hindi kwalipikado rito ({reference}).",
+      "suggestion": "Ipataw ang standard rate, o itama ang tirahang naitala sa proyekto."
+    },
+    "domestic_reverse_charge_ended": {
+      "fail": "Ang invoice {number} ay nag-apply ng reverse charge sa {count} line, pero natapos na sa bansang ito ang domestic reverse charge sa construction services.",
+      "suggestion": "Maliban kung ang supplier ay nakabase sa ibang bansa, humingi ng invoice na may VAT; ang ganitong mga invoice ay binabayaran sa pamamagitan ng split payment."
+    },
+    "payment_term_over_cap": {
+      "fail": "Ang kontrata {contract} ay may napagkasunduang payment term na {days} araw, mas mahaba kaysa sa {cap} araw na pinapayagan ng batas sa huling bayad sa pagitan ng mga negosyo.",
+      "suggestion": "Paikliin ang term sa {cap} araw, o itala kung bakit tahasang napagkasunduan ang mas mahabang term at hindi labis na hindi patas sa subcontractor."
+    }
+  },
+  "cost_forecast": {
+    "below_commitment": {
+      "fail": "{code}: Ang forecast na {forecast} ay mas mababa sa {owed} na naka-commit na o hiniling sa mga nakabinbing pagbabago ({difference} na mas mababa), at walang nagpapaliwanag nito.",
+      "suggestion": "Ilakip ang dokumentong batayan ng mas mababang numero (credit note, settlement, minutes), o isulat sa linya kung bakit mas mababa ang resulta ng paraan nito."
+    },
+    "move_without_evidence": {
+      "fail": "{code}: Ang forecast ay lumipat mula {previous} patungong {current} ({delta}) mula sa huling naka-lock na snapshot, lampas sa limitasyon ng proyekto, at wala pang komento at ebidensya.",
+      "suggestion": "Isulat kung bakit nagbago ang numero at i-link ang dokumento o minutes na batayan nito bago i-lock ang snapshot."
+    },
+    "method_override_without_comment": {
+      "fail": "Ang {code} ay ino-forecast gamit ang {method} sa halip na ang {project_method} ng proyekto, at walang komentong nagsasabi kung bakit.",
+      "suggestion": "Magdagdag ng maikling komento sa paraan ng linya, o ibalik ang linya sa paraan ng proyekto."
+    },
+    "method": {
+      "best_available": "pinakamainam na magagamit na source",
+      "maximum": "pinakamataas na halaga",
+      "evm_cpi": "performance ng gastos (CPI)",
+      "manual": "manwal na halaga"
+    }
+  },
+  "payment_release_certificate_types": {
+    "social_security_clearance": "sertipiko ng clearance sa social insurance",
+    "construction_tax_exemption": "sertipiko ng exemption sa construction tax",
+    "employers_liability_clearance": "sertipiko ng clearance sa pananagutan ng employer",
+    "insurance": "sertipiko ng insurance",
+    "license": "lisensya ng kontratista"
   }
 }

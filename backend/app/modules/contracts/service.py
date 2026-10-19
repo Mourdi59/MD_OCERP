@@ -24,7 +24,7 @@ from typing import Any
 
 from fastapi import HTTPException, status
 from sqlalchemy import select as sa_select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.currency_registry import money_quantum
@@ -139,6 +139,7 @@ from app.modules.contracts.retention import (
 )
 from app.modules.contracts.retention import percent_complete as retention_percent_complete
 from app.modules.contracts.sov_adjustments import ADJUSTS_LINE_META_KEY
+from app.modules.contracts.vat_regime_rules import VAT_REGIME_CONTEXT_KEY, stated_regime
 
 logger = logging.getLogger(__name__)
 
@@ -1395,6 +1396,78 @@ class ContractsService:
             return None
         return normalise_country(getattr(project, "country_code", None)) or None
 
+    async def vat_regimes_for_project(self, project_id: uuid.UUID, on: date) -> dict[str, Any]:
+        """The VAT regimes a contract on this project may state on ``on``, with their rates.
+
+        The regimes and their conditions come from :mod:`app.core.vat_regimes`;
+        the nominal rate of each comes from the tax table row its ``tax_code``
+        names, in force on ``on``, so a tenant who corrects a rate there sees
+        the regime follow. No row in force leaves the rate empty.
+        """
+        from app.core.vat_regimes import in_force, regimes_for  # noqa: PLC0415
+        from app.modules.i18n_foundation.repository import TaxConfigRepository  # noqa: PLC0415
+        from app.modules.i18n_foundation.tax_rules import active_rows  # noqa: PLC0415
+        from app.modules.i18n_foundation.tax_rules import row_from_orm as tax_row_from_orm  # noqa: PLC0415
+
+        country = await self.project_country(project_id)
+        answer: dict[str, Any] = {"project_id": project_id, "country_code": country, "on": on, "regimes": []}
+        if not country:
+            return answer
+        regimes = regimes_for(country)
+        if not regimes:
+            return answer
+        try:
+            configs = await TaxConfigRepository(self.session).list(country_code=country)
+        except SQLAlchemyError:
+            logger.debug("Tax table unreadable for %s; VAT regimes are offered without rates", country)
+            configs = []
+        rows = [tax_row_from_orm(config) for config in configs]
+        live = active_rows(rows, country, on.isoformat())
+        offered: list[dict[str, Any]] = []
+        activities = sorted({regime.activity for regime in regimes})
+        for activity in activities:
+            for regime in in_force(regimes, country=country, activity=activity, on=on):
+                matching = [
+                    row
+                    for row in live
+                    if row.tax_code == regime.tax_code
+                    and row.combination in ("national", "federal")
+                    and not row.awaiting_confirmation
+                ]
+                nominal: Decimal | None = None
+                if len(matching) == 1:
+                    try:
+                        nominal = Decimal(matching[0].rate_pct)
+                    except (InvalidOperation, TypeError):
+                        nominal = None
+                rules = regime.eligibility
+                offered.append(
+                    {
+                        "code": regime.code,
+                        "labels": dict(regime.labels),
+                        "activity": regime.activity,
+                        "tax_code": regime.tax_code,
+                        "base_fraction": regime.base_fraction,
+                        "input_credit": regime.input_credit,
+                        "nominal_rate_pct": nominal,
+                        "effective_rate_pct": None if nominal is None else nominal * regime.base_fraction,
+                        "is_default": regime.is_default,
+                        "effective_from": regime.effective_from,
+                        "effective_to": regime.effective_to,
+                        "review_status": regime.review_status,
+                        "legal_reference": regime.legal_reference,
+                        "source_url": regime.source_url,
+                        "conditions": dict(regime.conditions),
+                        "contract_signed_before": rules.contract_signed_before if rules else None,
+                        "required_evidence": list(rules.required_evidence) if rules else [],
+                        "subcontract_evidence": list(rules.subcontract_evidence) if rules else [],
+                        "evidence_dated_before": rules.evidence_dated_before if rules else None,
+                        "scope_increase_ends_regime": bool(rules and rules.scope_increase_ends_regime),
+                    }
+                )
+        answer["regimes"] = offered
+        return answer
+
     async def project_subdivision(self, project_id: uuid.UUID) -> str | None:
         """The project's ISO 3166-2 subdivision as recorded, or None."""
         from app.modules.projects.models import Project  # noqa: PLC0415
@@ -1886,6 +1959,8 @@ class ContractsService:
             # this year's clauses, which is not what "clone" means to anyone.
             template_code=getattr(source, "template_code", None),
             template_version=getattr(source, "template_version", None),
+            # Cost lines belong to one project: a clone into another starts without accounts.
+            cost_line_id=getattr(source, "cost_line_id", None) if dest_project_id == source.project_id else None,
             created_by=user_id,
             metadata_=cloned_meta,
         )
@@ -1912,9 +1987,12 @@ class ContractsService:
                     total_value=Decimal(str(ln.total_value or 0)),
                     order_index=ln.order_index,
                     metadata_=dict(getattr(ln, "metadata_", {}) or {}),
+                    cost_line_id=getattr(ln, "cost_line_id", None) if dest_project_id == source.project_id else None,
                 )
                 new_line = await self.line_repo.create(new_line)
                 id_map[ln.id] = new_line.id
+                if new_line.cost_line_id is not None:
+                    await self._copy_line_split(dest_project_id, ln, new_line)
             # Pass 2 - wire up parent_line_id translations.
             for ln in src_lines:
                 if ln.parent_line_id is None:
@@ -2333,20 +2411,62 @@ class ContractsService:
                     "display_name": await self._party_signing_name(p),
                 }
             )
+        from app.modules.projects.models import Project  # noqa: PLC0415
+
+        project = await self.session.get(Project, contract.project_id)
+        ld_clauses = await self.ld_repo.list_for_contract(contract.id)
         context = {
+            # Read by the public works rules: the law that binds a contract
+            # follows the project's country and whether its client is public.
+            "project": {
+                "country_code": getattr(project, "country_code", None),
+                "works": getattr(project, "works", None),
+            },
+            "ld_clauses": [
+                {
+                    "id": str(c.id),
+                    "per_day_amount": str(c.per_day_amount),
+                    "max_amount": None if c.max_amount is None else str(c.max_amount),
+                }
+                for c in ld_clauses
+            ],
             "contract": {
                 "id": str(contract.id),
                 "status": contract.status,
                 "contract_type": contract.contract_type,
+                "counterparty_type": contract.counterparty_type,
+                "retention_percent": str(contract.retention_percent or 0),
+                "start_date": contract.start_date,
+                "end_date": contract.end_date,
                 "terms": contract.terms or {},
                 # Both of these, not just the code: the rule that reads them
                 # asks whether the pair is complete, and a rule handed half a
                 # pair can only ever pass.
                 "template_code": contract.template_code,
                 "template_version": contract.template_version,
+                # What the VAT regime rules read: the regime's conditions are
+                # about when the contract was signed, whether it is a
+                # subcontract and how far its value has grown.
+                "code": contract.code,
+                "country_code": await self.project_country(contract.project_id),
+                "signed_at": contract.signed_at,
+                "is_subcontract": contract.counterparty_type == "subcontractor"
+                or contract.parent_contract_id is not None,
+                "total_value": str(contract.total_value) if contract.total_value is not None else None,
+                "original_contract_value": (
+                    str(contract.original_contract_value) if contract.original_contract_value is not None else None
+                ),
             },
             "parties": party_rows,
-            "securities": [{"security_type": s.security_type, "status": s.status} for s in securities],
+            "securities": [
+                {
+                    "security_type": s.security_type,
+                    "status": s.status,
+                    "amount": str(s.amount),
+                    "percent_of_contract": None if s.percent_of_contract is None else str(s.percent_of_contract),
+                }
+                for s in securities
+            ],
             # The engine applies the newest schedule that carries tiers and
             # ignores the rest without saying so, which is fine as a rule and
             # bad as a surprise. The rule that reads this says out loud that
@@ -2908,7 +3028,38 @@ class ContractsService:
             metadata_=data.metadata,
         )
         line = await self.line_repo.create(line)
+        await self._inherit_line_cost_lines(data.contract_id, [line])
         return line
+
+    async def _copy_line_split(self, project_id: uuid.UUID, source: ContractLine, target: ContractLine) -> None:
+        """Give a cloned line the split of the line it was cloned from."""
+        try:
+            from app.modules.costmodel.inheritance import SOURCE_CONTRACT_LINE  # noqa: PLC0415
+            from app.modules.costmodel.inheritance_service import copy_line_split  # noqa: PLC0415
+        except ImportError:  # pragma: no cover - the cost model is a core module
+            return
+        await copy_line_split(
+            self.session,
+            project_id=project_id,
+            source_type=SOURCE_CONTRACT_LINE,
+            source_id=source.id,
+            source_main=source.cost_line_id,
+            target_type=SOURCE_CONTRACT_LINE,
+            target_id=target.id,
+        )
+
+    async def _inherit_line_cost_lines(self, contract_id: uuid.UUID, lines: list[ContractLine]) -> None:
+        """Put new lines without a cost line on what they inherit: bid line, bill position, contract account."""
+        try:
+            from app.modules.costmodel.inheritance_service import inherit_contract_lines  # noqa: PLC0415
+        except ImportError:  # pragma: no cover - the cost model is a core module
+            return
+        contract = await self.session.get(Contract, contract_id)
+        if contract is None:
+            return
+        if await inherit_contract_lines(self.session, contract, lines):
+            for line in lines:
+                await self.session.refresh(line)
 
     async def bulk_create_lines(
         self,
@@ -2936,7 +3087,9 @@ class ContractsService:
                     metadata_=it.metadata,
                 )
             )
-        return await self.line_repo.bulk_create(lines)
+        created = await self.line_repo.bulk_create(lines)
+        await self._inherit_line_cost_lines(contract_id, list(created))
+        return created
 
     async def update_line(
         self,
@@ -2969,6 +3122,9 @@ class ContractsService:
             fields["total_value"] = qty * rate
         await self.line_repo.update_fields(line_id, **fields)
         await self.session.refresh(line)
+        # A line just linked to a bill position, with no cost line yet, takes the position's.
+        if line.cost_line_id is None and boq_position_id_for_line(line) is not None:
+            await self._inherit_line_cost_lines(line.contract_id, [line])
         return line
 
     async def _assert_line_may_be_linked(self, line: ContractLine, metadata: dict[str, Any]) -> None:
@@ -3760,6 +3916,11 @@ class ContractsService:
             "retention_cap": await self._claim_retention_cap_context(claim, contract),
             "schedule": await self._claim_schedule_context(contract, contract_lines),
         }
+        # The VAT regime the contract states, so a claim dated outside it is
+        # reported. Absent when the contract states none.
+        vat_regime = await self._claim_vat_regime_context(contract)
+        if vat_regime is not None:
+            context[VAT_REGIME_CONTEXT_KEY] = vat_regime
 
         # What other modules add (the subcontractor pay apps rolled into this
         # claim, when that module is installed). They register with
@@ -3773,6 +3934,13 @@ class ContractsService:
             raise RuntimeError(f"claim context providers may not replace core keys: {', '.join(clash)}")
         context.update(extra)
         return context
+
+    async def _claim_vat_regime_context(self, contract: Contract) -> dict[str, Any] | None:
+        """The regime the contract states and its project's country, or None."""
+        block = stated_regime(contract.terms)
+        if block is None:
+            return None
+        return {"code": str(block["code"]).strip(), "country_code": await self.project_country(contract.project_id)}
 
     async def _claim_retention_cap_context(self, claim: ProgressClaim, contract: Contract) -> dict[str, Any]:
         """The ceiling on retention, the figure it binds, and where there is none.
@@ -3958,6 +4126,34 @@ class ContractsService:
                 },
             )
 
+    async def _announce_retention_released(self, claim: ProgressClaim, actor_id: str | None) -> None:
+        """Tell the project owner that retention billed on a paid claim is now released.
+
+        A release billed on a claim is money back to the contractor only once
+        that claim is paid, so this is the moment, and it is deferred to the
+        commit like every other claim event.
+        """
+        billed = await self.release_repo.billed_on_claims([claim.id])
+        if not billed:
+            return
+        accrued, released_total = await self._retention_ledger(await self.get_contract(claim.contract_id))
+        remaining = max(accrued - released_total, DEC_ZERO)
+        for release in billed:
+            publish_after_commit(
+                self.session,
+                "contracts.retention.released",
+                {
+                    "contract_id": str(claim.contract_id),
+                    "release_id": str(release.id),
+                    "claim_id": str(claim.id),
+                    "event": release.event,
+                    "amount_released": str(release.amount),
+                    "remaining": str(remaining),
+                    "actor": actor_id,
+                },
+                source_module="contracts",
+            )
+
     async def transition_claim(
         self,
         claim_id: uuid.UUID,
@@ -4091,6 +4287,7 @@ class ContractsService:
                 },
                 source_module="contracts",
             )
+            await self._announce_retention_released(claim, actor_id)
         await self.claim_repo.update_fields(claim_id, **fields)
         if getattr(claim, "milestone_id", None) is not None and target_status in _MILESTONE_STATUS_ON_CLAIM:
             await self._sync_milestone_with_claim(claim, _MILESTONE_STATUS_ON_CLAIM[target_status])

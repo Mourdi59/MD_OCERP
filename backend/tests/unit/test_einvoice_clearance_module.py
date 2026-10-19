@@ -232,6 +232,20 @@ class TestCountryRegistry:
             assert entry.cancellation_basis in regimes.CANCELLATION_BASES, code
         assert regimes.COUNTRY_REGIMES["MX"].cancellation_basis == regimes.CANCELLATION_BASIS_FISCAL_YEAR
 
+    def test_the_flattened_regime_carries_its_extras(self):
+        # Additive: a country with no extras serialises an empty mapping, and one
+        # with extras (penalties, formats) reaches the meta endpoint unchanged.
+        from dataclasses import replace
+
+        from app.modules.einvoice_clearance.schemas import CountryRegimeResponse
+
+        entry = regimes.COUNTRY_REGIMES["DE"]
+        assert regimes.regime_as_dict(entry)["extra"] == {}
+        penalties = {"penalties": [{"key": "late", "amount": "50", "currency": "EUR"}]}
+        flat = regimes.regime_as_dict(replace(entry, extra=penalties))
+        assert flat["extra"] == penalties
+        assert CountryRegimeResponse.model_validate(flat).extra == penalties
+
     def test_the_flattened_regime_keeps_every_key_it_used_to_carry(self):
         # Additive only. A reader written against the older shape is a reader we
         # cannot see, so no key may change meaning and none may disappear.
@@ -787,6 +801,173 @@ class TestDocumentInDoubt:
         with pytest.raises(service.ClearanceError) as excinfo:
             await service.resolve_document(session, document=document, profile=profile, outcome="cleared", note="x")
         assert excinfo.value.conflict is True
+
+
+class _PendingAdapter:
+    """A platform that takes a document in and decides later."""
+
+    key = "pending_test_adapter"
+    label = "Asynchronous platform"
+    countries: tuple[str, ...] = ("*",)
+    verdict: adapters.SubmissionOutcome | None = None
+
+    async def submit(self, request):
+        return adapters.SubmissionOutcome(
+            accepted=True,
+            pending=True,
+            authority_identifier="PENDING-UUID-1",
+            message="Taken in; validating.",
+            raw_response={"status": "submitted"},
+        )
+
+    async def cancel(self, request):
+        return adapters.SubmissionOutcome(accepted=True, authority_identifier=request.authority_identifier)
+
+    async def poll(self, request):
+        assert request.authority_identifier == "PENDING-UUID-1"
+        return type(self).verdict or adapters.SubmissionOutcome(
+            accepted=True, pending=True, authority_identifier=request.authority_identifier
+        )
+
+
+@pytest.fixture
+def pending_adapter():
+    _PendingAdapter.verdict = None
+    adapters.adapter_registry.register(_PendingAdapter())
+    yield _PendingAdapter
+    adapters.adapter_registry._adapters.pop(_PendingAdapter.key, None)
+    _PendingAdapter.verdict = None
+
+
+@pytest.mark.asyncio
+class TestVerdictComesLater:
+    async def test_a_pending_answer_keeps_the_document_submitted_with_the_identifier(self, session, pending_adapter):
+        profile = await _profile(session, "MX", adapter_key=pending_adapter.key)
+        document, _ = await service.create_document(session, profile=profile, body=_body(profile))
+        document, outcome, _ = await service.submit_document(session, document=document, profile=profile)
+        assert outcome.pending is True
+        assert document.status == "submitted"
+        assert document.authority_identifier == "PENDING-UUID-1"
+        assert document.cleared_at is None
+        events = await repository.list_events(session, document.id)
+        assert events[-1].event_type == "note"
+        # Still gone: a second submission is refused while the verdict is out.
+        assert not can_be_sent(document.status)
+
+    async def test_refresh_moves_a_validated_document_to_cleared(self, session, pending_adapter):
+        profile = await _profile(session, "MX", adapter_key=pending_adapter.key)
+        document, _ = await service.create_document(session, profile=profile, body=_body(profile))
+        document, _, _ = await service.submit_document(session, document=document, profile=profile)
+
+        document, outcome = await service.refresh_document(session, document=document, profile=profile)
+        assert outcome.pending and document.status == "submitted"
+
+        pending_adapter.verdict = adapters.SubmissionOutcome(
+            accepted=True, authority_identifier="PENDING-UUID-1", message="Valid."
+        )
+        document, outcome = await service.refresh_document(session, document=document, profile=profile)
+        assert document.status == TERMINAL_SUCCESS["clearance"]
+        assert document.cleared_at is not None
+
+    async def test_refresh_records_an_invalid_verdict_as_a_rejection(self, session, pending_adapter):
+        profile = await _profile(session, "MX", adapter_key=pending_adapter.key)
+        document, _ = await service.create_document(session, profile=profile, body=_body(profile))
+        document, _, _ = await service.submit_document(session, document=document, profile=profile)
+
+        pending_adapter.verdict = adapters.SubmissionOutcome(
+            accepted=False,
+            authority_identifier="PENDING-UUID-1",
+            rejection_code="Invalid",
+            rejection_message="Step-04: Total amount is wrong",
+        )
+        document, _ = await service.refresh_document(session, document=document, profile=profile)
+        assert document.status == "rejected"
+        assert document.rejection_code == "Invalid"
+
+    async def test_an_adapter_that_cannot_poll_refuses_refresh(self, session, failing_adapter):
+        profile = await _profile(session, "MX", adapter_key=failing_adapter)
+        document, _ = await service.create_document(session, profile=profile, body=_body(profile))
+        with pytest.raises(service.ClearanceError):
+            await service.submit_document(session, document=document, profile=profile)
+        document.authority_identifier = "SOMETHING"
+        with pytest.raises(service.ClearanceError, match="cannot read a verdict"):
+            await service.refresh_document(session, document=document, profile=profile)
+
+    async def test_refresh_needs_a_submitted_document(self, session, pending_adapter):
+        profile = await _profile(session, "MX", adapter_key=pending_adapter.key)
+        document, _ = await service.create_document(session, profile=profile, body=_body(profile))
+        with pytest.raises(service.ClearanceError, match="Only a submitted document"):
+            await service.refresh_document(session, document=document, profile=profile)
+
+
+class TestAcceptedAct:
+    def test_the_adapter_may_name_an_act_the_country_declares(self):
+        fr = regimes.COUNTRY_REGIMES["FR"]
+        extra = fr.additional_regimes[0]
+        assert service._accepted_act(adapters.SubmissionOutcome(accepted=True, act=extra), fr) == extra
+
+    def test_no_act_and_an_undeclared_act_fall_back_to_the_deciding_one(self):
+        es = regimes.COUNTRY_REGIMES["ES"]
+        assert service._accepted_act(adapters.SubmissionOutcome(accepted=True), es) == es.regime
+        assert service._accepted_act(adapters.SubmissionOutcome(accepted=True, act="clearance"), es) == es.regime
+
+
+class _ActAdapter:
+    """An adapter that names the act an accepted document went through."""
+
+    key = "act_test_adapter"
+    label = "Hybrid platform"
+    countries: tuple[str, ...] = ("*",)
+    act: str | None = None
+
+    async def submit(self, request):
+        return adapters.SubmissionOutcome(accepted=True, authority_identifier="ACT-1", act=type(self).act)
+
+    async def cancel(self, request):
+        return adapters.SubmissionOutcome(accepted=True, authority_identifier=request.authority_identifier)
+
+
+@pytest.fixture
+def act_adapter():
+    adapters.adapter_registry.register(_ActAdapter())
+    yield _ActAdapter
+    adapters.adapter_registry._adapters.pop(_ActAdapter.key, None)
+    _ActAdapter.act = None
+
+
+@pytest.mark.asyncio
+class TestAdapterNamesTheAct:
+    async def test_a_hybrid_country_records_the_act_the_adapter_names(self, session, act_adapter):
+        entry = regimes.COUNTRY_REGIMES["FR"]
+        assert entry.additional_regimes
+        act_adapter.act = entry.additional_regimes[0]
+        profile = await _profile(session, "FR", adapter_key=act_adapter.key)
+        document, _ = await service.create_document(session, profile=profile, body=_body(profile))
+        # France's mentions catalogue warns about mentions an expert has not yet
+        # confirmed. That is waivable and says nothing about which act was recorded.
+        document, _, _ = await service.submit_document(
+            session, document=document, profile=profile, accept_warnings=True
+        )
+        assert document.status == TERMINAL_SUCCESS[act_adapter.act]
+        assert document.status != TERMINAL_SUCCESS[entry.regime]
+
+    async def test_no_act_keeps_the_deciding_act(self, session, act_adapter):
+        act_adapter.act = None
+        profile = await _profile(session, "FR", adapter_key=act_adapter.key)
+        document, _ = await service.create_document(session, profile=profile, body=_body(profile))
+        document, _, _ = await service.submit_document(
+            session, document=document, profile=profile, accept_warnings=True
+        )
+        assert document.status == TERMINAL_SUCCESS[regimes.COUNTRY_REGIMES["FR"].regime]
+
+    async def test_an_act_the_country_does_not_declare_is_ignored(self, session, act_adapter):
+        # Spain only reports. An adapter naming clearance must not make a
+        # report read as a tax clearance.
+        act_adapter.act = "clearance"
+        profile = await _profile(session, "ES", adapter_key=act_adapter.key)
+        document, _ = await service.create_document(session, profile=profile, body=_body(profile))
+        document, _, _ = await service.submit_document(session, document=document, profile=profile)
+        assert document.status == "reported"
 
 
 @pytest.mark.asyncio

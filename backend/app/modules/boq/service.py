@@ -36,6 +36,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import cost_scope
 from app.core.events import event_bus, publish_after_commit
 from app.core.i18n import get_locale
 from app.core.stats import percentile
@@ -7145,6 +7146,26 @@ class BOQService:
             if cap["parent_id"] is not None and cap["parent_id"] in old_to_new:
                 await self.position_repo.update_fields(new_id, parent_id=old_to_new[cap["parent_id"]])
 
+        # Carry each position's cost vector (its cost line, or its split over
+        # several) onto the copy. Cost control is a module of its own: without
+        # it there is nothing to carry, and a failure here must not cost the
+        # user the copy of their bill.
+        try:
+            from app.modules.costmodel.structure_service import copy_vectors
+        except ImportError:
+            copy_vectors = None
+        if copy_vectors is not None:
+            try:
+                async with self.session.begin_nested():
+                    await copy_vectors(
+                        self.session,
+                        project_id=source_project_id,
+                        new_boq_id=new_boq_id,
+                        old_to_new=old_to_new,
+                    )
+            except Exception:
+                logger.exception("BOQ duplicate: cost vectors not copied for %s", new_boq_id)
+
         # Copy markups. A scoped line has to point at the COPY of the position
         # it was confined to, and an override at the COPY of the line it
         # replaces. Carrying the source bill's ids over would leave the new
@@ -10205,6 +10226,7 @@ class BOQService:
             import asyncio
 
             matches = await asyncio.to_thread(vector_search, query_vec, None, 10)
+            matches = await cost_scope.visible_hits(self.session, matches)
         except Exception:
             logger.debug("Vector search failed for classify_position")
             return []
@@ -10306,6 +10328,7 @@ class BOQService:
             import asyncio
 
             matches = await asyncio.to_thread(vector_search, query_vec, region, 10)
+            matches = await cost_scope.visible_hits(self.session, matches)
         except Exception:
             logger.debug("Vector search failed for suggest_rate")
             return empty_result
@@ -10435,6 +10458,15 @@ class BOQService:
                 return []
 
         all_matches = await asyncio.gather(*[_search_one(i) for i in range(len(eligible))])
+        # One visibility lookup for the whole batch, after the parallel
+        # searches: the session cannot be shared between them.
+        try:
+            allowed = await cost_scope.visible_hits(self.session, [hit for hits in all_matches for hit in hits])
+        except Exception:
+            logger.debug("Visibility check failed for check_anomalies", exc_info=True)
+            return {"anomalies": [], "positions_checked": 0}
+        allowed_ids = {str(hit.get("id")) for hit in allowed}
+        all_matches = [[hit for hit in hits if str(hit.get("id")) in allowed_ids] for hits in all_matches]
 
         def _percentile_val(data: list[float], pct: float) -> float:
             # Callers guarantee at least two rates, so this is never None here.
@@ -10575,6 +10607,7 @@ class BOQService:
         t1 = time.monotonic()
         try:
             raw_matches = await asyncio.to_thread(vector_search, vectors[0], region, min(limit * 2, 30))
+            raw_matches = await cost_scope.visible_hits(self.session, raw_matches)
         except Exception:
             logger.debug("Vector search failed for search_cost_items")
             return empty

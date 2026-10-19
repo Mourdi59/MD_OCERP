@@ -218,5 +218,147 @@
       "fail": "Die Position {line} ist bisher mit {stated} erfasst, Menge oder Prozentsatz ergeben jedoch {computed}",
       "suggestion": "Korrigieren Sie Menge oder Betrag im Beleg, damit die beiden Spalten der Zeile übereinstimmen"
     }
+  },
+  "public_works": {
+    "retention_above_limit": {
+      "fail": "Der Sicherheitseinbehalt von {percent} Prozent liegt über den {limit} Prozent, die das Recht der öffentlichen Bauaufträge je Abschlagszahlung erlaubt",
+      "suggestion": "Senken Sie den Einbehalt des Vertrags auf den gesetzlichen Satz"
+    },
+    "advance_above_cap": {
+      "fail": "Die Vorauszahlungsbürgschaft deckt {percent} Prozent des Vertragswerts, über den {limit} Prozent, die öffentliche Bauaufträge ohne Genehmigung des Finanzministers zulassen",
+      "suggestion": "Verringern Sie die Vorauszahlung oder erfassen Sie in den Vertragsbedingungen die vor der Ausschreibung eingeholte Genehmigung"
+    },
+    "delay_damages_uncapped": {
+      "fail": "Eine Verzugsschadenklausel hat keinen Höchstbetrag, obwohl das Recht der öffentlichen Bauaufträge den Verzugsschaden auf {limit} Prozent des Vertragswerts begrenzt",
+      "suggestion": "Geben Sie den Höchstbetrag der Verzugsschadenklausel ein"
+    },
+    "delay_damages_above_cap": {
+      "fail": "Eine Verzugsschadenklausel ist auf {percent} Prozent des Vertragswerts begrenzt, über den {limit} Prozent, die das Recht der öffentlichen Bauaufträge erlaubt",
+      "suggestion": "Senken Sie den Höchstbetrag der Klausel auf die gesetzliche Obergrenze"
+    },
+    "performance_security_missing": {
+      "fail": "Es ist keine Vertragserfüllungssicherheit erfasst, obwohl öffentliche Bauaufträge eine Sicherheit von {limit} Prozent des Vertragswerts verlangen",
+      "suggestion": "Erfassen Sie die Endgarantie als Vertragserfüllungsbürgschaft oder Bankgarantie"
+    },
+    "performance_security_below": {
+      "fail": "Die Vertragserfüllungssicherheit deckt {percent} Prozent des Vertragswerts, unter den {limit} Prozent, die öffentliche Bauaufträge verlangen",
+      "suggestion": "Erfassen Sie eine Vertragserfüllungssicherheit in voller gesetzlicher Höhe"
+    },
+    "price_adjustment": {
+      "no_coefficients": {
+        "fail": "Öffentliche Bauaufträge mit {months} Monaten Laufzeit oder mehr müssen per Gesetz preisgleitend angepasst werden, der Vertrag nennt aber keine Koeffizienten für seine veränderlichen Positionen",
+        "suggestion": "Erfassen Sie die Koeffizienten, die der Auftragnehmer im technischen Umschlag angegeben hat"
+      },
+      "duplicate_item": {
+        "fail": "Die veränderliche Position {item} ist unter den Preisanpassungskoeffizienten doppelt aufgeführt",
+        "suggestion": "Behalten Sie je veränderlicher Position nur einen Koeffizienten"
+      },
+      "coefficient_not_a_number": {
+        "fail": "Der Preisanpassungskoeffizient von {item} ist keine Zahl",
+        "suggestion": "Geben Sie den Koeffizienten als Dezimalzahl ein, zum Beispiel 0.15"
+      },
+      "coefficient_not_positive": {
+        "fail": "Der Preisanpassungskoeffizient von {item} ist null oder kleiner, obwohl das Gesetz verlangt, dass jeder Koeffizient über null liegt",
+        "suggestion": "Geben Sie einen Koeffizienten über null ein oder entfernen Sie die Position"
+      },
+      "coefficient_negative": {
+        "fail": "Der Preisanpassungskoeffizient von {item} ist negativ",
+        "suggestion": "Geben Sie einen Koeffizienten von null oder mehr ein"
+      },
+      "coefficient_sum_not_below_one": {
+        "fail": "Die Preisanpassungskoeffizienten ergeben zusammen {item}, obwohl das Gesetz verlangt, dass ihre Summe unter eins bleibt",
+        "suggestion": "Senken Sie die Koeffizienten, sodass ein fester Preisanteil bleibt"
+      },
+      "coefficient_sum_above_one": {
+        "fail": "Die Preisanpassungskoeffizienten ergeben zusammen {item}, mehr als eins",
+        "suggestion": "Senken Sie die Koeffizienten, sodass sie zusammen höchstens eins ergeben"
+      },
+      "no_coefficients_advisory": {
+        "fail": "Öffentliche Bauaufträge mit mehr als {months} Monaten Laufzeit enthalten eine Preisgleitklausel, wenn Rohstoffe einen erheblichen Teil der Kosten ausmachen, und der Vertrag nennt keine Gewichte für die Preisanpassung",
+        "suggestion": "Tragen Sie die Gewichte der Preisgleitformel aus den besonderen Vertragsbedingungen ein oder erfassen Sie, dass der Preis fest ist"
+      }
+    },
+    "advance_below_minimum": {
+      "fail": "Der Vorschuss beträgt {percent} Prozent des Vertragswerts und liegt unter dem Mindestsatz von {limit} Prozent, den das Vergaberecht für diesen Auftragnehmer und Auftraggeber vorschreibt",
+      "suggestion": "Heben Sie den Vorschuss auf den Mindestsatz an oder erfassen Sie null, wenn der Auftragnehmer darauf verzichtet hat"
+    },
+    "advance_above_maximum": {
+      "fail": "Der Vorschuss beträgt {percent} Prozent des Vertragswerts und liegt über den {limit} Prozent, die das Vergaberecht als übliche Obergrenze festlegt",
+      "suggestion": "Prüfen Sie, ob die besonderen Vertragsbedingungen den höheren Vorschuss zulassen, und erfassen Sie die dafür verlangte Sicherheit"
+    },
+    "delay_damages_rate_differs": {
+      "fail": "Eine Verzugsstrafklausel berechnet {amount} pro Tag, die allgemeinen Vertragsbedingungen dagegen {expected} pro Tag, ein {divisor}stel des Vertragswerts",
+      "suggestion": "Behalten Sie den Tagessatz der allgemeinen Vertragsbedingungen bei oder führen Sie den abweichenden Satz unter den Abweichungen der besonderen Vertragsbedingungen auf"
+    },
+    "delay_damages_above_general_conditions": {
+      "fail": "Eine Verzugsstrafklausel ist auf {percent} Prozent des Vertragswerts begrenzt, mehr als die {limit} Prozent der allgemeinen Vertragsbedingungen",
+      "suggestion": "Senken Sie die Obergrenze auf den Wert der allgemeinen Vertragsbedingungen oder führen Sie sie unter den Abweichungen der besonderen Vertragsbedingungen auf"
+    }
+  },
+  "works_contract": {
+    "direct_payment_waived": {
+      "fail": "Dieser Nachunternehmervertrag über {amount} erreicht die Schwelle von {limit} für die Direktzahlung durch den öffentlichen Auftraggeber, und der Vertrag schließt sie aus, was das Gesetz verbietet",
+      "suggestion": "Erfassen Sie, dass der öffentliche Auftraggeber den Nachunternehmer direkt bezahlt"
+    },
+    "direct_payment_unstated": {
+      "fail": "Dieser Nachunternehmervertrag über {amount} erreicht die Schwelle von {limit} für die Direktzahlung durch den öffentlichen Auftraggeber, und der Vertrag hält sie nicht fest",
+      "suggestion": "Erfassen Sie, ob der Nachunternehmer zugelassen ist und direkt vom öffentlichen Auftraggeber bezahlt wird"
+    },
+    "payment_guarantee_missing": {
+      "fail": "Dieser Nachunternehmervertrag über private Bauleistungen enthält weder eine Bankbürgschaft noch eine Zahlungsanweisung an den Bauherrn, ohne die der Vertrag für nichtig erklärt werden kann",
+      "suggestion": "Erfassen Sie die Bankbürgschaft des Hauptunternehmers oder die Zahlungsanweisung an den Bauherrn"
+    },
+    "private_retention_above_limit": {
+      "fail": "Ein Einbehalt von {percent} Prozent liegt über den {limit} Prozent, die das Gesetz bei privaten Bauleistungen zulässt",
+      "suggestion": "Senken Sie den Einbehalt des Vertrags auf die gesetzliche Obergrenze"
+    }
+  },
+  "vat_regime": {
+    "unknown": {
+      "fail": "Vertrag {contract} nennt die Umsatzsteuerregelung {regime}, die es in {country} nicht gibt",
+      "suggestion": "Wählen Sie eine der für das Land des Projekts angebotenen Umsatzsteuerregelungen oder entfernen Sie die Auswahl"
+    },
+    "country_unknown": {
+      "fail": "Vertrag {contract} nennt die Umsatzsteuerregelung {regime}, aber sein Projekt nennt kein Land, daher kann die Regelung nicht geprüft werden",
+      "suggestion": "Legen Sie das Land des Projekts fest"
+    },
+    "contract_date_missing": {
+      "fail": "Die Umsatzsteuerregelung {regime} gilt nur für Verträge, die vor dem {cutoff} unterzeichnet wurden, und dieser Vertrag erfasst weder ein Unterschrifts- noch ein Beginndatum",
+      "suggestion": "Geben Sie das Datum der Vertragsunterzeichnung ein"
+    },
+    "contract_too_late": {
+      "fail": "Die Umsatzsteuerregelung {regime} gilt nur für Verträge, die vor dem {cutoff} unterzeichnet wurden, und dieser Vertrag stammt vom {contract_date}",
+      "suggestion": "Wählen Sie für diesen Vertrag die reguläre Umsatzsteuerregelung"
+    },
+    "evidence_missing": {
+      "fail": "Die Umsatzsteuerregelung {regime} verlangt {evidence}, und der Vertrag erfasst keinen solchen Nachweis",
+      "suggestion": "Erfassen Sie Referenz und Ausstellungsdatum des Dokuments bei der Umsatzsteuerregelung des Vertrags"
+    },
+    "evidence_date_missing": {
+      "fail": "Der Nachweis {evidence} zur Umsatzsteuerregelung {regime} hat kein Ausstellungsdatum, daher lässt sich nicht zeigen, dass er vor dem {cutoff} liegt",
+      "suggestion": "Geben Sie das Ausstellungsdatum des Dokuments ein"
+    },
+    "evidence_too_late": {
+      "fail": "Der Nachweis {evidence} zur Umsatzsteuerregelung {regime} wurde am {issued_on} ausgestellt, die Regelung verlangt jedoch einen vor dem {cutoff}",
+      "suggestion": "Erfassen Sie ein früheres Dokument oder wählen Sie die reguläre Umsatzsteuerregelung"
+    },
+    "scope_increase_unjudged": {
+      "fail": "Der Vertragswert stieg von {original_value} auf {current_value}, und der Vertrag nennt keine zulässige Erhöhung, daher lässt sich nicht beurteilen, ob die Umsatzsteuerregelung {regime} noch gilt",
+      "suggestion": "Erfassen Sie die Leistungserweiterung, die der Vertrag zulässt"
+    },
+    "scope_increase_new_contract": {
+      "fail": "Der Vertragswert stieg von {original_value} auf {current_value} und damit über die im Vertrag zugelassene Erhöhung von {allowed_increase_pct} Prozent, steuerlich ist es ein neuer Vertrag und die Umsatzsteuerregelung {regime} gilt nicht mehr",
+      "suggestion": "Stellen Sie den Vertrag auf die reguläre Umsatzsteuerregelung um"
+    },
+    "evidence_kinds": {
+      "approved_certificate": "eine vom Bauüberwacher genehmigte Abschlagsrechnung",
+      "einvoice": "eine elektronische Rechnung oder Quittung",
+      "main_contractor_certificate": "die Bescheinigung des Hauptunternehmers, dass für das Projekt Umsatzsteuer gezahlt wurde"
+    },
+    "not_in_force": {
+      "before": "Abrechnung {claim} ist auf den {on} datiert, und die Umsatzsteuerregelung {regime} gilt erst ab dem {effective_from}; an diesem Tag gelten: {instead}",
+      "after": "Abrechnung {claim} ist auf den {on} datiert, und die Umsatzsteuerregelung {regime} endete am {effective_to}; an diesem Tag gelten: {instead}",
+      "suggestion": "Stellen Sie den Vertrag auf eine am Abrechnungsdatum geltende Umsatzsteuerregelung um oder korrigieren Sie das Datum"
+    }
   }
 }

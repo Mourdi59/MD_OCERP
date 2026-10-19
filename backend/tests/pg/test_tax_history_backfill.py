@@ -107,7 +107,8 @@ async def test_an_old_install_learns_the_swiss_rates_before_2024(repair_factory,
 
     report = await run_data_repairs(repair_factory)
 
-    assert _outcome(report).rows_changed == 3
+    # Every declared window lands: Switzerland's three and Saudi Arabia's one.
+    assert _outcome(report).rows_changed == len(WINDOW_FIRST_SHIPPED)
     for on_date, rate in _SWISS_DATES.items():
         assert await _swiss(repair_factory, on_date) == rate, f"Switzerland on {on_date}"
     assert await _swiss_windows(repair_factory) == [
@@ -151,7 +152,7 @@ async def test_a_delivered_window_the_customer_deletes_stays_deleted(repair_fact
 
 async def test_an_install_seeded_after_the_windows_shipped_is_given_nothing(repair_factory) -> None:
     """Seeded from a file that had them, so their absence means somebody removed them."""
-    await _install(repair_factory, v15_9_1(), "2026-10-04")
+    await _install(repair_factory, v15_9_1(), max(WINDOW_FIRST_SHIPPED.values()))
 
     report = await run_data_repairs(repair_factory)
 
@@ -183,8 +184,11 @@ async def test_a_swiss_rate_the_customer_entered_for_those_years_is_not_doubled(
     with caplog.at_level(logging.WARNING, logger=_LOGGER):
         report = await run_data_repairs(repair_factory)
 
-    assert _outcome(report).rows_changed == 0
-    assert await _deliveries(repair_factory) == set(), "a refusal recorded a delivery, so it is never owed again"
+    # Only the Swiss windows are withheld; Saudi Arabia's is still owed and lands.
+    saudi = {key for key in _SWISS_KEYS if key.startswith("SA/")}
+    assert saudi, "the Saudi window left WINDOW_FIRST_SHIPPED, so this split measures nothing"
+    assert _outcome(report).rows_changed == len(saudi)
+    assert await _deliveries(repair_factory) == saudi, "a refusal recorded a delivery, so it is never owed again"
     codes = [row[0] for row in await _swiss_windows(repair_factory) if row[2] == "2018-01-01"]
     assert codes == ["MWST_ALT"]
     warned = [r.getMessage() for r in caplog.records if r.name == _LOGGER and r.levelno >= logging.WARNING]
@@ -202,7 +206,9 @@ async def test_the_backfill_adds_rows_and_edits_none(repair_factory) -> None:
     async with repair_factory() as session:
         after = await snapshot_table(session, "oe_i18n_tax_config")
 
-    assert len(after) == len(before) + 3, "the pass under test delivered nothing, so the check below is vacuous"
+    assert len(after) == len(before) + len(WINDOW_FIRST_SHIPPED), (
+        "the pass under test delivered nothing, so the check below is vacuous"
+    )
     assert verify_additive_shape(repair, before, after) == ()
 
 

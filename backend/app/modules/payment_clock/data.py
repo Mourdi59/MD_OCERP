@@ -1873,6 +1873,254 @@ PAYMENT_REGIMES: tuple[dict[str, Any], ...] = (
             "review by a Spanish lawyer."
         ),
     },
+    # France. Four clocks because French law gives four periods: one for
+    # business-to-business invoices and three for public buyers by kind. The
+    # interest figures, the forty-euro indemnity and the cap on agreed terms are
+    # rows of app/core/country_data/late_payment.json (engine app/core/late_payment.py),
+    # keyed by country, because they are numbers that change by half-year and this
+    # table holds the shape of a law, not its current figures.
+    {
+        "code": "fr_com_l441_10",
+        "jurisdiction": "France (business to business)",
+        "country_code": "FR",
+        "statute": "Code de commerce, article L441-10 (loi de modernisation de l'économie 2008-776)",
+        "statute_reference": "Articles L441-10 I and II and D441-5",
+        "due_date_basis": "application_date",
+        "due_date_days": 0,
+        "due_date_day_basis": "calendar",
+        "payment_notice_basis": "application_date",
+        "payment_notice_days": None,
+        "payment_notice_day_basis": "calendar",
+        "final_date_basis": "application_date",
+        "final_date_days": 30,
+        "final_date_day_basis": "calendar",
+        "pay_less_days": None,
+        "pay_less_day_basis": "calendar",
+        "no_notice_effect": "none",
+        "interest_basis": "reference_rate_plus_margin",
+        "interest_reference_rate": (
+            "European Central Bank rate on its most recent refinancing operation, the rate of 1 January for "
+            "the first half-year and of 1 July for the second"
+        ),
+        "interest_margin_percent": Decimal("10.000"),
+        "interest_fixed_percent": None,
+        "interest_statute": "Code de commerce L441-10 II",
+        "notes": (
+            "Where the contract is silent, payment is due thirty days after receipt of the goods or "
+            "performance of the service (L441-10 I), so enter that date as the application date. The "
+            "parties may agree a longer term, never more than sixty days from the invoice date or forty-five "
+            "days end of month (L441-10 I, second paragraph); the platform checks an agreed final date "
+            "against the later of the two, reading forty-five days end of month as the end of the invoice "
+            "month and then forty-five days. The default late rate is the ECB rate plus ten points; an "
+            "agreed rate may not be lower than three times the legal interest rate. A professional debtor "
+            "also owes a fixed forty euros per invoice for recovery costs (D441-5), and the invoice must "
+            "state the due date, the penalty rate and that indemnity. No notice sequence, so "
+            "no_notice_effect is none. The DGCCRF fines a breach of the payment terms up to two million "
+            "euros for a legal person (L441-16)."
+        ),
+    },
+    {
+        "code": "fr_ccp_r2192_10",
+        "jurisdiction": "France (public buyers: State, local authorities)",
+        "country_code": "FR",
+        "statute": "Code de la commande publique",
+        "statute_reference": "Articles R2192-10 and R2192-31 and following",
+        "due_date_basis": "application_date",
+        "due_date_days": 0,
+        "due_date_day_basis": "calendar",
+        "payment_notice_basis": "application_date",
+        "payment_notice_days": None,
+        "payment_notice_day_basis": "calendar",
+        "final_date_basis": "application_date",
+        "final_date_days": 30,
+        "final_date_day_basis": "calendar",
+        "pay_less_days": None,
+        "pay_less_day_basis": "calendar",
+        "no_notice_effect": "none",
+        "interest_basis": "reference_rate_plus_margin",
+        "interest_reference_rate": (
+            "European Central Bank rate on its most recent main refinancing operation in force on the first "
+            "day of the half-year in which interest started to run"
+        ),
+        "interest_margin_percent": Decimal("8.000"),
+        "interest_fixed_percent": None,
+        "interest_statute": "Code de la commande publique R2192-31",
+        "notes": (
+            "The State, its public bodies other than industrial and commercial ones, and local authorities "
+            "pay within thirty days of receiving the payment request (R2192-10). Interest runs from the day "
+            "after the period ends without being claimed, at a rate fixed for the whole delay at the start "
+            "of the half-year in which it began, plus a fixed forty euros for recovery costs. Public health "
+            "establishments and public undertakings have their own periods: use fr_ccp_r2192_11_health or "
+            "fr_ccp_r2192_11_undertaking. Read through code-commande-publique.com and the FNTP rate note "
+            "(https://www.fntp.fr/?p=4008)."
+        ),
+    },
+    {
+        "code": "fr_ccp_r2192_11_health",
+        "jurisdiction": "France (public health establishments)",
+        "country_code": "FR",
+        "statute": "Code de la commande publique",
+        "statute_reference": "Articles R2192-11 and R2192-31 and following",
+        "due_date_basis": "application_date",
+        "due_date_days": 0,
+        "due_date_day_basis": "calendar",
+        "payment_notice_basis": "application_date",
+        "payment_notice_days": None,
+        "payment_notice_day_basis": "calendar",
+        "final_date_basis": "application_date",
+        "final_date_days": 50,
+        "final_date_day_basis": "calendar",
+        "pay_less_days": None,
+        "pay_less_day_basis": "calendar",
+        "no_notice_effect": "none",
+        "interest_basis": "reference_rate_plus_margin",
+        "interest_reference_rate": (
+            "European Central Bank rate on its most recent main refinancing operation in force on the first "
+            "day of the half-year in which interest started to run"
+        ),
+        "interest_margin_percent": Decimal("8.000"),
+        "interest_fixed_percent": None,
+        "interest_statute": "Code de la commande publique R2192-31",
+        "notes": (
+            "Public health establishments pay within fifty days (R2192-11). Interest and the forty euros of "
+            "recovery costs as for the thirty-day public clock."
+        ),
+    },
+    {
+        "code": "fr_ccp_r2192_11_undertaking",
+        "jurisdiction": "France (public undertakings)",
+        "country_code": "FR",
+        "statute": "Code de la commande publique",
+        "statute_reference": "Articles R2192-11 and R2192-31 and following",
+        "due_date_basis": "application_date",
+        "due_date_days": 0,
+        "due_date_day_basis": "calendar",
+        "payment_notice_basis": "application_date",
+        "payment_notice_days": None,
+        "payment_notice_day_basis": "calendar",
+        "final_date_basis": "application_date",
+        "final_date_days": 60,
+        "final_date_day_basis": "calendar",
+        "pay_less_days": None,
+        "pay_less_day_basis": "calendar",
+        "no_notice_effect": "none",
+        "interest_basis": "reference_rate_plus_margin",
+        "interest_reference_rate": (
+            "European Central Bank rate on its most recent main refinancing operation in force on the first "
+            "day of the half-year in which interest started to run"
+        ),
+        "interest_margin_percent": Decimal("8.000"),
+        "interest_fixed_percent": None,
+        "interest_statute": "Code de la commande publique R2192-31",
+        "notes": (
+            "Public undertakings pay within sixty days (R2192-11). Interest and the forty euros of recovery "
+            "costs as for the thirty-day public clock."
+        ),
+    },
+    {
+        "code": "pl_late_payment_b2b",
+        "jurisdiction": "Poland",
+        "country_code": "PL",
+        "statute": (
+            "Ustawa z dnia 8 marca 2013 r. o przeciwdziałaniu nadmiernym opóźnieniom w transakcjach handlowych"
+        ),
+        "statute_reference": (
+            "Articles 4, 7 and 10, consolidated text Dz.U. 2022 poz. 893, https://eli.gov.pl/eli/DU/2022/893/ogl/pol/pdf"
+        ),
+        "due_date_basis": "application_date",
+        "due_date_days": 0,
+        "due_date_day_basis": "calendar",
+        "payment_notice_basis": "application_date",
+        "payment_notice_days": None,
+        "payment_notice_day_basis": "calendar",
+        "final_date_basis": "application_date",
+        "final_date_days": 30,
+        "final_date_day_basis": "calendar",
+        "pay_less_days": None,
+        "pay_less_day_basis": "calendar",
+        "no_notice_effect": "none",
+        "interest_basis": "reference_rate_plus_margin",
+        "interest_reference_rate": (
+            "Narodowy Bank Polski reference rate in force on 1 January for the first half-year and on 1 July "
+            "for the second"
+        ),
+        "interest_margin_percent": Decimal("10.000"),
+        "interest_fixed_percent": None,
+        "interest_statute": (
+            "Article 4 pkt 3 lit. a; the resulting rate is published in Monitor Polski each half-year "
+            "(13.75 percent for July to December 2026)"
+        ),
+        "notes": (
+            "An interest basis rather than a notice regime, the same shape as the EU Late Payment "
+            "Directive this act transposes: no payment or pay-less notice, so no_notice_effect is none. "
+            "It covers transactions between undertakings, including a main contractor and its "
+            "subcontractors and suppliers. Where the contract sets no term, statutory interest runs "
+            "after thirty days from delivery of the invoice, written here as the final date for "
+            "payment, so enter the date the invoice was delivered as the application date. The parties "
+            "may agree a term of up to sixty days from delivery of the invoice (Article 7(2)); longer "
+            "only if expressly agreed and not grossly unfair to the creditor, and never where the debtor "
+            "is a large enterprise and the creditor a micro, small or medium enterprise (Article 7(2a), "
+            "since 2020). State the agreed final date on the application where a contract sets one. "
+            "Late interest is the NBP reference rate plus ten percentage points, the reference rate "
+            "fixed on the first day of each half-year (14.00 percent for January to June 2026, 13.75 "
+            "percent for July to December 2026); the dated periods and the late interest arithmetic are "
+            "in app/core/late_payment.py. On top of interest the creditor is owed a fixed recovery "
+            "compensation of 40 euro (claim not above PLN 5,000), 70 euro (above PLN 5,000 and below "
+            "PLN 50,000) or 100 euro (PLN 50,000 or more), converted at the NBP average euro rate of the "
+            "last business day of the month before the payment fell due (Article 10). Confidence: the "
+            "60 day cap and the rate formula and values come from two secondary sources quoting the act "
+            "(high); the no-exception rule for a large enterprise paying an SME and the recovery "
+            "compensation tiers are settled practitioner knowledge consistent with one secondary source "
+            "(medium). The consolidated text named in the reference was not read article by article. "
+            "Pending review by a Polish lawyer."
+        ),
+    },
+    {
+        "code": "pl_late_payment_public",
+        "jurisdiction": "Poland (public)",
+        "country_code": "PL",
+        "statute": (
+            "Ustawa z dnia 8 marca 2013 r. o przeciwdziałaniu nadmiernym opóźnieniom w transakcjach handlowych"
+        ),
+        "statute_reference": (
+            "Articles 4, 8 and 10, consolidated text Dz.U. 2022 poz. 893, https://eli.gov.pl/eli/DU/2022/893/ogl/pol/pdf"
+        ),
+        "due_date_basis": "application_date",
+        "due_date_days": 0,
+        "due_date_day_basis": "calendar",
+        "payment_notice_basis": "application_date",
+        "payment_notice_days": None,
+        "payment_notice_day_basis": "calendar",
+        "final_date_basis": "application_date",
+        "final_date_days": 30,
+        "final_date_day_basis": "calendar",
+        "pay_less_days": None,
+        "pay_less_day_basis": "calendar",
+        "no_notice_effect": "none",
+        "interest_basis": "reference_rate_plus_margin",
+        "interest_reference_rate": (
+            "Narodowy Bank Polski reference rate in force on 1 January for the first half-year and on 1 July "
+            "for the second"
+        ),
+        "interest_margin_percent": Decimal("10.000"),
+        "interest_fixed_percent": None,
+        "interest_statute": "Article 4 pkt 3 lit. a; for a public medical entity Article 4 pkt 3 lit. b",
+        "notes": (
+            "The payment term where the debtor is a public entity (podmiot publiczny), for example a "
+            "contracting authority paying a works contractor. The term may not exceed thirty days from "
+            "delivery of the invoice (Article 8(1)), written here as the final date for payment, so enter "
+            "the date the invoice was delivered as the application date. For a public entity providing "
+            "medical services the ceiling is sixty days (Article 8(2)) and its late interest is the NBP "
+            "reference rate plus eight percentage points instead of ten (12.00 percent for January to "
+            "June 2026, 11.75 percent for July to December 2026); state the agreed final date on the "
+            "application for such a debtor. The recovery compensation of Article 10 (40, 70 or 100 euro) "
+            "applies as for undertakings. Public procurement payment rules of the Pzp, such as payment "
+            "of interim amounts only on proof of payment to subcontractors, are not modelled by this "
+            "row. Confidence: the thirty and sixty day ceilings and the eight point margin for medical "
+            "entities are settled practitioner knowledge consistent with secondary sources (medium); "
+            "the 2026 rate values are high. Pending review by a Polish lawyer."
+        ),
+    },
     {
         "code": "ng_ppa_2007",
         "jurisdiction": "Nigeria (public)",
@@ -2370,6 +2618,145 @@ PAYMENT_REGIMES: tuple[dict[str, Any], ...] = (
             "they move the start of the clock, which is the paragraph a construction progress claim will "
             "actually turn on. Interest, the 2024 revision and the 1 June 2025 commencement are likewise "
             "the same as the public regime, and the sourcing caveat there applies here too."
+        ),
+    },
+    # Egypt, the Public Contracts Law 182/2018 and its Executive Regulations
+    # (Minister of Finance Decree 692/2019), read in the consolidated English
+    # translation by Andersen Egypt (January 2026) on 2026-10-19. Law Art. 45:
+    # "In works contracts, the administrative entity shall make interim
+    # payments on account according to progress of work within sixty (60)
+    # days calculated from the date the payment certificate is submitted to
+    # it"; supplies and services "within a period not exceeding thirty (30)
+    # days calculated from the date of inspection, acceptance, and approval".
+    # Late payment: "the financing cost of the claim value or the approved
+    # payment certificate for the period of delay, calculated in accordance
+    # with the credit and discount rate announced by the Central Bank at the
+    # time of settlement". One clock per row, so works and supplies are two.
+    {
+        "code": "eg_law182_works",
+        "jurisdiction": "Egypt (public works)",
+        "country_code": "EG",
+        "statute": "Public Contracts Law No. 182 of 2018 and its Executive Regulations (Decree 692/2019)",
+        "statute_reference": (
+            "Law Art. 45; Executive Regulations Art. 93, "
+            "https://eg.andersen.com/wp-content/uploads/2026/01/Law-No.-182-of-2018.pdf"
+        ),
+        "due_date_basis": "application_date",
+        "due_date_days": 0,
+        "due_date_day_basis": "calendar",
+        "payment_notice_basis": "application_date",
+        "payment_notice_days": None,
+        "payment_notice_day_basis": "calendar",
+        "final_date_basis": "application_date",
+        "final_date_days": 60,
+        "final_date_day_basis": "calendar",
+        "pay_less_days": None,
+        "pay_less_day_basis": "calendar",
+        "no_notice_effect": "none",
+        "interest_basis": "prescribed_rate",
+        "interest_reference_rate": (
+            "the Central Bank of Egypt as its credit and discount rate at the time of settlement, charged as "
+            "the financing cost of the delayed amount"
+        ),
+        "interest_margin_percent": None,
+        "interest_fixed_percent": None,
+        "interest_statute": "Law 182/2018, Art. 45; Executive Regulations, Art. 93",
+        "notes": (
+            "The clock for an interim payment owed by an Egyptian administrative entity (ministries, local "
+            "units, public authorities, special funds) on a works contract. The 60 days run from the day the "
+            "contractor submits the payment certificate (mustakhlas) with the documents the contract names, "
+            "so enter that submission date as the application date; following the convention of the other "
+            "single-date regimes it is the due date and the 60 days are the final date for payment. Where the "
+            "entity refuses a compliant certificate, the contractor may send it by express mail and the date "
+            "the entity receives it starts the clock (Law Art. 45). The law does not say calendar or working "
+            "days and this row assumes calendar days. Interim payments pay 95 percent of executed work and "
+            "75 percent of approved materials stored on site (Executive Regulations Art. 93); the price "
+            "adjustment under Law Art. 47 is settled on its own clock, within 60 days of the claim. Private "
+            "Egyptian works have no statutory payment period; they follow the contract, usually FIDIC. The "
+            "commencement dates of the law and the regulations were not established from a primary text."
+        ),
+    },
+    {
+        "code": "eg_law182_supplies",
+        "jurisdiction": "Egypt (public supplies and services)",
+        "country_code": "EG",
+        "statute": "Public Contracts Law No. 182 of 2018 and its Executive Regulations (Decree 692/2019)",
+        "statute_reference": (
+            "Law Art. 45; Executive Regulations Art. 93, "
+            "https://eg.andersen.com/wp-content/uploads/2026/01/Law-No.-182-of-2018.pdf"
+        ),
+        "due_date_basis": "application_date",
+        "due_date_days": 0,
+        "due_date_day_basis": "calendar",
+        "payment_notice_basis": "application_date",
+        "payment_notice_days": None,
+        "payment_notice_day_basis": "calendar",
+        "final_date_basis": "application_date",
+        "final_date_days": 30,
+        "final_date_day_basis": "calendar",
+        "pay_less_days": None,
+        "pay_less_day_basis": "calendar",
+        "no_notice_effect": "none",
+        "interest_basis": "prescribed_rate",
+        "interest_reference_rate": (
+            "the Central Bank of Egypt as its credit and discount rate at the time of settlement, charged as "
+            "the financing cost of the delayed amount"
+        ),
+        "interest_margin_percent": None,
+        "interest_fixed_percent": None,
+        "interest_statute": "Law 182/2018, Art. 45; Executive Regulations, Art. 93",
+        "notes": (
+            "The clock for supplied items or services bought by an Egyptian administrative entity: payment as "
+            "soon as possible and within 30 days of inspection, acceptance and approval, so enter the approval "
+            "date as the application date. Calendar days are assumed, as the law does not say. Construction "
+            "works use eg_law182_works instead."
+        ),
+    },
+    # Saudi Arabia, public contracts under the Government Tenders and
+    # Procurement Law 2019, Implementing Regulations Art. 109, read in the
+    # Ministry of Finance English text on 2026-10-19: the consultant has 10
+    # working days to review the contractor's invoice, the agency 15 to issue
+    # the payment order and the Ministry of Finance 45 to pay. Counted on the
+    # Saudi Sunday to Thursday week (the payment clock reads the week from
+    # app.core.calendar). There is no Saudi prompt payment statute for private
+    # works, so no private row ships.
+    {
+        "code": "sa_gtpl_ir109",
+        "jurisdiction": "Saudi Arabia (public contracts)",
+        "country_code": "SA",
+        "statute": "Government Tenders and Procurement Law 2019 (Royal Decree M/128) and its Implementing Regulations",
+        "statute_reference": (
+            "Implementing Regulations Art. 109, "
+            "https://mof.gov.sa/en/Knowledgecenter/newGovTendandProcLow/Documents/Executive%20Regulations.pdf"
+        ),
+        "due_date_basis": "application_date",
+        "due_date_days": 0,
+        "due_date_day_basis": "calendar",
+        "payment_notice_basis": "application_date",
+        "payment_notice_days": 25,
+        "payment_notice_day_basis": "business",
+        "final_date_basis": "application_date",
+        "final_date_days": 70,
+        "final_date_day_basis": "business",
+        "pay_less_days": None,
+        "pay_less_day_basis": "calendar",
+        "no_notice_effect": "none",
+        "interest_basis": "contract",
+        "interest_reference_rate": "",
+        "interest_margin_percent": None,
+        "interest_fixed_percent": None,
+        "interest_statute": "",
+        "notes": (
+            "The clock for an invoice (mustakhlas) a contractor submits to a Saudi government agency on a "
+            "contract tendered under the 2019 law. Enter the day the invoice reached the consultant as the "
+            "application date. The consultant reviews it within 10 working days and the agency issues the "
+            "payment order within 15 more, which is the payment notice here at 25 working days; the Ministry "
+            "of Finance pays within 45 working days after that, the final date at 70. Working days are Sunday "
+            "to Thursday; supply the public holidays to reproduce the dates exactly. No statutory interest is "
+            "owed on late payment and Saudi courts do not enforce interest, so a financing charge in the "
+            "contract should not be relied on. Tenders floated under the new procurement law (Royal Decree "
+            "M/76, in force about 2027-01-02) follow its regulations once issued. Private works have no "
+            "statutory payment period."
         ),
     },
 )

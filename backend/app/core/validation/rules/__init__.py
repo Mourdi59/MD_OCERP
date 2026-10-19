@@ -20,6 +20,7 @@ from __future__ import annotations
 import logging
 import re
 import unicodedata
+from datetime import timezone
 from decimal import Decimal, InvalidOperation
 from types import SimpleNamespace
 from typing import Any
@@ -7666,6 +7667,7 @@ _IBAN_LENGTHS: dict[str, int] = {
     "BE": 16,
     "CH": 21,
     "DE": 22,
+    "EG": 29,  # Egypt, as the payment path's table (app.modules.einvoice.bank) already holds
     "ES": 24,
     "FR": 27,
     "GB": 22,
@@ -9185,6 +9187,220 @@ class ScheduleMissingDuration(ValidationRule):
         return results
 
 
+# ── Schedule 5D (a schedule generated from the estimate, cost-loaded) ───────
+#
+# Registered into "schedule_5d", which ScheduleService._plan_validation passes
+# explicitly with "schedule_quality" on every generation preview and every
+# confirmed generation. The context carries the plan's ``activities`` and the
+# bill's priced positions as ``boq_positions`` (``id``, ``ordinal``,
+# ``description``, ``total`` as a decimal string). Design and thresholds:
+# docs/design/schedule_from_estimate.md, section 3.3.
+
+
+def _get_boq_positions(context: ValidationContext) -> list[dict[str, Any]]:
+    data = context.data
+    rows = data.get("boq_positions") if isinstance(data, dict) else None
+    return [r for r in rows if isinstance(r, dict)] if isinstance(rows, list) else []
+
+
+def _money(value: Any) -> Decimal | None:
+    if value is None or value == "":
+        return None
+    try:
+        number = Decimal(str(value).strip())
+    except (InvalidOperation, ValueError):
+        return None
+    return number if number.is_finite() else None
+
+
+def _is_task(act: dict[str, Any]) -> bool:
+    return str(act.get("activity_type") or "task").strip().lower() == "task"
+
+
+class Schedule5DBoqCoverage(ValidationRule):
+    """Flags priced bill positions that no activity of the schedule carries.
+
+    A position with money on it that no activity names in ``boq_position_ids``
+    is work the schedule neither times nor cost-loads: its money is missing
+    from BAC, the S-curve and EVM. One finding per such position.
+    """
+
+    rule_id = "schedule_5d.boq_coverage"
+    name = "Schedule BOQ Coverage"
+    standard = "schedule_5d"
+    severity = Severity.WARNING
+    category = RuleCategory.COMPLETENESS
+    description = "Flags priced BOQ positions that no schedule activity carries, so their cost is not in the plan."
+
+    async def validate(self, context: ValidationContext) -> list[RuleResult]:
+        locale = _get_locale(context)
+        positions = _get_boq_positions(context)
+        if not positions:
+            return []
+        scheduled: set[str] = set()
+        for act in _get_activities(context):
+            ids = act.get("boq_position_ids")
+            if isinstance(ids, list):
+                scheduled.update(str(pid) for pid in ids)
+        results: list[RuleResult] = []
+        for pos in positions:
+            total = _money(pos.get("total"))
+            if total is None or total == 0:
+                continue
+            pos_id = str(pos.get("id") or "")
+            passed = pos_id in scheduled
+            if passed:
+                message = _ok(locale)
+                suggestion = None
+            else:
+                message = translate(
+                    "schedule_5d.boq_coverage.fail",
+                    locale=locale,
+                    ordinal=str(pos.get("ordinal") or "?"),
+                    description=str(pos.get("description") or "")[:80],
+                    amount=_fmt_decimal(float(total)),
+                )
+                suggestion = translate("schedule_5d.boq_coverage.suggestion", locale=locale)
+            results.append(
+                RuleResult(
+                    rule_id=self.rule_id,
+                    rule_name=self.name,
+                    severity=self.severity,
+                    category=self.category,
+                    passed=passed,
+                    message=message,
+                    element_ref=pos_id,
+                    details={} if passed else {"total": str(total)},
+                    suggestion=suggestion,
+                )
+            )
+        return results
+
+
+class Schedule5DCostReconciliation(ValidationRule):
+    """Flags a schedule whose task cost does not add up to the bill's priced total.
+
+    The sum of ``cost_planned`` over the tasks is BAC; it has to equal the sum
+    of the bill's priced positions within one cent. Summaries and milestones
+    are not counted: BAC is a plain sum over activities, and a rolled-up
+    summary would count its children twice.
+    """
+
+    rule_id = "schedule_5d.cost_reconciliation"
+    name = "Schedule Cost Reconciliation"
+    standard = "schedule_5d"
+    severity = Severity.ERROR
+    category = RuleCategory.CONSISTENCY
+    description = "Checks that the schedule's planned cost equals the bill's priced total within one cent."
+
+    _TOLERANCE = Decimal("0.01")
+
+    async def validate(self, context: ValidationContext) -> list[RuleResult]:
+        locale = _get_locale(context)
+        positions = _get_boq_positions(context)
+        if not positions:
+            return []
+        bill = sum((_money(p.get("total")) or Decimal("0") for p in positions), Decimal("0"))
+        planned = sum(
+            (_money(a.get("cost_planned")) or Decimal("0") for a in _get_activities(context) if _is_task(a)),
+            Decimal("0"),
+        )
+        difference = planned - bill
+        passed = abs(difference) <= self._TOLERANCE
+        if passed:
+            message = _ok(locale)
+            suggestion = None
+        else:
+            message = translate(
+                "schedule_5d.cost_reconciliation.fail",
+                locale=locale,
+                planned=_fmt_decimal(float(planned)),
+                bill=_fmt_decimal(float(bill)),
+                difference=_fmt_decimal(float(abs(difference))),
+            )
+            suggestion = translate("schedule_5d.cost_reconciliation.suggestion", locale=locale)
+        return [
+            RuleResult(
+                rule_id=self.rule_id,
+                rule_name=self.name,
+                severity=self.severity,
+                category=self.category,
+                passed=passed,
+                message=message,
+                element_ref=None,
+                details=({} if passed else {"planned": str(planned), "bill": str(bill), "difference": str(difference)}),
+                suggestion=suggestion,
+            )
+        ]
+
+
+class Schedule5DDurationVsNorm(ValidationRule):
+    """Flags tasks whose duration is far from what their norms give.
+
+    ``metadata.norm_days`` is the working days the labour and machine norms
+    give at the crew the plan uses, recorded when the plan is generated. A
+    duration more than twice or less than half of it, and more than two
+    working days away, is either squeezed or stretched past the norm, or was
+    changed by hand away from the estimate.
+    """
+
+    rule_id = "schedule_5d.duration_vs_norm"
+    name = "Schedule Duration vs Norm"
+    standard = "schedule_5d"
+    severity = Severity.WARNING
+    category = RuleCategory.CONSISTENCY
+    description = "Flags tasks whose duration is more than twice or under half of the norm-derived duration."
+
+    _MAX_RATIO = 2.0
+    _MIN_RATIO = 0.5
+    _MIN_GAP_DAYS = 2
+
+    async def validate(self, context: ValidationContext) -> list[RuleResult]:
+        locale = _get_locale(context)
+        results: list[RuleResult] = []
+        for act in _get_activities(context):
+            if not _is_task(act):
+                continue
+            meta = act.get("metadata")
+            norm = _to_number(meta.get("norm_days")) if isinstance(meta, dict) else None
+            duration = _to_number(act.get("duration_days"))
+            if norm is None or norm is _NOT_A_NUMBER or duration is None or duration is _NOT_A_NUMBER:
+                continue
+            norm_val: float = norm  # type: ignore[assignment]
+            dur_val: float = duration  # type: ignore[assignment]
+            if norm_val <= 0:
+                continue
+            ratio = dur_val / norm_val
+            far = ratio > self._MAX_RATIO or ratio < self._MIN_RATIO
+            passed = not (far and abs(dur_val - norm_val) > self._MIN_GAP_DAYS)
+            if passed:
+                message = _ok(locale)
+                suggestion = None
+            else:
+                message = translate(
+                    "schedule_5d.duration_vs_norm.fail",
+                    locale=locale,
+                    activity=_activity_label(act),
+                    duration=_fmt_decimal(dur_val, places=0),
+                    norm=_fmt_decimal(norm_val, places=0),
+                )
+                suggestion = translate("schedule_5d.duration_vs_norm.suggestion", locale=locale)
+            results.append(
+                RuleResult(
+                    rule_id=self.rule_id,
+                    rule_name=self.name,
+                    severity=self.severity,
+                    category=self.category,
+                    passed=passed,
+                    message=message,
+                    element_ref=act.get("id"),
+                    details={} if passed else {"duration_days": dur_val, "norm_days": norm_val},
+                    suggestion=suggestion,
+                )
+            )
+        return results
+
+
 # ── AI Takeoff (vision-LLM plan reading, issue #194) ────────────────────────
 #
 # The scale-plausibility, self-intersection and low-confidence rules that used
@@ -9628,6 +9844,66 @@ class FieldTimeOfflineSyncDelay(ValidationRule):
                 suggestion=translate("field_time.offline_sync_delay.suggestion", locale=locale),
             )
         ]
+
+
+class FieldTimeOutdoorHeatBan(ValidationRule):
+    """A line whose clock times touch a seasonal midday outdoor work ban.
+
+    The bans are national data in :mod:`app.core.work_restrictions` (Saudi
+    Arabia: 12:00 to 15:00 from 15 June to 15 September), read on the
+    project's country, which the service passes as ``project_country``. A
+    WARNING, never an error: the line does not say whether the work was
+    outdoors in the sun, and every ban exempts some sectors. A line without
+    clock times, or a project without a country, is not judged.
+    """
+
+    rule_id = "field_time.outdoor_heat_ban"
+    name = "Field Time Outdoor Heat Ban"
+    standard = "field_time"
+    severity = Severity.WARNING
+    category = RuleCategory.COMPLIANCE
+    description = "Flags a line recorded inside a country's summer midday outdoor work ban."
+
+    async def validate(self, context: ValidationContext) -> list[RuleResult]:
+        meta = getattr(context, "metadata", None) or {}
+        country = meta.get("project_country")
+        if not country:
+            return []
+        from app.core.work_restrictions import ban_overlap
+
+        locale = _get_locale(context)
+        results: list[RuleResult] = []
+        for index, line in enumerate(_ft_lines(context)):
+            hit = ban_overlap(str(country), line.get("start"), line.get("end"))
+            if hit is None:
+                continue
+            ban, day = hit
+            start, end = line["start"], line["end"]
+            offset = timezone(ban.utc_offset)
+            local_start = start.astimezone(offset) if start.tzinfo else start
+            local_end = end.astimezone(offset) if end.tzinfo else end
+            results.append(
+                RuleResult(
+                    rule_id=self.rule_id,
+                    rule_name=self.name,
+                    severity=self.severity,
+                    category=self.category,
+                    passed=False,
+                    message=translate(
+                        "field_time.outdoor_heat_ban.fail",
+                        locale=locale,
+                        line=_ft_line_label(index, line),
+                        start=local_start.strftime("%H:%M"),
+                        end=local_end.strftime("%H:%M"),
+                        date=day.isoformat(),
+                        ban_from=ban.hours_from.strftime("%H:%M"),
+                        ban_to=ban.hours_to.strftime("%H:%M"),
+                    ),
+                    element_ref=str(line.get("id") or index + 1),
+                    suggestion=translate("field_time.outdoor_heat_ban.suggestion", locale=locale),
+                )
+            )
+        return results
 
 
 class FieldTimeApprovedImmutable(ValidationRule):
@@ -10996,6 +11272,116 @@ class ProcurementRequisitionLineCostLine(_ProcurementRule):
     check_name = "check_requisition_line_cost_line"
 
 
+# Issue #516, second slice: the suggested supplier of each line and the line's
+# own needed-by date. The suggestion rules never pick a supplier; they make an
+# unknown, inactive or disagreeing suggestion visible.
+
+
+class ProcurementRequisitionSuggestedVendorInDirectory(_ProcurementRule):
+    """A line's suggested supplier must be an entry of the Vendor directory."""
+
+    rule_id = "procurement.requisition_suggested_vendor_in_directory"
+    name = "Requisition Suggested Supplier In Vendor Directory"
+    severity = Severity.ERROR
+    category = RuleCategory.CONSISTENCY
+    description = "Flags a requisition line whose suggested supplier cannot be found in the Vendor directory."
+    check_name = "check_requisition_suggested_vendor_in_directory"
+
+
+class ProcurementRequisitionSuggestedVendorActive(_ProcurementRule):
+    """A line should not suggest a suspended or blacklisted supplier."""
+
+    rule_id = "procurement.requisition_suggested_vendor_active"
+    name = "Requisition Suggested Supplier Active"
+    severity = Severity.WARNING
+    category = RuleCategory.COMPLIANCE
+    description = "Flags a requisition line that suggests a supplier who is suspended or blacklisted."
+    check_name = "check_requisition_suggested_vendor_active"
+
+
+class ProcurementRequisitionSuggestionConflict(_ProcurementRule):
+    """The BOQ sources of one line suggest different suppliers."""
+
+    rule_id = "procurement.requisition_suggestion_conflict"
+    name = "Requisition Line Sources Suggest Different Suppliers"
+    severity = Severity.WARNING
+    category = RuleCategory.CONSISTENCY
+    description = "Flags a requisition line whose BOQ sources suggest different suppliers."
+    check_name = "check_requisition_suggestion_conflict"
+
+
+class ProcurementRequisitionSuggestedVendorDiffers(_ProcurementRule):
+    """A line suggests a supplier other than the one chosen for the requisition."""
+
+    rule_id = "procurement.requisition_suggested_vendor_differs"
+    name = "Requisition Suggested Supplier Differs From Chosen"
+    severity = Severity.WARNING
+    category = RuleCategory.CONSISTENCY
+    description = "Flags a requisition line whose suggested supplier is not the supplier chosen for the requisition."
+    check_name = "check_requisition_suggested_vendor_differs"
+
+
+class ProcurementRequisitionLineNeededByNotPast(_ProcurementRule):
+    """A line's own needed-by date must not already have passed."""
+
+    rule_id = "procurement.requisition_line_needed_by_not_past"
+    name = "Requisition Line Needed-By Date Not Past"
+    severity = Severity.ERROR
+    category = RuleCategory.CONSISTENCY
+    description = "Flags a requisition line whose own needed-by date is earlier than today."
+    check_name = "check_requisition_line_needed_by_not_past"
+
+
+class ProcurementRequisitionLineScheduleMoved(_ProcurementRule):
+    """A line's schedule activity moved after its date was proposed."""
+
+    rule_id = "procurement.requisition_line_schedule_moved"
+    name = "Requisition Line Schedule Activity Moved"
+    severity = Severity.WARNING
+    category = RuleCategory.CONSISTENCY
+    description = (
+        "Flags a requisition line whose linked schedule activity now starts on a different day than the "
+        "one its needed-by date was proposed from."
+    )
+    check_name = "check_requisition_line_schedule_moved"
+
+
+class ProcurementRequisitionApproverNotRequester(_ProcurementRule):
+    """The requester may not be one of the requisition's designated approvers."""
+
+    rule_id = "procurement.requisition_approver_not_requester"
+    name = "Requisition Approver Is Not The Requester"
+    severity = Severity.ERROR
+    category = RuleCategory.COMPLIANCE
+    description = "Flags a requisition whose designated approvers include the person who raised it."
+    check_name = "check_requisition_approver_not_requester"
+
+
+class ProcurementRequisitionLineOverOrdered(_ProcurementRule):
+    """A line's live orders hold more than it requested."""
+
+    rule_id = "procurement.requisition_line_over_ordered"
+    name = "Requisition Line Over-Ordered"
+    severity = Severity.WARNING
+    category = RuleCategory.CONSISTENCY
+    description = "Flags a requisition line whose purchase or external orders add up to more than it requested."
+    check_name = "check_requisition_line_over_ordered"
+
+
+class ProcurementRequisitionOrderUnitMismatch(_ProcurementRule):
+    """An order line is in a unit the requisition line's unit cannot be restated in."""
+
+    rule_id = "procurement.requisition_order_unit_mismatch"
+    name = "Requisition Order Line Unit Mismatch"
+    severity = Severity.WARNING
+    category = RuleCategory.CONSISTENCY
+    description = (
+        "Flags an order line against a requisition line whose unit cannot be converted into the requisition "
+        "line's unit, so it is left out of the ordered and received quantities."
+    )
+    check_name = "check_requisition_order_unit_mismatch"
+
+
 # ── Goods receipts: material certificates (confirmation gate) ───────────────
 #
 # Run by ``ProcurementService.confirm_goods_receipt`` (and the read-only receipt
@@ -11673,6 +12059,12 @@ def register_builtin_rules() -> None:
         (ScheduleNegativeFloat(), None),
         (ScheduleHighFloat(), None),
         (ScheduleMissingDuration(), None),
+        # Schedule 5D (generation from the estimate). A set nobody passes never
+        # runs: ScheduleService._plan_validation passes "schedule_5d" on every
+        # generation preview and confirm, pinned by test.
+        (Schedule5DBoqCoverage(), ["schedule_5d"]),
+        (Schedule5DCostReconciliation(), ["schedule_5d"]),
+        (Schedule5DDurationVsNorm(), ["schedule_5d"]),
         # AI Takeoff (vision-LLM plan reading, issue #194)
         # Registered into ai_estimator as well as its own standard. The
         # ai_takeoff set has no caller anywhere in the backend, so a rule that
@@ -11693,6 +12085,7 @@ def register_builtin_rules() -> None:
         (FieldTimeApprovedImmutable(), None),
         (FieldTimeOfflineClockPlausible(), None),
         (FieldTimeOfflineSyncDelay(), None),
+        (FieldTimeOutdoorHeatBan(), None),
         # Estimate Audit (curated cross-checks: wrong unit, near-duplicate,
         # missing companion, catalogue-benchmarked rate outlier)
         (WrongUnitOfMeasure(), ["estimate_audit"]),
@@ -11729,6 +12122,15 @@ def register_builtin_rules() -> None:
         (ProcurementRequisitionVendorChosen(), ["procurement_requisition"]),
         (ProcurementRequisitionSingleCurrency(), ["procurement_requisition"]),
         (ProcurementRequisitionLineCostLine(), ["procurement_requisition"]),
+        (ProcurementRequisitionSuggestedVendorInDirectory(), ["procurement_requisition"]),
+        (ProcurementRequisitionSuggestedVendorActive(), ["procurement_requisition"]),
+        (ProcurementRequisitionSuggestionConflict(), ["procurement_requisition"]),
+        (ProcurementRequisitionSuggestedVendorDiffers(), ["procurement_requisition"]),
+        (ProcurementRequisitionLineNeededByNotPast(), ["procurement_requisition"]),
+        (ProcurementRequisitionLineScheduleMoved(), ["procurement_requisition"]),
+        (ProcurementRequisitionApproverNotRequester(), ["procurement_requisition"]),
+        (ProcurementRequisitionLineOverOrdered(), ["procurement_requisition"]),
+        (ProcurementRequisitionOrderUnitMismatch(), ["procurement_requisition"]),
         # Goods receipts (confirmation gate) and supplier invoice payment release.
         (ProcurementReceiptCertificatePresent(), ["goods_receipt"]),
         (ProcurementReceiptCertificateBatch(), ["goods_receipt"]),

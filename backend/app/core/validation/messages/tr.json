@@ -1,4 +1,76 @@
 {
+  "cost_control": {
+    "unassigned_money": {
+      "fail": "Taahhüt edilen tutar hiçbir maliyet kalemine atanmamış.",
+      "suggestion": "Sözleşme veya sipariş satırlarını maliyet kalemlerine bağlayın, böylece tutar doğru yerde görünür."
+    },
+    "certified_over_committed": {
+      "fail": "Onaylanan hakediş, ihale bedeli ile onaylı değişikliklerin toplamını aşıyor.",
+      "suggestion": "Ek işi kapsayan değişikliği onaylayın veya hakedişi kontrol edin."
+    },
+    "forecast_over_plan": {
+      "fail": "Tahmin, planlanan tutarın üzerinde.",
+      "suggestion": "Tahminin kaynağını kontrol edin; tasarruf bekliyorsanız gerekçesiyle manuel tahmin girin."
+    },
+    "partly_awarded": {
+      "fail": "Planlanan tutarın yalnızca bir kısmı ihale edilmiş; tahminde henüz ihale edilecek işler eksik olabilir.",
+      "suggestion": "Bu kalemde ihale edilecek iş kaldıysa manuel tahmin girin."
+    },
+    "pending_changes": {
+      "fail": "Değişiklik emirleri karar bekliyor.",
+      "suggestion": "Bekleyen değişiklik emirleri hakkında karar verin; tahmin bunları henüz içermiyor."
+    },
+    "snapshot_stale": {
+      "fail": "Bir aydan uzun süredir tahmin kaydedilmedi.",
+      "suggestion": "Maliyet geçmişi okunabilir kalsın diye bir tahmin anlık görüntüsü kaydedin."
+    }
+  },
+  "cost_structure": {
+    "account_code_duplicate": {
+      "fail": "{code} hesap kodu maliyet yapısında birden fazla kez geçiyor.",
+      "suggestion": "Kod başına tek hesap bırakın ve maliyet kalemlerini ona taşıyın."
+    },
+    "mixed_standard": {
+      "fail": "Maliyet yapısı kod listelerini karıştırıyor: {standards}.",
+      "suggestion": "Yapıyı tek bir kod listesinden kurun; diğer kodları ona eşleyin."
+    },
+    "account_parent_cycle": {
+      "fail": "{code} hesabı, {count} hesap üzerinden kendi atası.",
+      "suggestion": "Bu hesaplardan birine döngü dışında bir üst hesap verin."
+    },
+    "account_too_deep": {
+      "fail": "{code} hesabı {level}. seviyede, kod listesinin {max} seviyesinden daha derinde.",
+      "suggestion": "Hesabı kod listesinin derinliği içinde bir üst hesaba bağlayın."
+    },
+    "no_account": {
+      "fail": "{amount} değerindeki {count} maliyet kalemi hiçbir hesapta değil (ilki: {code}).",
+      "suggestion": "Bu pozlara yapının kod listesinden bir kod verin veya maliyet kalemlerini bir hesaba atayın."
+    },
+    "invalid_account": {
+      "fail": "{amount} değerindeki {count} maliyet kalemi kapalı bir hesapta veya kayıt kabul etmeyen bir hesapta (ilki: {code}).",
+      "suggestion": "Maliyet kalemlerini kayıt kabul eden açık bir hesaba taşıyın."
+    },
+    "own_amount_on_parent": {
+      "fail": "{code} hesabının alt hesapları var ve ayrıca kendi tutarı da var: {amount}.",
+      "suggestion": "Kendi tutarını bir alt hesaba taşıyın veya bilinçli bir ödenek olarak bırakın."
+    },
+    "rollup_mismatch": {
+      "fail": "Yapı toplamı {reported}, parçalarının toplamı {expected} ile {difference} farklı.",
+      "suggestion": "Yapıyı yeniden yükleyin; fark sürerse üst hesabı eksik hesapları kontrol edin."
+    },
+    "allocation_incomplete": {
+      "fail": "{ordinal} pozunun paylarının toplamı {expected}{unit} yerine {total}{unit} ediyor.",
+      "suggestion": "Payları, pozun tamamı dağıtılacak şekilde, ne fazla ne eksik olacak biçimde düzeltin."
+    },
+    "allocation_mixed_modes": {
+      "fail": "{ordinal} pozu kısmen yüzdeyle, kısmen miktarla bölünmüş.",
+      "suggestion": "Pozu yalnızca tek bir yöntemle bölün."
+    },
+    "vector_not_inherited": {
+      "fail": "{code} sözleşme satırı, metraj pozunun dağıtılmadığı bir maliyet kaleminde duruyor.",
+      "suggestion": "Satırı pozun maliyet kalemlerine geri alın veya sapmayı gerekçesiyle kaydedin."
+    }
+  },
   "boq_markup": {
     "contingency_not_on_profit": {
       "fail": "\"{markup}\" risk payı, \"{profit}\" kâr kalemini zaten içeren bir matrah üzerinden hesaplanıyor; böylece risk için ayrılan tutara kâr marjı uygulanıyor",
@@ -59,6 +131,10 @@
     "offline_sync_delay": {
       "fail": "Bu iş günü {date} tarihinde gerçekleşti ancak ofise {days} gün sonra ulaştı",
       "suggestion": "Onaylamadan önce saatleri ilgili günün kayıtlarıyla karşılaştırın; hakediş dönemi kapanmış olabilir"
+    },
+    "outdoor_heat_ban": {
+      "fail": "{line}. satır, {date} tarihinde {start} - {end} arası çalışma kaydediyor; bu, {ban_from} - {ban_to} arasındaki öğle saatlerinde açık havada çalışma yasağı kapsamına giriyor",
+      "suggestion": "Bu iş açık havada doğrudan güneş altında yapıldıysa yasak saatlerin dışına alın; kapalı alandaki işler ve muaf sektörler etkilenmez"
     }
   },
   "ai_takeoff": {
@@ -521,6 +597,20 @@
       "suggestion": "Gerçekçi olmayan parsel fiyatlarından kaçınmak için düzeltmeleri -%50 ile +%200 arasında sınırlayın"
     }
   },
+  "schedule_5d": {
+    "boq_coverage": {
+      "fail": "{ordinal} numaralı poz '{description}' ({amount}) metrajda fiyatlandırılmış, ancak hiçbir faaliyet onu taşımıyor; bu yüzden maliyeti programda yok",
+      "suggestion": "Poza bir miktar verin veya bir faaliyete bağlayın, ardından programı yeniden oluşturun."
+    },
+    "cost_reconciliation": {
+      "fail": "Program, metrajın {bill} tutarının {planned} kadarını taşıyor: fiyatlandırılmış işin {difference} tutarı hiçbir faaliyette yok",
+      "suggestion": "Kapsam kontrolünün listelediği pozları kontrol edin, ardından programı yeniden oluşturun."
+    },
+    "duration_vs_norm": {
+      "fail": "'{activity}' faaliyeti {duration} iş günü sürüyor, oysa işçilik ve makine normları {norm} veriyor",
+      "suggestion": "Pozun miktarını, ekibini ve norm saatlerini ya da elle değiştirilmiş süreyi kontrol edin."
+    }
+  },
   "schedule_quality": {
     "open_ends": {
       "fail": "'{activity}' faaliyetinde {ends} bağlantısı yok (açık uç / bağlantısız faaliyet)",
@@ -656,6 +746,42 @@
     "requisition_line_cost_line": {
       "fail": "{line}. satır bir maliyet satırına bağlı değil, bu yüzden siparişi bütçeye karşı taahhüt olarak görünmez",
       "suggestion": "Satırı BOQ'dan oluşturun veya sipariş vermeden önce bir maliyet satırına bağlayın"
+    },
+    "requisition_suggested_vendor_in_directory": {
+      "fail": "{line}. satır, tedarikçi rehberinde olmayan {vendor} tedarikçisini öneriyor",
+      "suggestion": "Önerilen tedarikçiyi tedarikçi rehberinden seçin veya öneriyi silin"
+    },
+    "requisition_suggested_vendor_active": {
+      "fail": "{line}. satır, tedarikçi rehberinde aktif olmayan {vendor} tedarikçisini öneriyor",
+      "suggestion": "Aktif bir tedarikçi önerin veya seçimi satın almacıya bırakın"
+    },
+    "requisition_suggestion_conflict": {
+      "fail": "{line}. satırın BOQ kaynakları birbirinden farklı {count} tedarikçi öneriyor",
+      "suggestion": "Satır için tek bir tedarikçi seçin veya her tedarikçinin kendi satırı olacak şekilde satırı bölün"
+    },
+    "requisition_suggested_vendor_differs": {
+      "fail": "{line}. satır {vendor} tedarikçisini öneriyor, ancak talep başka bir tedarikçiden sipariş edilecek",
+      "suggestion": "Seçilen tedarikçinin bu satırı teslim edebildiğini kontrol edin veya satırı ayrı sipariş edin"
+    },
+    "requisition_line_needed_by_not_past": {
+      "fail": "{line}. satır {date} tarihine kadar gerekli, ancak bu tarih geçmişte kaldı (bugün {today})",
+      "suggestion": "Malzemenin şantiyede gerçekten gerektiği tarihi girin"
+    },
+    "requisition_line_schedule_moved": {
+      "fail": "{line}. satır {anchor} tarihinde başlayan bir faaliyet için planlanmıştı, ancak faaliyet şimdi {start} tarihinde başlıyor",
+      "suggestion": "Satırın ihtiyaç tarihini güncel programla karşılaştırın ve gerekirse değiştirin"
+    },
+    "requisition_approver_not_requester": {
+      "fail": "{req} satın alma talebini oluşturan kişi aynı zamanda {step}. onaylayıcı olarak atanmıştır",
+      "suggestion": "Bu adım için başka bir onaylayıcı belirleyin, böylece talep edenden başka biri karar versin"
+    },
+    "requisition_line_over_ordered": {
+      "fail": "{line}. satırın siparişlerde {ordered} {unit} miktarı var, talep edilen {requested} {unit} miktarından fazla",
+      "suggestion": "Fazla miktarın bilerek girilip girilmediğini kontrol edin veya sipariş satırını azaltın"
+    },
+    "requisition_order_unit_mismatch": {
+      "fail": "{order} siparişi {line}. satırı {unit} cinsinden tutuyor, bu satırın {line_unit} birimine dönüştürülemez",
+      "suggestion": "Sipariş satırındaki birimi düzeltin, miktarı sipariş edilmiş olarak sayılsın"
     },
     "receipt_certificate_present": {
       "fail": "{line} numaralı kalem {required} ile sipariş edildi, ancak teslimat {delivered} içeriyor",
@@ -973,5 +1099,184 @@
     "parent_not_found": "Bu yüklemenin yeni sürümü olacağı model bu projede yok. Başka bir model seçin ya da ayrı bir model olarak yükleyin.",
     "parent_not_ready": "\"{name}\" içe aktarımı henüz bitmedi, bu yüzden henüz yeni sürüm alamaz. Hazır olana kadar bekleyin veya bu dosyayı ayrı bir model olarak yükleyin.",
     "parent_superseded": "\"{name}\" için daha yeni bir sürüm var: {version}. Bunun yerine bu dosyayı en yeni modelin yeni sürümü olarak yükleyin."
+  },
+  "cost_chain": {
+    "contract_without_schedule": {
+      "fail": "{code} sözleşmesi {amount} değerinde ama iş kalemleri yok, bu yüzden parası hiçbir maliyet satırında değil.",
+      "suggestion": "Sözleşmeye maliyet kontrolünde bir hesap verin veya iş kalemlerini ekleyin."
+    },
+    "contract_sum_differs": {
+      "fail": "{code} sözleşmesi {total} değerinde, ama iş kalemleri toplamı {lines} ({difference} fark).",
+      "suggestion": "Sözleşme değerini veya iş kalemlerini birbirini tutacak şekilde düzeltin."
+    },
+    "change_without_agreed_amount": {
+      "fail": "{code} değişikliği kararlaştırılmış tutar olmadan onaylanmış.",
+      "suggestion": "Değişikliği onaylamadan önce yüklenici ile anlaşılan tutarı kaydedin."
+    },
+    "change_without_approval_date": {
+      "fail": "{code} değişikliği onay tarihi olmadan onaylanmış.",
+      "suggestion": "Değişikliğin ne zaman onaylandığını kaydedin."
+    },
+    "billed_before_approval": {
+      "fail": "{contract} sözleşmesine {code} değişikliği için {amount} faturalanmış; bu değişiklik {status} durumunda ve onaylı değil.",
+      "suggestion": "Önce değişikliği onaylayın veya faturalamayı hakedişten çıkarın."
+    },
+    "contract_over_target": {
+      "fail": "{code} sözleşmesi {committed} taahhüt ediyor; bu, ihale edildiği metrajın {target} tutarının {difference} üzerinde (%{tolerance} üzeri).",
+      "suggestion": "İhaleyi ve değişikliklerini metrajla karşılaştırın ve işin neden daha pahalı olduğunu kaydedin."
+    },
+    "account_over_plan": {
+      "fail": "{code} hesabında {committed} taahhüt var; bu, {planned} planının {difference} üzerinde (%{tolerance} üzeri).",
+      "suggestion": "Bu hesaptaki taahhütleri kontrol edin veya planı gerekçeyle güncelleyin."
+    },
+    "quantity_overrun": {
+      "fail": "{contract} sözleşmesinin {code} kalemi {measured} {unit} ölçülmüş, sözleşmede {contracted} {unit}; %{over} fazla (izin verilen %{tolerance}).",
+      "suggestion": "Ölçüyü kontrol edin veya fazla miktarı değişiklik olarak anlaşın."
+    },
+    "measurement_exceeds_commitment": {
+      "fail": "{code} sözleşmesi {measured} ölçülmüş; bu, onaylı değişikliklerle {committed} olan değerinin {difference} üzerinde.",
+      "suggestion": "Fazla işi kapsayan değişikliği onaylayın veya ölçüyü kontrol edin."
+    },
+    "invoice_without_contract": {
+      "fail": "{amount} tutarındaki {number} tedarikçi faturası hiçbir sözleşmeye veya siparişe bağlı değil.",
+      "suggestion": "Satırlarını bir sözleşmeye bağlayın veya bir hesapta doğrudan maliyet olarak kaydedin."
+    }
+  },
+  "payment_release": {
+    "cumulative_total_fell": {
+      "fail": "{contract} sözleşmesindeki {number} numaralı fatura bugüne kadar {net} gösteriyor, bu önceki {previous_number} numaralı faturadaki {previous} tutarından az, oysa sözleşme kümülatif faturalanıyor.",
+      "suggestion": "Fatura yalnızca yeni işi faturalıyorsa sözleşme artışlı faturalanır; toplamı düşürüyorsa alacak dekontu olarak girin."
+    },
+    "invoice_after_final": {
+      "fail": "{contract} sözleşmesindeki {number} numaralı fatura, {final} numaralı kesin faturadan sonra geliyor.",
+      "suggestion": "Sonraki işi günlük iş veya alacak dekontu olarak girin ya da doğru faturayı kesin fatura olarak işaretleyin."
+    },
+    "claim_invoice_in_cumulative": {
+      "fail": "{contract} sözleşmesindeki {number} numaralı fatura bir talepten oluşturulmuş ve tek bir dönemi faturalıyor, ama sözleşme kümülatif faturalanıyor.",
+      "suggestion": "Sözleşme başına tek bir faturalama yöntemi kullanın: sözleşmeyi artışlı faturalamaya geçirin ya da onun yerine müteahhidin kümülatif faturalarını girin."
+    },
+    "release_differs": {
+      "fail": "{contract} sözleşmesindeki {number} numaralı fatura için onaylanan ödeme serbest bırakma tutarı {stored}, ama sözleşme şartları bugün {computed} veriyor.",
+      "suggestion": "Serbest bırakmadan sonra neyin değiştiğine (şartlar, fatura tutarları, kesintiler) bakın, sonra serbest bırakmayı yeniden açıp tekrar onaylayın."
+    },
+    "rounding_out_of_range": {
+      "fail": "{number} numaralı fatura {rounding} tutarında yuvarlanmış, bu anlaşılan {step} yuvarlama adımının dışında.",
+      "suggestion": "Yuvarlama serbest bırakılan tutarı bir adımdan az düşürür; ödeme şartlarında yuvarlamayı açın veya serbest bırakmayı yeniden açın."
+    },
+    "final_retention_without_warranty": {
+      "fail": "{contract} sözleşmesindeki {number} numaralı kesin fatura {amount} teminat kesintisi tutuyor, ama garanti teminatı kararlaştırılmamış.",
+      "suggestion": "Ödeme şartlarında garanti teminatını kararlaştırın ya da tüm teminatın kesin faturayla ödenmesi için serbest bırakmayı yeniden açın."
+    },
+    "posting_exceeds_held": {
+      "fail": "{contract} sözleşmesinde tutulandan fazla teminat iade edilmiş: {amount} fazla.",
+      "suggestion": "Fazla yüksek teminat iade kaydını iptal edin ve fiilen tutulan tutarı kaydedin."
+    },
+    "posting_before_event": {
+      "fail": "{contract} sözleşmesindeki {amount} teminat, {due} tarihinde gelecek serbest bırakma olayından önce, {posted} tarihinde iade edilmiş.",
+      "suggestion": "Serbest bırakma olayının tarihini kontrol edin ya da olay gerçekleştikten sonra serbest bırakmayı kaydedin."
+    },
+    "posting_without_event_date": {
+      "fail": "{contract} sözleşmesindeki {amount} teminat iade edilmiş, ancak serbest bırakma olayının tarihi kayıtlı değil.",
+      "suggestion": "Serbest bırakma olayının gerçekleştiği tarihi kaydedin, böylece ödeme buna göre kontrol edilebilir."
+    },
+    "retention_still_held": {
+      "fail": "{contract} sözleşmesi tamamlanmış ve hâlâ {amount} teminat tutuyor.",
+      "suggestion": "Teminat kayıt defterinde teminatı olayında serbest bırakın veya garanti süresi boyunca tutmaya devam edin."
+    },
+    "discount_not_agreed": {
+      "fail": "{contract} sözleşmesindeki {number} numaralı faturanın serbest bırakılması {amount} erken ödeme iskontosu uyguluyor, ama sözleşme buna izin vermiyor.",
+      "suggestion": "Ödeme şartlarında erken ödeme iskontosunu açın veya serbest bırakmayı iskontosuz yeniden açın."
+    },
+    "discount_after_deadline": {
+      "fail": "{number} numaralı faturadan {amount} iskonto tutuldu, ama {paid_on} tarihli ödeme {until} iskonto tarihinden sonra geldi.",
+      "suggestion": "İskonto tutarını da ödeyin veya müteahhidin geç iskontoyu neden kabul ettiğini kaydedin."
+    },
+    "invoiced_over_measured": {
+      "fail": "{contract} sözleşmesi {invoiced} faturalanmış, bu ölçülen {measured} tutarının (miktar çarpı birim fiyat) {difference} üzerinde.",
+      "suggestion": "Daha fazla ödeme serbest bırakmadan önce metrajı kontrol edin ya da farkı bir sonraki serbest bırakmada tutun."
+    },
+    "invoiced_over_contract": {
+      "fail": "{contract} sözleşmesi {invoiced} faturalanmış, bu {value} sözleşme bedelinin {difference} üzerinde ve üzerinde hiç metraj yok.",
+      "suggestion": "Daha fazlasını serbest bırakmadan önce fazla tutarı karşılayan metrajı veya değişiklik emrini kaydedin."
+    },
+    "reverse_charge_with_vat": {
+      "fail": "{number} numaralı fatura sorumlu sıfatıyla (reverse charge) düzenlenmiş ama {vat} KDV taşıyor.",
+      "suggestion": "Reverse charge faturada KDV olmaz; KDV tutarını veya satırlarının KDV kategorisini düzeltin."
+    },
+    "line_without_vat_rate": {
+      "fail": "{number} numaralı faturada KDV var, ama {count} satırında KDV oranı belirtilmemiş.",
+      "suggestion": "Kesintiler ve dışa aktarımlar doğru vergiyi alsın diye her satıra KDV oranını girin."
+    },
+    "duplicate_number": {
+      "fail": "Aynı müteahhitten gelen {number} numaralı fatura {count} kez girilmiş.",
+      "suggestion": "Kopyayı iptal edin veya farklı faturalarsa fatura numarasını düzeltin."
+    },
+    "possible_duplicate": {
+      "fail": "{number} numaralı fatura, {other} numaralı faturayla aynı müteahhit, tutar ({amount}) ve tarihe ({on}) sahip.",
+      "suggestion": "Aynı faturanın başka bir numarayla iki kez girilmediğini kontrol edin."
+    },
+    "certificate_missing": {
+      "fail": "{contract} sözleşmesindeki {number} numaralı fatura: ödeme alıcısında {on} tarihinde geçerli bir {certificate} bulunmuyor; {reference} ödeme serbest bırakılmadan önce bunu şart koşuyor.",
+      "suggestion": "Belgeyi alıcının alt yüklenici kaydına işleyin veya belge ibraz edilene kadar ödemeyi bekletin."
+    },
+    "split_payment_annotation_missing": {
+      "fail": "{number} numaralı fatura inşaat işleri veya split payment kapsamındaki diğer malları içeriyor ve {threshold} tutarını aşıyor, ancak «{annotation}» ibaresini taşımıyor.",
+      "suggestion": "Tedarikçiden ibareli düzeltilmiş fatura isteyin ve her durumda split payment ile ödeyin: bu şekilde ödeme yükümlülüğü ibareye bağlı değildir."
+    },
+    "split_payment_not_used": {
+      "fail": "{number} numaralı fatura split payment kapsamında, ancak ödemesi başka bir yöntemle kaydedilmiş. Alıcı ayrıca {sanction} tutarından sorumlu olur, bu KDV'sinin yüzde 30'udur.",
+      "suggestion": "Bu tür faturaları KDV hesabından split payment ile ödeyin ve ödemede yöntemi split_payment olarak kaydedin."
+    },
+    "split_payment_annex_unknown": {
+      "fail": "{number} numaralı fatura {threshold} tutarını aşıyor ve split payment ekindeki mal veya hizmetleri içerip içermediği kayıtlı değil.",
+      "suggestion": "Faturanın ekteki mal veya hizmetleri (annex_15) ya da kodlarını (pkwiu_codes) içerip içermediğini kaydedin, böylece ödeme yöntemi kontrol edilebilsin."
+    },
+    "reduced_rate_above_area_limit": {
+      "fail": "{number} numaralı fatura fiyatın tamamına yüzde {rate} KDV uyguluyor, ancak konutun kullanım alanı {area_m2} m2 ve indirimli oran {limit_m2} m2'ye kadar geçerli ({reference}).",
+      "suggestion": "İndirimli oranı fiyatın yüzde {reduced_share_percent} kısmına, genel oranı kalanına uygulayın."
+    },
+    "reduced_rate_object_unknown": {
+      "fail": "{number} numaralı fatura yüzde {rate} indirimli konut oranını uyguluyor, ancak projede hangi konut için olduğu ve kullanım alanı kayıtlı değil ({reference}).",
+      "suggestion": "Oran ve alan sınırı kontrol edilebilsin diye projede konut türünü ve kullanım alanını kaydedin (vat_housing)."
+    },
+    "reduced_rate_not_eligible": {
+      "fail": "{number} numaralı fatura yüzde {rate} indirimli konut oranını {object} için uyguluyor, ancak bu oran için uygun değil ({reference}).",
+      "suggestion": "Genel oranı uygulayın veya projede kayıtlı konutu düzeltin."
+    },
+    "domestic_reverse_charge_ended": {
+      "fail": "{number} numaralı fatura {count} satıra sorumlu sıfatıyla (reverse charge) uyguluyor, ancak inşaat hizmetlerinde yurt içi reverse charge bu ülkede sona erdi.",
+      "suggestion": "Tedarikçi yurt dışında yerleşik değilse KDV'li fatura isteyin; bu tür faturalar split payment ile ödenir."
+    },
+    "payment_term_over_cap": {
+      "fail": "{contract} sözleşmesi {days} günlük ödeme süresi öngörüyor; bu, geç ödeme yasasının işletmeler arasında izin verdiği {cap} günden uzun.",
+      "suggestion": "Süreyi {cap} güne düşürün veya daha uzun sürenin neden açıkça kararlaştırıldığını ve alt yükleniciye karşı ağır biçimde haksız olmadığını kaydedin."
+    }
+  },
+  "cost_forecast": {
+    "below_commitment": {
+      "fail": "{code}: {forecast} tutarındaki tahmin, zaten taahhüt edilen veya bekleyen değişikliklerde talep edilen {owed} tutarının altında ({difference} düşük) ve bunu hiçbir şey açıklamıyor.",
+      "suggestion": "Düşük rakamın arkasındaki belgeyi ekleyin (alacak dekontu, uzlaşma, tutanak) veya satırın yöntemi neden daha düşük sonuç verdiğini satıra yazın."
+    },
+    "move_without_evidence": {
+      "fail": "{code}: tahmin, son dondurulmuş anlık görüntüden bu yana {previous} tutarından {current} tutarına ({delta}) değişti, proje eşiğini aşıyor ve henüz yorum ve dayanak belgesi yok.",
+      "suggestion": "Anlık görüntü dondurulmadan önce rakamın neden değiştiğini yazın ve arkasındaki belgeyi veya tutanağı bağlayın."
+    },
+    "method_override_without_comment": {
+      "fail": "{code} için tahmin, projenin {project_method} yöntemi yerine {method} yöntemiyle yapılıyor ve nedenini açıklayan bir yorum yok.",
+      "suggestion": "Satırın yöntemine kısa bir yorum ekleyin veya satırı projenin yöntemine geri alın."
+    },
+    "method": {
+      "best_available": "en iyi mevcut kaynak",
+      "maximum": "en yüksek değer",
+      "evm_cpi": "maliyet performansı (CPI)",
+      "manual": "elle girilen tutar"
+    }
+  },
+  "payment_release_certificate_types": {
+    "social_security_clearance": "sosyal sigorta borcu yoktur belgesi",
+    "construction_tax_exemption": "inşaat vergisi muafiyet belgesi",
+    "employers_liability_clearance": "işveren sorumluluğu borcu yoktur belgesi",
+    "insurance": "sigorta belgesi",
+    "license": "yüklenici ruhsatı"
   }
 }

@@ -30,28 +30,73 @@ Endpoints:
     PUT    /cost-control/lines/{line_id}/forecast/       - manual forecast with a reason
     DELETE /cost-control/lines/{line_id}/forecast/       - back to the automatic forecast
     GET    /cost-control/lines/{line_id}/history/        - why the forecast is what it is
+    GET    /projects/{project_id}/cost-control/settings/ - forecast method and evidence threshold
+    PUT    /projects/{project_id}/cost-control/settings/ - choose them (managers)
+    GET    /projects/{project_id}/cost-control/forecast/ - methods in force, open draft, checks V19 V20 V22
+    PUT    /cost-control/lines/{line_id}/method/         - one line read with its own method
+    DELETE /cost-control/lines/{line_id}/method/         - back to the project's method
+    PUT    /cost-control/snapshots/{snapshot_id}/notes/{row_key}/ - comment and evidence on a draft line
+    POST   /cost-control/snapshots/{snapshot_id}/refresh/ - today's figures into a draft
+    POST   /cost-control/snapshots/{snapshot_id}/freeze/ - freeze a draft for good
+    GET    /projects/{project_id}/cost-control/compare/  - snapshots side by side
+    GET    /projects/{project_id}/cost-control/ladder/   - from one total to another, line by line
+    GET    /projects/{project_id}/cost-control/phases/   - every cost layer on the account tree
+    GET    /projects/{project_id}/cost-control/export/{kind}/ - PDF or workbook of a cost report
+    GET    /code-lists/                                  - code lists a structure can be built from
+    GET    /code-lists/{key}/                            - one code list with its entries
+    POST   /projects/{project_id}/code-lists/import/     - import a CSV or Excel code list
+    DELETE /projects/{project_id}/code-lists/{key}/      - remove an imported code list
+    GET    /projects/{project_id}/spine/structure/       - account tree with money, suspense, findings
+    POST   /projects/{project_id}/spine/structure/apply-code-list/ - create the accounts of a list
+    GET    /boqs/{boq_id}/allocations/                   - the vector of every position, coverage
+    PUT    /positions/{position_id}/allocation/          - put a position on one or more cost lines
+    DELETE /positions/{position_id}/allocation/          - take a position off its cost lines
 """
 
 import uuid
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
 
-from app.dependencies import CurrentUserId, RequirePermission, SessionDep, verify_project_access
+from app.dependencies import (
+    CurrentUserId,
+    RequirePermission,
+    SessionDep,
+    get_current_user_payload,
+    verify_project_access,
+)
+from app.modules.costmodel.cost_control_forecast import ForecastDocsService
 from app.modules.costmodel.cost_control_schemas import (
     AssignRequest,
     AssignResult,
+    ChainReport,
     CostControlReport,
+    CostControlSettingsInfo,
+    CostControlSettingsRequest,
+    DeltaLadder,
+    DirectCostRequest,
+    DirectCostResult,
     ForecastOverrideInfo,
     ForecastOverrideRequest,
+    ForecastPanel,
+    InheritResult,
     LineHistory,
+    LineMethodChoice,
+    LineMethodRequest,
+    PhaseComparison,
+    SetVectorRequest,
+    SetVectorResult,
     SnapshotCreateRequest,
     SnapshotDetail,
+    SnapshotLine,
+    SnapshotMatrix,
+    SnapshotNoteRequest,
     SnapshotPage,
     SnapshotSummary,
     UnassignedPage,
 )
 from app.modules.costmodel.cost_control_service import CostControlService
+from app.modules.costmodel.models import CostForecastSnapshot
 from app.modules.costmodel.position_actuals import build_position_actuals
 from app.modules.costmodel.schemas import (
     BudgetLineCreate,
@@ -84,6 +129,18 @@ from app.modules.costmodel.schemas import (
     WhatIfResult,
 )
 from app.modules.costmodel.service import CostModelService, CostSpineService
+from app.modules.costmodel.structure_schemas import (
+    ApplyCodeListRequest,
+    ApplyCodeListResult,
+    BoqAllocations,
+    CodeListDetail,
+    CodeListImportResult,
+    CodeListPage,
+    PositionAllocationOut,
+    PositionAllocationRequest,
+    StructureTree,
+)
+from app.modules.costmodel.structure_service import MAX_UPLOAD_BYTES, CostStructureService
 
 router = APIRouter(tags=["costmodel"])
 
@@ -990,11 +1047,14 @@ async def generate_spine_from_boq(
 ) -> SpineGenerationResult:
     """Generate the cost spine from a BOQ (idempotent).
 
-    Body may contain ``{"boq_id": "<uuid>"}``; when omitted the project's
-    most-recent BOQ is used.
+    Body may contain ``{"boq_id": "<uuid>", "standard": "<code list key>"}``;
+    without ``boq_id`` the project's most-recent BOQ is used, without
+    ``standard`` the project's classification standard.
     """
     await verify_project_access(project_id, user_id, session)
     boq_id: uuid.UUID | None = None
+    raw_standard = body.get("standard") if isinstance(body, dict) else None
+    standard = str(raw_standard).strip()[:40] if raw_standard else None
     raw_boq_id = body.get("boq_id") if isinstance(body, dict) else None
     if raw_boq_id:
         try:
@@ -1004,7 +1064,7 @@ async def generate_spine_from_boq(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=f"Invalid boq_id: {e}",
             )
-    return await service.generate_from_boq(project_id, boq_id)
+    return await service.generate_from_boq(project_id, boq_id, standard)
 
 
 @router.get(
@@ -1152,9 +1212,112 @@ async def assign_cost_control_lines(
     session: SessionDep,
     service: CostControlService = Depends(_get_cost_control_service),
 ) -> AssignResult:
-    """Put contract lines and order items on one cost line of the project."""
+    """Put contract lines, order items, contracts, change items or invoice lines on one cost line."""
     await verify_project_access(project_id, user_id, session)
-    return await service.assign(project_id, body)
+    return await service.assign(project_id, body, user_id)
+
+
+@router.get(
+    "/projects/{project_id}/cost-control/chain/",
+    response_model=ChainReport,
+    dependencies=[Depends(RequirePermission("costmodel.read"))],
+)
+async def get_cost_control_chain(
+    project_id: uuid.UUID,
+    user_id: CurrentUserId,
+    session: SessionDep,
+) -> ChainReport:
+    """Suspense buckets of everything on no cost line, and the chain rules V6 to V10 and V15."""
+    from app.core.i18n import get_locale
+    from app.modules.costmodel.chain_service import CostChainService
+
+    await verify_project_access(project_id, user_id, session)
+    report = await CostChainService(session).report(project_id, locale=get_locale())
+    return ChainReport.model_validate(
+        {**report, "findings": [f.model_dump() for f in report["findings"]]},
+    )
+
+
+@router.put(
+    "/projects/{project_id}/cost-control/vectors/",
+    response_model=SetVectorResult,
+    dependencies=[Depends(RequirePermission("costmodel.write"))],
+)
+async def set_cost_control_vector(
+    project_id: uuid.UUID,
+    body: SetVectorRequest,
+    user_id: CurrentUserId,
+    session: SessionDep,
+) -> SetVectorResult:
+    """Put one row on a cost line, back on what it inherits, or off every line.
+
+    A row put on a line other than the one it inherits needs a reason, kept on
+    the row with who and when.
+    """
+    from app.modules.costmodel.inheritance_service import set_vector
+
+    await verify_project_access(project_id, user_id, session)
+    result = await set_vector(
+        session,
+        project_id,
+        kind=body.kind,
+        target_id=body.id,
+        mode=body.mode,
+        cost_line_id=body.cost_line_id,
+        reason=body.reason,
+        user_id=user_id,
+    )
+    await session.flush()
+    return SetVectorResult(
+        cost_line_id=result.get("cost_line_id"),
+        source=result.get("source"),
+        override=bool(result.get("override")),
+    )
+
+
+@router.post(
+    "/projects/{project_id}/cost-control/inherit/",
+    response_model=InheritResult,
+    dependencies=[Depends(RequirePermission("costmodel.write"))],
+)
+async def inherit_cost_control_accounts(
+    project_id: uuid.UUID,
+    user_id: CurrentUserId,
+    session: SessionDep,
+) -> InheritResult:
+    """Give every row with no cost line the account it inherits; rows on a line are left alone."""
+    from app.modules.costmodel.chain_service import CostChainService
+
+    await verify_project_access(project_id, user_id, session)
+    return InheritResult(**await CostChainService(session).inherit_missing(project_id))
+
+
+@router.post(
+    "/projects/{project_id}/cost-control/invoices/{invoice_id}/direct-contract/",
+    response_model=DirectCostResult,
+    status_code=201,
+    dependencies=[
+        Depends(RequirePermission("costmodel.write")),
+        Depends(RequirePermission("contracts.create")),
+    ],
+)
+async def record_invoice_as_direct_cost(
+    project_id: uuid.UUID,
+    invoice_id: uuid.UUID,
+    body: DirectCostRequest,
+    user_id: CurrentUserId,
+    session: SessionDep,
+) -> DirectCostResult:
+    """Record a supplier invoice without a contract as a lump-sum direct cost contract on one account."""
+    from app.modules.costmodel.chain_service import CostChainService
+
+    await verify_project_access(project_id, user_id, session)
+    result = await CostChainService(session).direct_cost_contract(project_id, invoice_id, body.cost_line_id, user_id)
+    return DirectCostResult(
+        contract_id=result["contract_id"],
+        contract_code=result["contract_code"],
+        contract_line_id=result["contract_line_id"],
+    )
 
 
 @router.get(
@@ -1213,7 +1376,7 @@ async def get_cost_control_snapshot(
 @router.delete(
     "/cost-control/snapshots/{snapshot_id}/",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(RequirePermission("costmodel.manage"))],
+    dependencies=[Depends(RequirePermission("costmodel.write"))],
 )
 async def delete_cost_control_snapshot(
     snapshot_id: uuid.UUID,
@@ -1221,7 +1384,7 @@ async def delete_cost_control_snapshot(
     session: SessionDep,
     service: CostControlService = Depends(_get_cost_control_service),
 ) -> None:
-    """Remove a saved forecast. Managers only: history is the point of keeping them."""
+    """Remove a draft snapshot. A frozen one is a record and answers 409."""
     await verify_project_access(await service.snapshot_project(snapshot_id), user_id, session)
     await service.delete_snapshot(snapshot_id)
 
@@ -1276,3 +1439,438 @@ async def get_cost_line_history(
     line = await service.line_project(line_id)
     await verify_project_access(line.project_id, user_id, session)
     return await service.line_history(line)
+
+
+# ── Forecast method, snapshot documentation, comparison and exports ───────────
+
+
+def _get_forecast_service(session: SessionDep) -> ForecastDocsService:
+    return ForecastDocsService(session)
+
+
+@router.get(
+    "/projects/{project_id}/cost-control/settings/",
+    response_model=CostControlSettingsInfo,
+    dependencies=[Depends(RequirePermission("costmodel.read"))],
+)
+async def get_cost_control_settings(
+    project_id: uuid.UUID,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    service: ForecastDocsService = Depends(_get_forecast_service),
+) -> CostControlSettingsInfo:
+    """The project's forecast method and the move above which a line needs evidence."""
+    await verify_project_access(project_id, user_id, session)
+    return await service.get_settings(project_id)
+
+
+@router.put(
+    "/projects/{project_id}/cost-control/settings/",
+    response_model=CostControlSettingsInfo,
+    dependencies=[Depends(RequirePermission("costmodel.manage"))],
+)
+async def put_cost_control_settings(
+    project_id: uuid.UUID,
+    body: CostControlSettingsRequest,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    service: ForecastDocsService = Depends(_get_forecast_service),
+) -> CostControlSettingsInfo:
+    """Choose the project's forecast method and evidence threshold. Managers only: it moves every line."""
+    await verify_project_access(project_id, user_id, session)
+    return await service.put_settings(project_id, body, str(user_id) if user_id else None)
+
+
+@router.get(
+    "/projects/{project_id}/cost-control/forecast/",
+    response_model=ForecastPanel,
+    dependencies=[Depends(RequirePermission("costmodel.read"))],
+)
+async def get_cost_control_forecast_panel(
+    project_id: uuid.UUID,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    service: ForecastDocsService = Depends(_get_forecast_service),
+) -> ForecastPanel:
+    """Methods in force, the open draft and the documentation checks V19, V20 and V22."""
+    await verify_project_access(project_id, user_id, session)
+    return await service.panel(project_id)
+
+
+@router.put(
+    "/cost-control/lines/{line_id}/method/",
+    response_model=LineMethodChoice,
+    dependencies=[Depends(RequirePermission("costmodel.write"))],
+)
+async def set_cost_line_method(
+    line_id: uuid.UUID,
+    body: LineMethodRequest,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    service: ForecastDocsService = Depends(_get_forecast_service),
+) -> LineMethodChoice:
+    """Read one line with its own forecast method. An open manual amount on it is closed."""
+    line = await service.control.line_project(line_id)
+    await verify_project_access(line.project_id, user_id, session)
+    return await service.set_line_method(line, body, str(user_id) if user_id else None)
+
+
+@router.delete(
+    "/cost-control/lines/{line_id}/method/",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(RequirePermission("costmodel.write"))],
+)
+async def clear_cost_line_method(
+    line_id: uuid.UUID,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    service: ForecastDocsService = Depends(_get_forecast_service),
+) -> None:
+    """Back to the project's forecast method."""
+    line = await service.control.line_project(line_id)
+    await verify_project_access(line.project_id, user_id, session)
+    await service.clear_line_method(line)
+
+
+async def _snapshot_for(
+    snapshot_id: uuid.UUID, user_id: uuid.UUID | str | None, session: SessionDep, service: ForecastDocsService
+) -> CostForecastSnapshot:
+    snap = await service.snapshot(snapshot_id)
+    await verify_project_access(snap.project_id, user_id, session)
+    return snap
+
+
+@router.put(
+    "/cost-control/snapshots/{snapshot_id}/notes/{row_key}/",
+    response_model=SnapshotLine,
+    dependencies=[Depends(RequirePermission("costmodel.write"))],
+)
+async def put_cost_control_snapshot_note(
+    snapshot_id: uuid.UUID,
+    row_key: str,
+    body: SnapshotNoteRequest,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    service: ForecastDocsService = Depends(_get_forecast_service),
+) -> SnapshotLine:
+    """Comment and evidence behind one line of a draft snapshot. A frozen snapshot answers 409."""
+    snap = await _snapshot_for(snapshot_id, user_id, session, service)
+    return await service.put_note(snap, row_key, body, str(user_id) if user_id else None)
+
+
+@router.post(
+    "/cost-control/snapshots/{snapshot_id}/refresh/",
+    response_model=SnapshotSummary,
+    dependencies=[Depends(RequirePermission("costmodel.write"))],
+)
+async def refresh_cost_control_snapshot(
+    snapshot_id: uuid.UUID,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    service: ForecastDocsService = Depends(_get_forecast_service),
+) -> SnapshotSummary:
+    """Take today's figures into a draft; its notes stay on their lines."""
+    snap = await _snapshot_for(snapshot_id, user_id, session, service)
+    return await service.refresh(snap)
+
+
+@router.post(
+    "/cost-control/snapshots/{snapshot_id}/freeze/",
+    response_model=SnapshotSummary,
+    dependencies=[Depends(RequirePermission("costmodel.write"))],
+)
+async def freeze_cost_control_snapshot(
+    snapshot_id: uuid.UUID,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    service: ForecastDocsService = Depends(_get_forecast_service),
+) -> SnapshotSummary:
+    """Freeze a draft for good. Refused (422) while a move above the threshold has no comment and evidence."""
+    snap = await _snapshot_for(snapshot_id, user_id, session, service)
+    return await service.freeze(snap, str(user_id) if user_id else None)
+
+
+@router.get(
+    "/projects/{project_id}/cost-control/compare/",
+    response_model=SnapshotMatrix,
+    dependencies=[Depends(RequirePermission("costmodel.read"))],
+)
+async def compare_cost_control_snapshots(
+    project_id: uuid.UUID,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    ids: str = Query(default="", max_length=600, description="Comma separated snapshot ids, oldest first"),
+    live: bool = Query(default=True),
+    service: ForecastDocsService = Depends(_get_forecast_service),
+) -> SnapshotMatrix:
+    """Snapshots side by side; without ids, the latest five frozen ones and today's figures."""
+    await verify_project_access(project_id, user_id, session)
+    parsed: list[uuid.UUID] = []
+    for raw in (part.strip() for part in ids.split(",")):
+        if not raw:
+            continue
+        try:
+            parsed.append(uuid.UUID(raw))
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="ids") from exc
+    return await service.matrix(project_id, parsed or None, include_live=live)
+
+
+@router.get(
+    "/projects/{project_id}/cost-control/ladder/",
+    response_model=DeltaLadder,
+    dependencies=[Depends(RequirePermission("costmodel.read"))],
+)
+async def get_cost_control_ladder(
+    project_id: uuid.UUID,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    start: str = Query(default="", max_length=40),
+    end: str = Query(default="live", max_length=40),
+    min_step: Decimal = Query(default=Decimal("0"), ge=0, max_digits=18, decimal_places=2),
+    limit: int = Query(default=25, ge=1, le=500),
+    service: ForecastDocsService = Depends(_get_forecast_service),
+) -> DeltaLadder:
+    """From one total to another, line by line: by default from the latest frozen snapshot to today."""
+    await verify_project_access(project_id, user_id, session)
+    return await service.ladder(project_id, start=start or None, end=end or None, min_step=min_step, limit=limit)
+
+
+@router.get(
+    "/projects/{project_id}/cost-control/phases/",
+    response_model=PhaseComparison,
+    dependencies=[Depends(RequirePermission("costmodel.read"))],
+)
+async def get_cost_control_phases(
+    project_id: uuid.UUID,
+    user_id: CurrentUserId,
+    session: SessionDep,
+) -> PhaseComparison:
+    """Budget, estimate, tender, award, changes, measured, invoiced, forecast side by side on the account tree."""
+    from app.modules.costmodel.cost_control_phases import phase_comparison
+
+    await verify_project_access(project_id, user_id, session)
+    return await phase_comparison(session, project_id)
+
+
+@router.get(
+    "/projects/{project_id}/cost-control/export/{kind}/",
+    response_model=None,
+    dependencies=[Depends(RequirePermission("costmodel.read"))],
+)
+async def export_cost_control(
+    project_id: uuid.UUID,
+    kind: str,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    format: str = Query(default="pdf", pattern="^(pdf|xlsx)$"),  # noqa: A002 - the query parameter every export takes
+    locale: str = Query(default="", max_length=20),
+    snapshot_id: uuid.UUID | None = Query(default=None),
+    payload: dict = Depends(get_current_user_payload),
+) -> Response:
+    """The cost report, phase comparison, invoice ledger or forecast documentation as PDF or workbook."""
+    from app.core.content_disposition import attachment_disposition
+    from app.core.i18n import get_locale
+    from app.modules.costmodel.cost_control_export import (
+        EXPORT_KINDS,
+        media_type,
+        render_export,
+        rendered_language,
+    )
+
+    if kind not in EXPORT_KINDS:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown export")
+    await verify_project_access(project_id, user_id, session)
+    if kind == "invoice_ledger":
+        # The ledger belongs to payment release: reading it asks for that module's own permission too.
+        await RequirePermission("payment_release.read")(payload)
+    requested = locale.strip() or get_locale()
+    data, filename = await render_export(session, project_id, kind, format, requested, snapshot_id=snapshot_id)
+    return Response(
+        content=data,
+        media_type=media_type(format),
+        headers={
+            "Content-Disposition": attachment_disposition(filename),
+            "Content-Language": rendered_language(requested),
+        },
+    )
+
+
+# ── Cost structure: code lists, tree, vectors ─────────────────────────────────
+
+
+def _get_structure_service(session: SessionDep) -> CostStructureService:
+    return CostStructureService(session)
+
+
+@router.get(
+    "/code-lists/",
+    response_model=CodeListPage,
+    dependencies=[Depends(RequirePermission("costmodel.read"))],
+)
+async def list_code_lists(
+    user_id: CurrentUserId,
+    session: SessionDep,
+    project_id: uuid.UUID | None = Query(default=None),
+    service: CostStructureService = Depends(_get_structure_service),
+) -> CodeListPage:
+    """The shipped and pack code lists, plus the project's own when ``project_id`` is given."""
+    if project_id is not None:
+        await verify_project_access(project_id, user_id, session)
+    items = await service.list_code_lists(project_id)
+    return CodeListPage(items=items, total=len(items), offset=0, limit=len(items))
+
+
+@router.get(
+    "/code-lists/{key}/",
+    response_model=CodeListDetail,
+    dependencies=[Depends(RequirePermission("costmodel.read"))],
+)
+async def get_code_list(
+    key: str,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    project_id: uuid.UUID | None = Query(default=None),
+    service: CostStructureService = Depends(_get_structure_service),
+) -> CodeListDetail:
+    """One code list with its entries in tree order."""
+    if project_id is not None:
+        await verify_project_access(project_id, user_id, session)
+    return await service.code_list_detail(key, project_id)
+
+
+@router.post(
+    "/projects/{project_id}/code-lists/import/",
+    response_model=CodeListImportResult,
+    dependencies=[Depends(RequirePermission("costmodel.manage"))],
+)
+async def import_code_list(
+    project_id: uuid.UUID,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    file: UploadFile = File(..., description="CSV or XLSX with the columns code, title and optionally parent"),
+    key: str = Form(..., max_length=40),
+    name: str = Form(..., max_length=200),
+    dry_run: bool = Form(default=True),
+    service: CostStructureService = Depends(_get_structure_service),
+) -> CodeListImportResult:
+    """Validate a company code list and, unless ``dry_run`` or a row is wrong, store it for the project."""
+    await verify_project_access(project_id, user_id, session)
+    content = await file.read(MAX_UPLOAD_BYTES + 1)
+    return await service.import_code_list(
+        project_id,
+        filename=file.filename or "",
+        content=content,
+        key=key,
+        name=name,
+        dry_run=dry_run,
+        user_id=str(user_id) if user_id else None,
+    )
+
+
+@router.delete(
+    "/projects/{project_id}/code-lists/{key}/",
+    status_code=204,
+    dependencies=[Depends(RequirePermission("costmodel.manage"))],
+)
+async def delete_code_list(
+    project_id: uuid.UUID,
+    key: str,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    service: CostStructureService = Depends(_get_structure_service),
+) -> None:
+    """Remove an imported code list (409 while accounts are built from it)."""
+    await verify_project_access(project_id, user_id, session)
+    await service.delete_code_list(project_id, key)
+
+
+@router.get(
+    "/projects/{project_id}/spine/structure/",
+    response_model=StructureTree,
+    dependencies=[Depends(RequirePermission("costmodel.read"))],
+)
+async def get_cost_structure(
+    project_id: uuid.UUID,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    service: CostStructureService = Depends(_get_structure_service),
+) -> StructureTree:
+    """The account tree with own, posted and total money, the suspense buckets and rules V1 to V5."""
+    from app.core.i18n import get_locale
+
+    await verify_project_access(project_id, user_id, session)
+    return await service.tree(project_id, locale=get_locale())
+
+
+@router.post(
+    "/projects/{project_id}/spine/structure/apply-code-list/",
+    response_model=ApplyCodeListResult,
+    dependencies=[Depends(RequirePermission("costmodel.write"))],
+)
+async def apply_code_list(
+    project_id: uuid.UUID,
+    body: ApplyCodeListRequest,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    service: CostStructureService = Depends(_get_structure_service),
+) -> ApplyCodeListResult:
+    """Create the accounts of a code list, down to ``max_level``; existing accounts are kept."""
+    await verify_project_access(project_id, user_id, session)
+    return await service.apply_code_list(project_id, body.key, body.max_level)
+
+
+@router.get(
+    "/boqs/{boq_id}/allocations/",
+    response_model=BoqAllocations,
+    dependencies=[Depends(RequirePermission("costmodel.read"))],
+)
+async def get_boq_allocations(
+    boq_id: uuid.UUID,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    service: CostStructureService = Depends(_get_structure_service),
+) -> BoqAllocations:
+    """Every costed position of a bill with the cost lines it is on, and the coverage."""
+    from app.modules.boq.models import BOQ
+
+    boq = await session.get(BOQ, boq_id)
+    if boq is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="BOQ not found")
+    await verify_project_access(boq.project_id, user_id, session)
+    return await service.boq_allocations(boq_id)
+
+
+@router.put(
+    "/positions/{position_id}/allocation/",
+    response_model=PositionAllocationOut,
+    dependencies=[Depends(RequirePermission("costmodel.write"))],
+)
+async def put_position_allocation(
+    position_id: uuid.UUID,
+    body: PositionAllocationRequest,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    service: CostStructureService = Depends(_get_structure_service),
+) -> PositionAllocationOut:
+    """Put a position on one cost line, or split it by percent or quantity over several."""
+    project_id = await service.project_of_position(position_id)
+    await verify_project_access(project_id, user_id, session)
+    return await service.set_allocation(position_id, body, str(user_id) if user_id else None)
+
+
+@router.delete(
+    "/positions/{position_id}/allocation/",
+    response_model=PositionAllocationOut,
+    dependencies=[Depends(RequirePermission("costmodel.write"))],
+)
+async def clear_position_allocation(
+    position_id: uuid.UUID,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    service: CostStructureService = Depends(_get_structure_service),
+) -> PositionAllocationOut:
+    """Take a position off every cost line."""
+    project_id = await service.project_of_position(position_id)
+    await verify_project_access(project_id, user_id, session)
+    return await service.clear_allocation(position_id, str(user_id) if user_id else None)

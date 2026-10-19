@@ -22,6 +22,7 @@ import uuid
 from collections.abc import Mapping, Sequence
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.party_names import resolve_party_names
@@ -60,6 +61,25 @@ def _get_service(session: SessionDep) -> ChangeOrderService:
     return ChangeOrderService(session)
 
 
+def _loaded_items(order: object) -> list:
+    """The order's items as already held in memory, never loaded from here.
+
+    Response builders are plain functions, so touching an unloaded ``items``
+    collection would lazy-load outside the async context. That load starts
+    with an autoflush, and a pending change on the order (the variation
+    overlap warning written on create) then fails inside a flush the caller
+    cannot see: the session is poisoned and the request's commit answers 500
+    with nothing saved. Rows read through the repository arrive with their
+    items (``lazy="selectin"``); an unloaded collection is a row created in
+    this request, whose items are empty, which is also what the old
+    swallowed-exception fallback returned.
+    """
+    state = sa_inspect(order, raiseerr=False)
+    if state is not None and "items" in state.unloaded:
+        return []
+    return list(getattr(order, "items", None) or [])
+
+
 def _order_to_response(order: object, names: Mapping[str, str] | None = None) -> ChangeOrderResponse:
     """Build a ChangeOrderResponse from a ChangeOrder ORM object.
 
@@ -69,17 +89,7 @@ def _order_to_response(order: object, names: Mapping[str, str] | None = None) ->
             them. Anything absent leaves the ``*_name`` field null, which the
             screen reads as "print the raw value" and never as "nobody".
     """
-    # `items` may not be eager-loaded in async context - only attempt to access
-    # if the relationship was populated upstream (via selectinload or similar).
-    # Returning an empty list when unloaded is intentional: this response type
-    # only uses `item_count`, not the items themselves.
-    try:
-        items = list(order.items)  # type: ignore[attr-defined]
-    except Exception as exc:
-        import logging
-
-        logging.getLogger(__name__).debug("ChangeOrder items not loaded for response: %s", exc)
-        items = []
+    items = _loaded_items(order)
     _resolved = names or {}
     return ChangeOrderResponse(
         id=order.id,  # type: ignore[attr-defined]
@@ -118,10 +128,7 @@ def _order_to_with_items(order: object, names: Mapping[str, str] | None = None) 
         order: The ORM row.
         names: Party ids resolved to names - see ``_order_to_response``.
     """
-    try:
-        items = list(order.items)  # type: ignore[attr-defined]
-    except Exception:
-        items = []
+    items = _loaded_items(order)
     _resolved = names or {}
     return ChangeOrderWithItems(
         id=order.id,  # type: ignore[attr-defined]
@@ -163,6 +170,8 @@ def _order_to_with_items(order: object, names: Mapping[str, str] | None = None) 
                 cost_delta=str(item.cost_delta),
                 unit=item.unit,
                 sort_order=item.sort_order,
+                cost_line_id=getattr(item, "cost_line_id", None),
+                cost_line_source=getattr(item, "cost_line_source", None),
                 metadata=getattr(item, "metadata_", {}),
                 created_at=item.created_at,
                 updated_at=item.updated_at,
@@ -215,6 +224,8 @@ def _item_to_response(item: object) -> ChangeOrderItemResponse:
         cost_delta=str(item.cost_delta),  # type: ignore[attr-defined]
         unit=item.unit,  # type: ignore[attr-defined]
         sort_order=item.sort_order,  # type: ignore[attr-defined]
+        cost_line_id=getattr(item, "cost_line_id", None),
+        cost_line_source=getattr(item, "cost_line_source", None),
         metadata=getattr(item, "metadata_", {}),  # type: ignore[attr-defined]
         created_at=item.created_at,  # type: ignore[attr-defined]
         updated_at=item.updated_at,  # type: ignore[attr-defined]
@@ -388,7 +399,7 @@ async def add_item(
     """Add an item to a change order."""
     existing = await service.get_order(order_id)
     await verify_project_access(existing.project_id, str(user_id), session)
-    item = await service.add_item(order_id, data)
+    item = await service.add_item(order_id, data, actor_id=str(user_id) if user_id else None)
     return _item_to_response(item)
 
 
@@ -405,7 +416,7 @@ async def update_item(
     """Update an item in a change order."""
     existing = await service.get_order(order_id)
     await verify_project_access(existing.project_id, str(user_id), session)
-    item = await service.update_item(order_id, item_id, data)
+    item = await service.update_item(order_id, item_id, data, actor_id=str(user_id) if user_id else None)
     return _item_to_response(item)
 
 

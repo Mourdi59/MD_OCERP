@@ -34,6 +34,7 @@ from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
+from app.modules.boq.supplier_suggestion import effective_suggestion
 from app.modules.price_breakdown import ResourceKind, coerce_kind, kind_i18n_key
 
 _2P = Decimal("0.01")
@@ -308,6 +309,9 @@ class BuyListSource:
     and its ``code`` (``"2:CWICR-123"``), or the index alone. ``quantity`` is
     the gross purchase quantity this one line contributes, in ``unit`` as the
     source states it, so a requisition raised from the row can keep both.
+    ``suggested_vendor_id`` is the supplier the estimator suggested for the
+    resource, or the position default, with ``suggested_vendor_origin`` saying
+    which; sources of one row may suggest different suppliers.
     """
 
     position_id: str
@@ -316,9 +320,13 @@ class BuyListSource:
     unit: str
     code: str = ""
     catalog_item_id: str | None = None
+    suggested_vendor_id: str | None = None
+    suggested_vendor_origin: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "suggested_vendor_id": self.suggested_vendor_id,
+            "suggested_vendor_origin": self.suggested_vendor_origin,
             "position_id": self.position_id,
             "resource_key": self.resource_key,
             "quantity": _q(self.quantity, _4P),
@@ -422,8 +430,12 @@ def aggregate_material_buy_list(
 ) -> MaterialBuyList:
     """Roll the estimate's material resource lines into a procurement buy-list.
 
-    Every ``type == material`` resource line across all positions is grouped by
-    ``(normalized name, unit)`` and its gross purchase quantity and cost summed,
+    Every ``type == material`` resource line across all positions is grouped and
+    its gross purchase quantity and cost summed. A line that names a catalogue
+    item (``catalog_item_id``) groups with the other lines of that item in the
+    same unit, whatever they are called; a line without one groups by
+    ``(normalized name, unit)``. A coded and an uncoded line, or two different
+    catalogue items, never share a row even when their names agree (issue #516),
     so a buyer reads one order line per distinct material - the next action the
     passive rollup never gave them. Non-material lines (labour, machinery,
     equipment, subcontract, other) are skipped.
@@ -451,8 +463,8 @@ def aggregate_material_buy_list(
     fx = {str(k).strip().upper(): v for k, v in (fx_rates or {}).items()}
     first_currency = ""
 
-    # (name_lower, unit_lower) -> accumulator
-    groups: dict[tuple[str, str], dict[str, Any]] = {}
+    # ("item", catalog id, unit) or ("name", name, unit) -> accumulator
+    groups: dict[tuple[str, str, str], dict[str, Any]] = {}
     contributing: set[str] = set()
     anon = 0
 
@@ -493,7 +505,8 @@ def aggregate_material_buy_list(
             line_qty = _line_gross_quantity_per_unit(res) * pos_qty
             line_cost = per_unit_cost * pos_qty
 
-            key = (name.lower(), unit.lower())
+            catalog_item_id = str(res.get("catalog_item_id") or "").strip() or None
+            key = ("item", catalog_item_id, unit.lower()) if catalog_item_id else ("name", name.lower(), unit.lower())
             acc = groups.get(key)
             if acc is None:
                 acc = {
@@ -508,6 +521,7 @@ def aggregate_material_buy_list(
             acc["quantity"] += line_qty
             acc["cost"] += line_cost
             acc["positions"].add(pos_id)
+            suggested, origin = effective_suggestion(meta, res)
             acc["sources"].append(
                 BuyListSource(
                     position_id=pos_id,
@@ -515,7 +529,9 @@ def aggregate_material_buy_list(
                     quantity=line_qty,
                     unit=unit,
                     code=str(res.get("code") or "").strip(),
-                    catalog_item_id=str(res.get("catalog_item_id") or "").strip() or None,
+                    catalog_item_id=catalog_item_id,
+                    suggested_vendor_id=str(suggested) if suggested else None,
+                    suggested_vendor_origin=origin,
                 )
             )
             contributed = True

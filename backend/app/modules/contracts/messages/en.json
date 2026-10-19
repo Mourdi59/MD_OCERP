@@ -218,5 +218,147 @@
       "fail": "Item {line} is recorded at {stated} to date, but its quantity or percent gives {computed}",
       "suggestion": "Correct the quantity or the amount on the document so that the two columns of the row agree"
     }
+  },
+  "public_works": {
+    "retention_above_limit": {
+      "fail": "Retention of {percent} percent is above the {limit} percent the public works law allows on each interim payment",
+      "suggestion": "Lower the contract's retention to the statutory rate"
+    },
+    "advance_above_cap": {
+      "fail": "The advance payment bond covers {percent} percent of the contract value, above the {limit} percent public works allow without the finance minister's approval",
+      "suggestion": "Reduce the advance payment, or record in the contract terms the approval obtained before tendering"
+    },
+    "delay_damages_uncapped": {
+      "fail": "A delay damages clause has no maximum amount, while the public works law caps delay damages at {limit} percent of the contract value",
+      "suggestion": "Enter the maximum amount of the delay damages clause"
+    },
+    "delay_damages_above_cap": {
+      "fail": "A delay damages clause is capped at {percent} percent of the contract value, above the {limit} percent the public works law allows",
+      "suggestion": "Lower the clause's maximum amount to the statutory cap"
+    },
+    "performance_security_missing": {
+      "fail": "No performance security is recorded, while public works require one of {limit} percent of the contract value",
+      "suggestion": "Record the final guarantee as a performance bond or a bank guarantee"
+    },
+    "performance_security_below": {
+      "fail": "The performance security covers {percent} percent of the contract value, below the {limit} percent public works require",
+      "suggestion": "Record a performance security for the full statutory percentage"
+    },
+    "price_adjustment": {
+      "no_coefficients": {
+        "fail": "Public works of {months} months or more must be price-adjusted by law, and the contract states no coefficients for its variable items",
+        "suggestion": "Enter the coefficients the contractor stated in the technical envelope"
+      },
+      "duplicate_item": {
+        "fail": "The variable item {item} is listed twice among the price adjustment coefficients",
+        "suggestion": "Keep one coefficient per variable item"
+      },
+      "coefficient_not_a_number": {
+        "fail": "The price adjustment coefficient of {item} is not a number",
+        "suggestion": "Enter the coefficient as a decimal, for example 0.15"
+      },
+      "coefficient_not_positive": {
+        "fail": "The price adjustment coefficient of {item} is zero or less, while the law requires each coefficient to be above zero",
+        "suggestion": "Enter a coefficient above zero, or remove the item"
+      },
+      "coefficient_negative": {
+        "fail": "The price adjustment coefficient of {item} is negative",
+        "suggestion": "Enter a coefficient of zero or more"
+      },
+      "coefficient_sum_not_below_one": {
+        "fail": "The price adjustment coefficients add up to {item}, while the law requires their sum to stay below one",
+        "suggestion": "Lower the coefficients so that a fixed part of the price remains"
+      },
+      "coefficient_sum_above_one": {
+        "fail": "The price adjustment coefficients add up to {item}, more than one",
+        "suggestion": "Lower the coefficients so that they add up to one or less"
+      },
+      "no_coefficients_advisory": {
+        "fail": "Public works longer than {months} months carry a price revision clause where raw materials are a significant part of the cost, and the contract states no revision weights",
+        "suggestion": "Enter the weights of the revision formula from the special conditions, or record that the price is firm"
+      }
+    },
+    "advance_below_minimum": {
+      "fail": "The advance is {percent} percent of the contract value, below the {limit} percent minimum the public works law sets for this contractor and buyer",
+      "suggestion": "Raise the advance to the minimum, or record zero if the contractor renounced it"
+    },
+    "advance_above_maximum": {
+      "fail": "The advance is {percent} percent of the contract value, above the {limit} percent the public works law sets as the usual maximum",
+      "suggestion": "Check that the special conditions allow the higher advance and record the guarantee it requires"
+    },
+    "delay_damages_rate_differs": {
+      "fail": "A delay penalty clause charges {amount} a day, while the general conditions charge {expected} a day, one {divisor}th of the contract value",
+      "suggestion": "Keep the general conditions' daily rate, or list the different rate among the derogations of the special conditions"
+    },
+    "delay_damages_above_general_conditions": {
+      "fail": "A delay penalty clause is capped at {percent} percent of the contract value, above the {limit} percent of the general conditions",
+      "suggestion": "Lower the cap to the general conditions' figure, or list it among the derogations of the special conditions"
+    }
+  },
+  "works_contract": {
+    "direct_payment_waived": {
+      "fail": "This subcontract of {amount} reaches the {limit} threshold for direct payment by the public buyer, and the contract waives it, which the law forbids",
+      "suggestion": "Record that the public buyer pays the subcontractor directly"
+    },
+    "direct_payment_unstated": {
+      "fail": "This subcontract of {amount} reaches the {limit} threshold for direct payment by the public buyer, and the contract does not record it",
+      "suggestion": "Record whether the subcontractor is accepted and paid directly by the public buyer"
+    },
+    "payment_guarantee_missing": {
+      "fail": "This subcontract on private works records neither a bank guarantee nor a delegation of payment, without which the subcontract can be voided",
+      "suggestion": "Record the main contractor's bank guarantee or the delegation of payment on the owner"
+    },
+    "private_retention_above_limit": {
+      "fail": "Retention of {percent} percent is above the {limit} percent the law allows on private works",
+      "suggestion": "Lower the contract's retention to the statutory ceiling"
+    }
+  },
+  "vat_regime": {
+    "unknown": {
+      "fail": "Contract {contract} names VAT regime {regime}, which {country} does not have",
+      "suggestion": "Choose one of the VAT regimes offered for the project's country, or remove the choice"
+    },
+    "country_unknown": {
+      "fail": "Contract {contract} names VAT regime {regime}, but its project names no country, so the regime cannot be checked",
+      "suggestion": "Set the project's country"
+    },
+    "contract_date_missing": {
+      "fail": "VAT regime {regime} is only for contracts signed before {cutoff}, and this contract records neither a signature nor a start date",
+      "suggestion": "Enter the date the contract was signed"
+    },
+    "contract_too_late": {
+      "fail": "VAT regime {regime} is only for contracts signed before {cutoff}, and this contract dates from {contract_date}",
+      "suggestion": "Choose the standard VAT regime for this contract"
+    },
+    "evidence_missing": {
+      "fail": "VAT regime {regime} needs {evidence}, and the contract records none",
+      "suggestion": "Record the document's reference and issue date with the contract's VAT regime"
+    },
+    "evidence_date_missing": {
+      "fail": "The {evidence} recorded for VAT regime {regime} has no issue date, so it cannot be shown to predate {cutoff}",
+      "suggestion": "Enter the date the document was issued"
+    },
+    "evidence_too_late": {
+      "fail": "The {evidence} recorded for VAT regime {regime} was issued on {issued_on}, and the regime needs one issued before {cutoff}",
+      "suggestion": "Record an earlier document, or choose the standard VAT regime"
+    },
+    "scope_increase_unjudged": {
+      "fail": "The contract value rose from {original_value} to {current_value} and the contract states no allowed increase, so whether VAT regime {regime} still applies cannot be judged",
+      "suggestion": "Record the increase in scope the contract allows"
+    },
+    "scope_increase_new_contract": {
+      "fail": "The contract value rose from {original_value} to {current_value}, beyond the {allowed_increase_pct} percent increase the contract allows, so for VAT it is a new contract and VAT regime {regime} no longer applies",
+      "suggestion": "Move the contract to the standard VAT regime"
+    },
+    "evidence_kinds": {
+      "approved_certificate": "a consultant-approved payment certificate",
+      "einvoice": "an e-invoice or e-receipt",
+      "main_contractor_certificate": "the main contractor's certificate that VAT was paid on the project"
+    },
+    "not_in_force": {
+      "before": "Claim {claim} is dated {on}, and VAT regime {regime} applies only from {effective_from}; in force that day: {instead}",
+      "after": "Claim {claim} is dated {on}, and VAT regime {regime} ended on {effective_to}; in force that day: {instead}",
+      "suggestion": "Change the contract's VAT regime to one in force on the claim date, or correct the claim date"
+    }
   }
 }

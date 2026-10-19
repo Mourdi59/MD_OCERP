@@ -1,4 +1,76 @@
 {
+  "cost_control": {
+    "unassigned_money": {
+      "fail": "Sumele angajate nu sunt atribuite niciunei linii de cost.",
+      "suggestion": "Legați liniile contractului sau ale comenzii de linii de cost, pentru ca banii să apară la locul potrivit."
+    },
+    "certified_over_committed": {
+      "fail": "Lucrările certificate depășesc valoarea atribuită plus modificările aprobate.",
+      "suggestion": "Aprobați modificarea care acoperă lucrările suplimentare sau verificați cererea de plată."
+    },
+    "forecast_over_plan": {
+      "fail": "Prognoza depășește suma planificată.",
+      "suggestion": "Verificați sursa prognozei; dacă vă așteptați la economii, introduceți o prognoză manuală cu motivul."
+    },
+    "partly_awarded": {
+      "fail": "Doar o parte din suma planificată este atribuită; prognozei îi pot lipsi lucrări încă de atribuit.",
+      "suggestion": "Dacă pe această linie mai sunt lucrări de atribuit, introduceți o prognoză manuală."
+    },
+    "pending_changes": {
+      "fail": "Ordinele de modificare așteaptă o decizie.",
+      "suggestion": "Decideți asupra ordinelor de modificare în așteptare; prognoza nu le include încă."
+    },
+    "snapshot_stale": {
+      "fail": "De peste o lună nu a fost salvată nicio prognoză.",
+      "suggestion": "Salvați un instantaneu al prognozei, pentru ca istoricul costurilor să rămână lizibil."
+    }
+  },
+  "cost_structure": {
+    "account_code_duplicate": {
+      "fail": "Codul de cont {code} apare de mai multe ori în structura de costuri.",
+      "suggestion": "Păstrați un singur cont pe cod și mutați pe el liniile sale de cost."
+    },
+    "mixed_standard": {
+      "fail": "Structura de costuri amestecă clasificări: {standards}.",
+      "suggestion": "Construiți structura dintr-o singură clasificare; mapați celelalte coduri pe aceasta."
+    },
+    "account_parent_cycle": {
+      "fail": "Contul {code} este propriul său strămoș prin {count} conturi.",
+      "suggestion": "Dați unuia dintre aceste conturi un cont părinte din afara buclei."
+    },
+    "account_too_deep": {
+      "fail": "Contul {code} este pe nivelul {level}, mai adânc decât cele {max} niveluri ale clasificării sale.",
+      "suggestion": "Atașați contul unui părinte în limita adâncimii clasificării."
+    },
+    "no_account": {
+      "fail": "{count} linii de cost în valoare de {amount} nu sunt pe niciun cont (prima: {code}).",
+      "suggestion": "Dați acestor poziții un cod din clasificarea structurii sau atribuiți liniile de cost unui cont."
+    },
+    "invalid_account": {
+      "fail": "{count} linii de cost în valoare de {amount} sunt pe un cont închis sau care nu acceptă înregistrări (prima: {code}).",
+      "suggestion": "Mutați liniile de cost pe un cont deschis care acceptă înregistrări."
+    },
+    "own_amount_on_parent": {
+      "fail": "Contul {code} are subconturi și, în plus, o sumă proprie de {amount}.",
+      "suggestion": "Mutați suma proprie pe un subcont sau păstrați-o ca rezervă deliberată."
+    },
+    "rollup_mismatch": {
+      "fail": "Totalul structurii {reported} diferă de suma părților sale {expected} cu {difference}.",
+      "suggestion": "Reîncărcați structura; dacă diferența rămâne, verificați conturile fără părinte."
+    },
+    "allocation_incomplete": {
+      "fail": "Cotele poziției {ordinal} însumează {total}{unit} în loc de {expected}{unit}.",
+      "suggestion": "Ajustați cotele astfel încât întreaga poziție să fie repartizată, nici mai mult, nici mai puțin."
+    },
+    "allocation_mixed_modes": {
+      "fail": "Poziția {ordinal} este împărțită parțial procentual și parțial pe cantitate.",
+      "suggestion": "Împărțiți poziția într-un singur fel."
+    },
+    "vector_not_inherited": {
+      "fail": "Linia de contract {code} este pe o linie de cost la care poziția sa din devizul de lucrări nu este atribuită.",
+      "suggestion": "Puneți linia înapoi pe liniile de cost ale poziției sau înregistrați derogarea cu un motiv."
+    }
+  },
   "boq_markup": {
     "contingency_not_on_profit": {
       "fail": "Rezerva de risc „{markup}” se calculează pe o bază care include deja linia de profit „{profit}”, astfel încât se aplică o marjă banilor rezervați pentru risc",
@@ -59,6 +131,10 @@
     "offline_sync_delay": {
       "fail": "Lucrările au fost executate la {date}, dar datele au ajuns la birou abia după {days} zile",
       "suggestion": "Verificați orele față de ziua efectiv lucrată înainte de aprobare; decontarea poate fi deja închisă"
+    },
+    "outdoor_heat_ban": {
+      "fail": "Rândul {line} înregistrează lucru de la {start} până la {end} în data de {date}, în intervalul interdicției de la prânz pentru lucrul în aer liber, de la {ban_from} până la {ban_to}",
+      "suggestion": "Dacă lucrarea s-a desfășurat în aer liber, în soare direct, mutați-o în afara orelor de interdicție; lucrările în spații închise și sectoarele exceptate nu sunt afectate"
     }
   },
   "ai_takeoff": {
@@ -521,6 +597,20 @@
       "suggestion": "Limitați ajustările între -50% și +200% pentru a evita prețuri nerealiste ale parcelelor"
     }
   },
+  "schedule_5d": {
+    "boq_coverage": {
+      "fail": "Poziția {ordinal} '{description}' ({amount}) este evaluată în devizul de lucrări, dar nicio activitate nu o conține, deci costul ei nu e în grafic",
+      "suggestion": "Dați poziției o cantitate sau legați-o de o activitate, apoi generați din nou graficul."
+    },
+    "cost_reconciliation": {
+      "fail": "Graficul conține {planned} din {bill} al devizului: {difference} din lucrările evaluate nu sunt în nicio activitate",
+      "suggestion": "Verificați pozițiile listate de verificarea de acoperire, apoi generați din nou graficul."
+    },
+    "duration_vs_norm": {
+      "fail": "Activitatea '{activity}' durează {duration} zile lucrătoare, în timp ce normele de manoperă și utilaje dau {norm}",
+      "suggestion": "Verificați cantitatea, formația și orele de normă ale poziției sau o durată modificată manual."
+    }
+  },
   "schedule_quality": {
     "open_ends": {
       "fail": "Activitatea '{activity}' nu are legătură logică de tip {ends} (capăt deschis / activitate neconectată)",
@@ -656,6 +746,42 @@
     "requisition_line_cost_line": {
       "fail": "Linia {line} nu este legată de o linie de cost, deci comanda ei nu va apărea ca angajată față de buget",
       "suggestion": "Creați linia din BOQ sau legați-o de o linie de cost înainte de comandă"
+    },
+    "requisition_suggested_vendor_in_directory": {
+      "fail": "Linia {line} sugerează furnizorul {vendor}, care nu este în registrul de furnizori",
+      "suggestion": "Alegeți furnizorul sugerat din registrul de furnizori sau ștergeți sugestia"
+    },
+    "requisition_suggested_vendor_active": {
+      "fail": "Linia {line} sugerează pe {vendor}, un furnizor care nu este activ în registrul de furnizori",
+      "suggestion": "Sugerați un furnizor activ sau lăsați alegerea în seama achizitorului"
+    },
+    "requisition_suggestion_conflict": {
+      "fail": "Sursele BOQ ale liniei {line} sugerează {count} furnizori diferiți",
+      "suggestion": "Alegeți un singur furnizor pentru linie sau împărțiți-o astfel încât fiecare furnizor să aibă linia lui"
+    },
+    "requisition_suggested_vendor_differs": {
+      "fail": "Linia {line} sugerează pe {vendor}, dar cererea de achiziție urmează să fie comandată de la alt furnizor",
+      "suggestion": "Verificați dacă furnizorul ales poate livra această linie sau comandați-o separat"
+    },
+    "requisition_line_needed_by_not_past": {
+      "fail": "Linia {line} este necesară până la {date}, dată care a trecut deja (astăzi este {today})",
+      "suggestion": "Indicați data la care materialul este cu adevărat necesar pe șantier"
+    },
+    "requisition_line_schedule_moved": {
+      "fail": "Linia {line} a fost planificată pentru o activitate care începea la {anchor}, dar activitatea începe acum la {start}",
+      "suggestion": "Comparați data necesarului liniei cu graficul actual și modificați-o dacă este nevoie"
+    },
+    "requisition_approver_not_requester": {
+      "fail": "Persoana care a creat cererea de materiale {req} este și aprobatorul desemnat cu numărul {step}",
+      "suggestion": "Desemnați alt aprobator pentru acel pas, ca decizia să aparțină altcuiva decât solicitantului"
+    },
+    "requisition_line_over_ordered": {
+      "fail": "Linia {line} are {ordered} {unit} în comenzi, mai mult decât cele {requested} {unit} solicitate",
+      "suggestion": "Verificați dacă cantitatea în plus este intenționată sau reduceți linia comenzii"
+    },
+    "requisition_order_unit_mismatch": {
+      "fail": "Comanda {order} conține linia {line} în {unit}, care nu poate fi convertită în unitatea liniei {line_unit}",
+      "suggestion": "Corectați unitatea de pe linia comenzii pentru ca cantitatea ei să fie numărată ca comandată"
     },
     "receipt_certificate_present": {
       "fail": "Linia {line} a fost comandată cu {required}, dar livrarea conține {delivered}",
@@ -973,5 +1099,184 @@
     "parent_not_found": "Modelul a cărui versiune nouă ar trebui să fie această încărcare nu se află în acest proiect. Alegeți altul sau încărcați fișierul ca model separat.",
     "parent_not_ready": "Importul modelului \"{name}\" nu s-a încheiat, deci acesta nu poate primi încă o versiune nouă. Așteptați până este gata sau încărcați acest fișier ca model separat.",
     "parent_superseded": "Modelul \"{name}\" are deja o versiune mai nouă, {version}. Încărcați în schimb acest fișier ca versiune nouă a celei mai recente."
+  },
+  "cost_chain": {
+    "contract_without_schedule": {
+      "fail": "Contractul {code} valorează {amount}, dar nu are articole de deviz, așa că banii lui nu sunt pe nicio linie de cost.",
+      "suggestion": "Dați contractului un cont în controlul costurilor sau adăugați articolele lui."
+    },
+    "contract_sum_differs": {
+      "fail": "Contractul {code} valorează {total}, dar articolele lui însumează {lines} (diferență de {difference}).",
+      "suggestion": "Corectați valoarea contractului sau articolele, astfel încât să corespundă."
+    },
+    "change_without_agreed_amount": {
+      "fail": "Actul adițional {code} este aprobat fără sumă convenită.",
+      "suggestion": "Înregistrați suma convenită cu constructorul înainte de aprobarea actului adițional."
+    },
+    "change_without_approval_date": {
+      "fail": "Actul adițional {code} este aprobat fără dată de aprobare.",
+      "suggestion": "Înregistrați când a fost aprobat actul adițional."
+    },
+    "billed_before_approval": {
+      "fail": "S-au facturat {amount} pe contractul {contract} pentru actul adițional {code}, care are starea {status} și nu este aprobat.",
+      "suggestion": "Aprobați mai întâi actul adițional sau scoateți facturarea din situația de lucrări."
+    },
+    "contract_over_target": {
+      "fail": "Contractul {code} angajează {committed}, cu {difference} peste {target} din devizul din care a fost atribuit (peste {tolerance} %).",
+      "suggestion": "Verificați atribuirea și actele adiționale față de deviz și notați de ce lucrarea costă mai mult."
+    },
+    "account_over_plan": {
+      "fail": "Contul {code} are angajamente de {committed}, cu {difference} peste planul de {planned} (peste {tolerance} %).",
+      "suggestion": "Verificați angajamentele de pe acest cont sau actualizați planul cu un motiv."
+    },
+    "quantity_overrun": {
+      "fail": "Articolul {code} din contractul {contract} este măsurat la {measured} {unit} față de {contracted} {unit} contractate, cu {over} % peste (permis {tolerance} %).",
+      "suggestion": "Verificați măsurătoarea sau convenți cantitatea suplimentară ca act adițional."
+    },
+    "measurement_exceeds_commitment": {
+      "fail": "Contractul {code} este măsurat la {measured}, cu {difference} peste valoarea lui cu acte adiționale aprobate de {committed}.",
+      "suggestion": "Aprobați actul adițional care acoperă lucrarea în plus sau verificați măsurătoarea."
+    },
+    "invoice_without_contract": {
+      "fail": "Factura furnizorului {number} de {amount} nu aparține niciunui contract sau comenzi.",
+      "suggestion": "Legați rândurile ei de un contract sau înregistrați-o drept cost direct pe un cont."
+    }
+  },
+  "payment_release": {
+    "cumulative_total_fell": {
+      "fail": "Factura {number} de pe contractul {contract} arată {net} cumulat, mai puțin decât cei {previous} ai facturii anterioare {previous_number}, deși contractul se facturează cumulat.",
+      "suggestion": "Dacă factura cuprinde doar lucrările noi, contractul se facturează incremental; dacă reduce totalul, înregistreaz-o ca notă de credit."
+    },
+    "invoice_after_final": {
+      "fail": "Factura {number} de pe contractul {contract} vine după factura finală {final}.",
+      "suggestion": "Înregistrează lucrările ulterioare ca lucrări în regie sau notă de credit, ori marchează factura corectă drept finală."
+    },
+    "claim_invoice_in_cumulative": {
+      "fail": "Factura {number} de pe contractul {contract} a fost creată dintr-o revendicare și facturează o singură perioadă, dar contractul se facturează cumulat.",
+      "suggestion": "Folosește un singur mod de facturare pe contract: treci contractul pe facturare incrementală sau înregistrează în loc facturile cumulate ale constructorului."
+    },
+    "release_differs": {
+      "fail": "Plata aprobată pentru factura {number} de pe contractul {contract} este {stored}, dar condițiile contractului dau azi {computed}.",
+      "suggestion": "Verifică ce s-a schimbat de la aprobare (condiții, sume facturate, deduceri), apoi redeschide aprobarea și confirm-o din nou."
+    },
+    "rounding_out_of_range": {
+      "fail": "Factura {number} este rotunjită cu {rounding}, în afara pasului de rotunjire convenit de {step}.",
+      "suggestion": "Rotunjirea reduce suma aprobată cu mai puțin de un pas; activează rotunjirea în condițiile de plată sau redeschide aprobarea."
+    },
+    "final_retention_without_warranty": {
+      "fail": "Factura finală {number} de pe contractul {contract} reține {amount} din garanția de bună execuție, dar nu este convenită nicio reținere pentru perioada de garanție.",
+      "suggestion": "Convino reținerea pentru garanție în condițiile de plată sau redeschide aprobarea ca toată garanția să se plătească cu factura finală."
+    },
+    "posting_exceeds_held": {
+      "fail": "Pe contractul {contract} s-a returnat mai multă garanție decât se reține: {amount} în plus.",
+      "suggestion": "Anulează înregistrarea de garanție prea mare și înregistrează suma reținută efectiv."
+    },
+    "posting_before_event": {
+      "fail": "Garanția de {amount} de pe contractul {contract} a fost returnată la {posted}, înainte de evenimentul de eliberare, scadent la {due}.",
+      "suggestion": "Verifică data evenimentului de eliberare sau înregistrează eliberarea după ce a avut loc evenimentul."
+    },
+    "posting_without_event_date": {
+      "fail": "Garanția de {amount} de pe contractul {contract} a fost returnată, dar data evenimentului de eliberare nu este înregistrată.",
+      "suggestion": "Înregistrează data la care a fost atins evenimentul de eliberare, ca plata să poată fi verificată în raport cu ea."
+    },
+    "retention_still_held": {
+      "fail": "Contractul {contract} este finalizat și reține încă {amount} din garanție.",
+      "suggestion": "Eliberează garanția la evenimentul ei în registrul de garanții sau păstreaz-o reținută pe perioada de garanție."
+    },
+    "discount_not_agreed": {
+      "fail": "Aprobarea plății facturii {number} de pe contractul {contract} aplică un discount pentru plată anticipată de {amount}, dar contractul nu permite așa ceva.",
+      "suggestion": "Activează discountul pentru plată anticipată în condițiile de plată sau redeschide aprobarea fără el."
+    },
+    "discount_after_deadline": {
+      "fail": "S-a reținut un discount de {amount} pe factura {number}, dar plata din {paid_on} a venit după data discountului {until}.",
+      "suggestion": "Plătește și suma discountului sau notează de ce a acceptat constructorul discountul întârziat."
+    },
+    "invoiced_over_measured": {
+      "fail": "Contractul {contract} este facturat la {invoiced}, cu {difference} peste cei {measured} măsurați (cantitate înmulțită cu preț).",
+      "suggestion": "Verifică măsurătorile înainte de a aproba mai mulți bani sau reține diferența la următoarea aprobare."
+    },
+    "invoiced_over_contract": {
+      "fail": "Contractul {contract} este facturat la {invoiced}, cu {difference} peste valoarea lui de {value}, și nu are nimic măsurat.",
+      "suggestion": "Înregistrează măsurătoarea sau actul adițional care acoperă suma în plus înainte de a aproba mai mult."
+    },
+    "reverse_charge_with_vat": {
+      "fail": "Factura {number} are taxare inversă, dar conține {vat} TVA.",
+      "suggestion": "O factură cu taxare inversă nu conține TVA; corectează suma TVA sau categoria de TVA a liniilor."
+    },
+    "line_without_vat_rate": {
+      "fail": "Factura {number} conține TVA, dar {count} dintre liniile ei nu au cotă de TVA.",
+      "suggestion": "Completează cota de TVA pe fiecare linie, ca deducerile și exporturile să ia taxa corectă."
+    },
+    "duplicate_number": {
+      "fail": "Numărul de factură {number} de la același constructor este introdus de {count} ori.",
+      "suggestion": "Anulează copia sau corectează numărul facturii dacă sunt facturi diferite."
+    },
+    "possible_duplicate": {
+      "fail": "Factura {number} are același constructor, aceeași sumă ({amount}) și aceeași dată ({on}) ca factura {other}.",
+      "suggestion": "Verifică să nu fie aceeași factură introdusă de două ori sub alt număr."
+    },
+    "certificate_missing": {
+      "fail": "Factura {number} la contractul {contract}: beneficiarul nu deține la data {on} un document valabil ({certificate}), pe care {reference} îl cere înainte de eliberarea plății.",
+      "suggestion": "Înregistrați documentul în fișa de subcontractant a beneficiarului sau rețineți plata până la prezentarea lui."
+    },
+    "split_payment_annotation_missing": {
+      "fail": "Factura {number} cuprinde lucrări de construcții sau alte bunuri supuse split payment și depășește {threshold}, dar nu poartă mențiunea «{annotation}».",
+      "suggestion": "Cere furnizorului o factură corectată cu mențiunea și plătește-o în orice caz prin split payment: obligația de a plăti astfel nu depinde de mențiune."
+    },
+    "split_payment_not_used": {
+      "fail": "Factura {number} intră sub split payment, dar o plată a ei a fost înregistrată cu altă metodă. Cumpărătorul răspunde în plus pentru {sanction}, 30 la sută din TVA-ul ei.",
+      "suggestion": "Plătește astfel de facturi din contul de TVA prin split payment și înregistrează metoda pe plată ca split_payment."
+    },
+    "split_payment_annex_unknown": {
+      "fail": "Factura {number} depășește {threshold} și nu este înregistrat dacă cuprinde bunuri sau servicii din anexa split payment.",
+      "suggestion": "Înregistrează pe factură dacă cuprinde bunuri sau servicii din anexă (annex_15) sau codurile lor (pkwiu_codes), ca metoda de plată să poată fi verificată."
+    },
+    "reduced_rate_above_area_limit": {
+      "fail": "Factura {number} aplică TVA de {rate} la sută pe întregul preț, dar locuința are {area_m2} m2 suprafață utilă, iar cota redusă se aplică până la {limit_m2} m2 ({reference}).",
+      "suggestion": "Aplică cota redusă pe {reduced_share_percent} la sută din preț și cota standard pe rest."
+    },
+    "reduced_rate_object_unknown": {
+      "fail": "Factura {number} aplică cota redusă pentru locuințe de {rate} la sută, dar proiectul nu înregistrează pentru ce locuință este și nici suprafața ei utilă ({reference}).",
+      "suggestion": "Înregistrează pe proiect tipul locuinței și suprafața utilă (vat_housing), ca să poată fi verificate cota și limita de suprafață."
+    },
+    "reduced_rate_not_eligible": {
+      "fail": "Factura {number} aplică cota redusă pentru locuințe de {rate} la sută pe {object}, care nu se califică pentru ea ({reference}).",
+      "suggestion": "Aplică cota standard sau corectează locuința înregistrată pe proiect."
+    },
+    "domestic_reverse_charge_ended": {
+      "fail": "Factura {number} aplică taxarea inversă pe {count} linie/linii, dar taxarea inversă internă pentru serviciile de construcții a încetat în această țară.",
+      "suggestion": "Dacă furnizorul nu este stabilit în străinătate, cere o factură cu TVA; astfel de facturi se plătesc prin split payment."
+    },
+    "payment_term_over_cap": {
+      "fail": "Contractul {contract} convine un termen de plată de {days} zile, mai lung decât cele {cap} zile pe care legea privind întârzierea la plată le permite între întreprinderi.",
+      "suggestion": "Scurtează termenul la {cap} zile sau înregistrează de ce termenul mai lung este convenit în mod expres și nu este abuziv în mod grav față de subcontractor."
+    }
+  },
+  "cost_forecast": {
+    "below_commitment": {
+      "fail": "{code}: prognoza de {forecast} este sub {owed}, deja angajați sau ceruți în modificări în așteptare (cu {difference} mai puțin), iar nimic nu explică diferența.",
+      "suggestion": "Atașați documentul din spatele cifrei mai mici (o notă de credit, o înțelegere, un proces-verbal) sau precizați pe linie de ce metoda ei dă mai puțin."
+    },
+    "move_without_evidence": {
+      "fail": "{code}: prognoza s-a mutat de la {previous} la {current} ({delta}) față de ultimul instantaneu înghețat, peste pragul proiectului, și nu are încă comentariu și document justificativ.",
+      "suggestion": "Scrieți de ce s-a modificat cifra și asociați documentul sau procesul-verbal care o susține înainte de înghețarea instantaneului."
+    },
+    "method_override_without_comment": {
+      "fail": "{code} este prognozat prin {method} în loc de metoda proiectului ({project_method}), iar niciun comentariu nu spune de ce.",
+      "suggestion": "Adăugați un scurt comentariu la metoda liniei sau readuceți linia la metoda proiectului."
+    },
+    "method": {
+      "best_available": "cea mai bună sursă disponibilă",
+      "maximum": "valoare maximă",
+      "evm_cpi": "performanța costurilor (CPI)",
+      "manual": "sumă manuală"
+    }
+  },
+  "payment_release_certificate_types": {
+    "social_security_clearance": "certificat de lipsă a restanțelor la asigurările sociale",
+    "construction_tax_exemption": "certificat de scutire de taxa pe construcții",
+    "employers_liability_clearance": "certificat de lipsă a restanțelor privind răspunderea angajatorilor",
+    "insurance": "certificat de asigurare",
+    "license": "licența antreprenorului"
   }
 }

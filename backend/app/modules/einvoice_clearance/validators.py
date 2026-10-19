@@ -56,8 +56,14 @@ from app.core.validation.engine import (
     rule_registry,
     validation_engine,
 )
+from app.modules.einvoice_clearance.mentions import (
+    SEVERITY_ERROR,
+    SEVERITY_WARNING,
+    check_mentions,
+    facts_from_context,
+)
 from app.modules.einvoice_clearance.models import SETTLED_STATUSES
-from app.modules.einvoice_clearance.regimes import REGIME_CLEARANCE
+from app.modules.einvoice_clearance.regimes import CANCELLATION_BASIS_AUTHORITY, REGIME_CLEARANCE
 
 logger = logging.getLogger(__name__)
 
@@ -270,7 +276,13 @@ class CancellationAllowed(ValidationRule):
         if not reason:
             problems.append("no reason was given")
 
-        if window is None:
+        if window is None and _text(regime.get("cancellation_basis")) == CANCELLATION_BASIS_AUTHORITY:
+            # The platform publishes the window itself and refuses a late
+            # request with its own code; the adapter reads it when it cancels.
+            # Guessing a day count here would refuse cancellations the
+            # authority still allows, or let through ones it does not.
+            details["cancellation_basis"] = CANCELLATION_BASIS_AUTHORITY
+        elif window is None:
             correction = _text(regime.get("correction_mechanism")) or "a correcting document"
             problems.append(f"{country or 'this country'} has no cancellation flow (correct with {correction})")
             details["correction_mechanism"] = correction
@@ -411,6 +423,68 @@ class SandboxProfileInUse(ValidationRule):
         ]
 
 
+def _mention_results(rule: ValidationRule, context: ValidationContext, severity: str) -> list[RuleResult]:
+    """Findings of the country mentions catalogue at one severity. Country-neutral."""
+    document = _section(context, "document")
+    profile = _section(context, "profile")
+    regime = _section(context, "regime")
+    country = _text(regime.get("country")) or _text(profile.get("country"))
+    facts = facts_from_context(document, profile)
+    findings = check_mentions(
+        country=country,
+        document_kind=_text(document.get("document_kind")) or "invoice",
+        issue_date=document.get("invoice_date"),
+        facts=facts,
+        company_size=_text(facts["settings"].get("company_size")) or None,
+    )
+    chosen = [f for f in findings if f.severity == severity]
+    if not chosen:
+        return [_result(rule, True, "OK")]
+    return [
+        _result(
+            rule,
+            False,
+            f.message,
+            element_ref=_text(document.get("id")) or None,
+            suggestion=f"Fill: {', '.join(f.missing)}. Source: {f.source_url}",
+            details={
+                "country": f.country,
+                "key": f.key,
+                "missing": list(f.missing),
+                "effective_date": f.effective_date,
+                "size_assumed": f.size_assumed,
+                "needs_expert_review": f.needs_expert_review,
+                "params": f.params,
+            },
+        )
+        for f in chosen
+    ]
+
+
+class InvoiceMentionsRequired(ValidationRule):
+    rule_id = "einvoice_clearance.invoice_mentions"
+    name = "Mandatory Invoice Mentions For The Country"
+    standard = "einvoice_clearance"
+    severity = Severity.ERROR
+    category = RuleCategory.COMPLIANCE
+    description = "Mentions the country's catalogue confirms as mandatory on the issue date."
+
+    async def validate(self, context: ValidationContext) -> list[RuleResult]:
+        return _mention_results(self, context, SEVERITY_ERROR)
+
+
+class InvoiceMentionsUnconfirmed(ValidationRule):
+    rule_id = "einvoice_clearance.invoice_mentions_unconfirmed"
+    name = "Invoice Mentions Awaiting Expert Confirmation"
+    standard = "einvoice_clearance"
+    severity = Severity.WARNING
+    category = RuleCategory.COMPLIANCE
+    description = "Mentions the catalogue lists but a local expert has not yet confirmed. Never blocks."
+
+    async def validate(self, context: ValidationContext) -> list[RuleResult]:
+        return _mention_results(self, context, SEVERITY_WARNING)
+
+
 _EINVOICE_CLEARANCE_RULES: tuple[ValidationRule, ...] = (
     ProfileComplete(),
     MandatoryFieldsPresent(),
@@ -419,6 +493,8 @@ _EINVOICE_CLEARANCE_RULES: tuple[ValidationRule, ...] = (
     PayloadNotReused(),
     IdentifierPresent(),
     SandboxProfileInUse(),
+    InvoiceMentionsRequired(),
+    InvoiceMentionsUnconfirmed(),
 )
 
 
@@ -474,11 +550,29 @@ async def hard_blockers(payload: dict[str, Any]) -> list[RuleResult]:
     """
     context = ValidationContext(data=payload)
     found: list[RuleResult] = []
-    for rule in _EINVOICE_CLEARANCE_RULES:
+    for rule in _gate_rules():
         if rule.severity != Severity.ERROR:
             continue
         found.extend(result for result in await rule.validate(context) if not result.passed)
     return found
+
+
+def _gate_rules() -> list[ValidationRule]:
+    """The module's own rules plus every rule a plugin registered into the set.
+
+    A country adapter package registers its
+    document rules into this rule set. If the hard gate ran only the module's
+    own tuple, those rules would show up as findings and still let the document
+    go, which is the one outcome the gate exists to prevent.
+    """
+    rules: list[ValidationRule] = list(_EINVOICE_CLEARANCE_RULES)
+    seen = {rule.rule_id for rule in rules}
+    registered = rule_registry.get_rules_for_sets([EINVOICE_CLEARANCE_RULE_SET])
+    for rule in sorted(registered, key=lambda r: r.rule_id):
+        if rule.rule_id not in seen:
+            seen.add(rule.rule_id)
+            rules.append(rule)
+    return rules
 
 
 def blocking_findings(results: list[RuleResult]) -> list[RuleResult]:

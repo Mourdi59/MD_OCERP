@@ -39,6 +39,11 @@
     "note": "Portable Document Format abbreviation, identical in every script and locale",
     "reason_category": "abbreviation"
   },
+  "analytics.perf.factor_times": {
+    "en_value": "x{{factor}}",
+    "note": "a multiplier marker beside a template variable (the cost index factor a record moved by), the same 'x' in every locale including ru, zh and ar; the words around it live in the translated provenance keys",
+    "reason_category": "template_placeholder"
+  },
   "analytics.perf.p25": {
     "en_value": "P25",
     "note": "percentile abbreviation in the performance benchmark table header, written the same way in every locale that carries the key, including ru",
@@ -994,6 +999,11 @@
     "note": "da/id/it/no/pt/vi keep 'Skid' as an established prefab-industry loanword for a skid-mounted equipment frame - corroborated by prefab.intro_body's own untranslated use of 'skid(s)' in the same locales (non-baseline, already shipped).",
     "reason_category": "cognate_loanword"
   },
+  "procurement.requisitions.external_line_ref": {
+    "en_value": "{{system}} {{number}}: {{quantity}} {{unit}}",
+    "note": "entirely template variables/punctuation, no literal word to translate: the external system name, its order number, the quantity and the unit, as the system reported them",
+    "reason_category": "template_placeholder"
+  },
   "progress.record_period": {
     "en_value": "Period",
     "note": "sv.ts genuinely uses \"Period\" unchanged, matching sv's own progress.col_period and 15 other Period-labeled sibling keys across the app; a Germanic cognate, not leftover English (module 13 of #182)",
@@ -1828,5 +1838,30 @@
     "en_value": "{{count}} d",
     "note": "unit abbreviation for day in the interface register's ageing column; cs den, da/no/sv/nl dag, es dia, pt dia, pl dzien and hr dan all abbreviate it to d, the same convention as submittals.days_short, while de, fr, it and the non-Latin locales write their own abbreviation",
     "reason_category": "abbreviation"
+  },
+  "cost_control.export_pdf": {
+    "en_value": "PDF",
+    "note": "file format name on an export button, written the same in every locale",
+    "reason_category": "product_name"
+  },
+  "cost_control.export_xlsx": {
+    "en_value": "Excel",
+    "note": "application name on an export button, written the same in every locale",
+    "reason_category": "product_name"
+  },
+  "cost_control.method_count": {
+    "en_value": "{{method}}: {{n}}",
+    "note": "entirely template variables and a colon; fr spaces the colon and ja/zh use the full-width colon, the rest share it",
+    "reason_category": "template_placeholder"
+  },
+  "cost_control.layer_budget": {
+    "en_value": "Budget",
+    "note": "the word is the native term in da, de, fil, fr, it, nl and sv; every other locale translates it",
+    "reason_category": "cognate_loanword"
+  },
+  "cost_control.source_budget": {
+    "en_value": "Budget",
+    "note": "the word is the native term in da, de, fil, fr, it, nl and sv; every other locale translates it",
+    "reason_category": "cognate_loanword"
   }
 }

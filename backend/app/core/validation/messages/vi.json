@@ -1,4 +1,76 @@
 {
+  "cost_control": {
+    "unassigned_money": {
+      "fail": "Số tiền đã cam kết chưa được gán cho dòng chi phí nào.",
+      "suggestion": "Liên kết các dòng hợp đồng hoặc đơn đặt hàng với dòng chi phí để số tiền hiển thị đúng chỗ."
+    },
+    "certified_over_committed": {
+      "fail": "Khối lượng đã xác nhận vượt giá trị giao thầu cộng các thay đổi đã duyệt.",
+      "suggestion": "Hãy duyệt thay đổi bao phủ phần việc phát sinh, hoặc kiểm tra lại đề nghị thanh toán."
+    },
+    "forecast_over_plan": {
+      "fail": "Dự báo cao hơn số tiền kế hoạch.",
+      "suggestion": "Kiểm tra nguồn của dự báo; nếu dự kiến tiết kiệm, hãy nhập dự báo thủ công kèm lý do."
+    },
+    "partly_awarded": {
+      "fail": "Chỉ một phần số tiền kế hoạch đã được giao thầu; dự báo có thể thiếu phần việc còn phải giao.",
+      "suggestion": "Nếu dòng này còn việc phải giao thầu, hãy nhập dự báo thủ công."
+    },
+    "pending_changes": {
+      "fail": "Lệnh thay đổi đang chờ quyết định.",
+      "suggestion": "Hãy quyết định các lệnh thay đổi đang chờ; dự báo chưa bao gồm chúng."
+    },
+    "snapshot_stale": {
+      "fail": "Đã hơn một tháng chưa lưu dự báo nào.",
+      "suggestion": "Hãy lưu một bản chụp dự báo để lịch sử chi phí vẫn dễ đọc."
+    }
+  },
+  "cost_structure": {
+    "account_code_duplicate": {
+      "fail": "Mã tài khoản {code} xuất hiện nhiều lần trong cơ cấu chi phí.",
+      "suggestion": "Giữ một tài khoản cho mỗi mã và chuyển các dòng chi phí của nó sang tài khoản đó."
+    },
+    "mixed_standard": {
+      "fail": "Cơ cấu chi phí đang trộn nhiều bảng mã: {standards}.",
+      "suggestion": "Hãy xây dựng cơ cấu từ một bảng mã; ánh xạ các mã khác vào bảng đó."
+    },
+    "account_parent_cycle": {
+      "fail": "Tài khoản {code} là tổ tiên của chính nó qua {count} tài khoản.",
+      "suggestion": "Hãy gán cho một trong các tài khoản này một tài khoản cha nằm ngoài vòng lặp."
+    },
+    "account_too_deep": {
+      "fail": "Tài khoản {code} ở cấp {level}, sâu hơn {max} cấp của bảng mã.",
+      "suggestion": "Gắn tài khoản vào tài khoản cha trong giới hạn độ sâu của bảng mã."
+    },
+    "no_account": {
+      "fail": "{count} dòng chi phí trị giá {amount} không thuộc tài khoản nào (đầu tiên: {code}).",
+      "suggestion": "Hãy gán cho các hạng mục này một mã của bảng mã trong cơ cấu, hoặc gán các dòng chi phí vào một tài khoản."
+    },
+    "invalid_account": {
+      "fail": "{count} dòng chi phí trị giá {amount} nằm trên tài khoản đã đóng hoặc tài khoản không nhận bút toán (đầu tiên: {code}).",
+      "suggestion": "Chuyển các dòng chi phí sang tài khoản đang mở và nhận bút toán."
+    },
+    "own_amount_on_parent": {
+      "fail": "Tài khoản {code} có tài khoản con và còn có số tiền riêng {amount}.",
+      "suggestion": "Chuyển số tiền riêng sang một tài khoản con, hoặc giữ lại như một khoản dự phòng có chủ đích."
+    },
+    "rollup_mismatch": {
+      "fail": "Tổng cơ cấu {reported} chênh lệch {difference} so với tổng các phần {expected}.",
+      "suggestion": "Tải lại cơ cấu; nếu chênh lệch vẫn còn, hãy kiểm tra các tài khoản thiếu tài khoản cha."
+    },
+    "allocation_incomplete": {
+      "fail": "Các phần chia của hạng mục {ordinal} cộng lại là {total}{unit} thay vì {expected}{unit}.",
+      "suggestion": "Điều chỉnh các phần chia để toàn bộ hạng mục được phân bổ, không thừa không thiếu."
+    },
+    "allocation_mixed_modes": {
+      "fail": "Hạng mục {ordinal} được chia một phần theo phần trăm và một phần theo khối lượng.",
+      "suggestion": "Chỉ chia hạng mục theo một cách."
+    },
+    "vector_not_inherited": {
+      "fail": "Dòng hợp đồng {code} nằm ở dòng chi phí mà hạng mục BOQ của nó không được phân bổ vào.",
+      "suggestion": "Đưa dòng về các dòng chi phí của hạng mục, hoặc ghi nhận ngoại lệ kèm lý do."
+    }
+  },
   "boq_markup": {
     "contingency_not_on_profit": {
       "fail": "Dự phòng \"{markup}\" được tính trên cơ sở đã bao gồm dòng lợi nhuận \"{profit}\", nên phần tiền dành cho rủi ro cũng bị tính thêm lợi nhuận",
@@ -59,6 +131,10 @@
     "offline_sync_delay": {
       "fail": "Ngày công này được thực hiện vào {date} nhưng {days} ngày sau mới gửi đến văn phòng",
       "suggestion": "Đối chiếu số giờ với ngày thực tế trước khi duyệt vì kỳ xác định giá trị có thể đã khóa"
+    },
+    "outdoor_heat_ban": {
+      "fail": "Dòng {line} ghi nhận công việc từ {start} đến {end} ngày {date}, nằm trong khung giờ cấm làm việc ngoài trời buổi trưa từ {ban_from} đến {ban_to}",
+      "suggestion": "Nếu công việc này làm ngoài trời dưới nắng trực tiếp, hãy dời ra ngoài giờ cấm; công việc trong nhà và các ngành được miễn trừ không bị ảnh hưởng"
     }
   },
   "ai_takeoff": {
@@ -521,6 +597,20 @@
       "suggestion": "Giới hạn mức điều chỉnh từ -50% đến +200% để tránh giá lô đất không thực tế"
     }
   },
+  "schedule_5d": {
+    "boq_coverage": {
+      "fail": "Hạng mục {ordinal} '{description}' ({amount}) đã có đơn giá trong bảng tiên lượng, nhưng không có công việc nào chứa nó, nên chi phí của nó không có trong tiến độ",
+      "suggestion": "Nhập khối lượng cho hạng mục hoặc liên kết với một công việc, rồi tạo lại tiến độ."
+    },
+    "cost_reconciliation": {
+      "fail": "Tiến độ chứa {planned} trong {bill} của bảng tiên lượng: {difference} khối lượng công việc đã có đơn giá không nằm trong công việc nào",
+      "suggestion": "Kiểm tra các hạng mục mà bước kiểm tra độ phủ liệt kê, rồi tạo lại tiến độ."
+    },
+    "duration_vs_norm": {
+      "fail": "Công việc '{activity}' kéo dài {duration} ngày làm việc, trong khi định mức nhân công và máy thi công cho {norm}",
+      "suggestion": "Kiểm tra khối lượng, tổ đội và giờ định mức của hạng mục, hoặc thời lượng đã sửa tay."
+    }
+  },
   "schedule_quality": {
     "open_ends": {
       "fail": "Công việc '{activity}' thiếu liên kết logic với {ends} (đầu hở / công việc không được liên kết đầy đủ)",
@@ -656,6 +746,42 @@
     "requisition_line_cost_line": {
       "fail": "Dòng {line} chưa liên kết với dòng chi phí nên đơn đặt hàng của nó sẽ không hiện là khoản cam kết so với ngân sách",
       "suggestion": "Tạo dòng từ BOQ, hoặc liên kết nó với một dòng chi phí trước khi đặt hàng"
+    },
+    "requisition_suggested_vendor_in_directory": {
+      "fail": "Dòng {line} đề xuất nhà cung cấp {vendor}, nhưng nhà cung cấp này không có trong danh bạ nhà cung cấp",
+      "suggestion": "Chọn nhà cung cấp được đề xuất từ danh bạ nhà cung cấp, hoặc xóa đề xuất"
+    },
+    "requisition_suggested_vendor_active": {
+      "fail": "Dòng {line} đề xuất {vendor}, một nhà cung cấp không còn hoạt động trong danh bạ nhà cung cấp",
+      "suggestion": "Đề xuất một nhà cung cấp đang hoạt động, hoặc để bộ phận mua hàng chọn"
+    },
+    "requisition_suggestion_conflict": {
+      "fail": "Các nguồn BOQ của dòng {line} đề xuất {count} nhà cung cấp khác nhau",
+      "suggestion": "Chọn một nhà cung cấp cho dòng, hoặc tách dòng để mỗi nhà cung cấp có dòng riêng"
+    },
+    "requisition_suggested_vendor_differs": {
+      "fail": "Dòng {line} đề xuất {vendor}, nhưng phiếu yêu cầu vật tư sẽ đặt hàng từ nhà cung cấp khác",
+      "suggestion": "Kiểm tra nhà cung cấp đã chọn có giao được dòng này không, hoặc đặt riêng dòng này"
+    },
+    "requisition_line_needed_by_not_past": {
+      "fail": "Dòng {line} cần trước ngày {date}, ngày này đã qua (hôm nay là {today})",
+      "suggestion": "Nhập ngày vật tư thực sự cần có tại công trường"
+    },
+    "requisition_line_schedule_moved": {
+      "fail": "Dòng {line} được lập kế hoạch cho công việc bắt đầu ngày {anchor}, nhưng công việc nay bắt đầu ngày {start}",
+      "suggestion": "Đối chiếu ngày cần của dòng với tiến độ hiện tại và sửa nếu cần"
+    },
+    "requisition_approver_not_requester": {
+      "fail": "Người lập phiếu yêu cầu vật tư {req} cũng là người duyệt số {step} được chỉ định",
+      "suggestion": "Chỉ định người duyệt khác cho bước đó để người quyết định không phải là người yêu cầu"
+    },
+    "requisition_line_over_ordered": {
+      "fail": "Dòng {line} có {ordered} {unit} trong các đơn đặt hàng, nhiều hơn {requested} {unit} đã yêu cầu",
+      "suggestion": "Kiểm tra xem lượng vượt có chủ ý không, hoặc giảm dòng của đơn"
+    },
+    "requisition_order_unit_mismatch": {
+      "fail": "Đơn {order} ghi dòng {line} theo {unit}, không thể quy đổi sang đơn vị của dòng là {line_unit}",
+      "suggestion": "Sửa đơn vị trên dòng của đơn để khối lượng được tính là đã đặt"
     },
     "receipt_certificate_present": {
       "fail": "Dòng {line} được đặt với {required}, nhưng đợt giao hàng lại có {delivered}",
@@ -973,5 +1099,184 @@
     "parent_not_found": "Mô hình mà bản tải lên này lẽ ra là phiên bản mới của nó không có trong dự án này. Hãy chọn mô hình khác, hoặc tải lên như một mô hình riêng.",
     "parent_not_ready": "\"{name}\" chưa nhập xong nên chưa thể nhận phiên bản mới. Hãy đợi đến khi sẵn sàng, hoặc tải tệp này lên như một mô hình riêng.",
     "parent_superseded": "\"{name}\" đã có phiên bản mới hơn là {version}. Thay vào đó, hãy tải tệp này lên làm phiên bản mới của bản mới nhất."
+  },
+  "cost_chain": {
+    "contract_without_schedule": {
+      "fail": "Hợp đồng {code} trị giá {amount} nhưng không có dòng tiến độ nào, nên tiền của nó không nằm ở dòng chi phí nào.",
+      "suggestion": "Hãy gán cho hợp đồng một tài khoản trong kiểm soát chi phí, hoặc thêm các dòng tiến độ của nó."
+    },
+    "contract_sum_differs": {
+      "fail": "Hợp đồng {code} trị giá {total}, nhưng các dòng của nó cộng lại là {lines} (chênh {difference}).",
+      "suggestion": "Hãy sửa giá trị hợp đồng hoặc các dòng để hai bên khớp nhau."
+    },
+    "change_without_agreed_amount": {
+      "fail": "Phát sinh {code} đã được duyệt nhưng chưa có số tiền thỏa thuận.",
+      "suggestion": "Hãy ghi số tiền đã thỏa thuận với nhà thầu trước khi duyệt phát sinh."
+    },
+    "change_without_approval_date": {
+      "fail": "Phát sinh {code} đã được duyệt nhưng chưa có ngày duyệt.",
+      "suggestion": "Hãy ghi lại thời điểm phát sinh được duyệt."
+    },
+    "billed_before_approval": {
+      "fail": "Đã xuất hóa đơn {amount} trên hợp đồng {contract} cho phát sinh {code}, nhưng phát sinh này đang ở trạng thái {status} và chưa được duyệt.",
+      "suggestion": "Hãy duyệt phát sinh trước, hoặc gỡ khoản thanh toán này khỏi hồ sơ thanh toán."
+    },
+    "contract_over_target": {
+      "fail": "Hợp đồng {code} cam kết {committed}, cao hơn {difference} so với {target} của bảng khối lượng dùng để giao thầu (vượt {tolerance} %).",
+      "suggestion": "Hãy đối chiếu việc giao thầu và các phát sinh với bảng khối lượng, và ghi lại vì sao công việc tốn hơn."
+    },
+    "account_over_plan": {
+      "fail": "Tài khoản {code} có cam kết {committed}, cao hơn kế hoạch {planned} là {difference} (vượt {tolerance} %).",
+      "suggestion": "Hãy kiểm tra các cam kết trên tài khoản này, hoặc cập nhật kế hoạch kèm lý do."
+    },
+    "quantity_overrun": {
+      "fail": "Dòng {code} của hợp đồng {contract} đo được {measured} {unit} so với {contracted} {unit} trong hợp đồng, vượt {over} % (cho phép {tolerance} %).",
+      "suggestion": "Hãy kiểm tra số đo, hoặc thỏa thuận phần khối lượng thêm như một phát sinh."
+    },
+    "measurement_exceeds_commitment": {
+      "fail": "Hợp đồng {code} đo được {measured}, cao hơn giá trị kèm phát sinh đã duyệt là {committed} một khoản {difference}.",
+      "suggestion": "Hãy duyệt phát sinh bao phủ phần việc thêm, hoặc kiểm tra số đo."
+    },
+    "invoice_without_contract": {
+      "fail": "Hóa đơn nhà cung cấp {number} trị giá {amount} không thuộc hợp đồng hay đơn hàng nào.",
+      "suggestion": "Hãy liên kết các dòng của nó với một hợp đồng, hoặc ghi nhận là chi phí trực tiếp trên một tài khoản."
+    }
+  },
+  "payment_release": {
+    "cumulative_total_fell": {
+      "fail": "Hóa đơn {number} của hợp đồng {contract} ghi lũy kế {net}, thấp hơn {previous} của hóa đơn trước {previous_number}, trong khi hợp đồng thanh toán theo lũy kế.",
+      "suggestion": "Nếu hóa đơn chỉ thanh toán phần việc mới thì hợp đồng thanh toán theo phần tăng thêm; nếu hóa đơn làm giảm tổng thì hãy nhập thành giấy báo có."
+    },
+    "invoice_after_final": {
+      "fail": "Hóa đơn {number} của hợp đồng {contract} nằm sau hóa đơn quyết toán {final}.",
+      "suggestion": "Hãy nhập phần việc phát sinh sau đó thành công việc theo ngày công hoặc giấy báo có, hoặc đánh dấu đúng hóa đơn là hóa đơn quyết toán."
+    },
+    "claim_invoice_in_cumulative": {
+      "fail": "Hóa đơn {number} của hợp đồng {contract} được lập từ yêu cầu bồi thường và chỉ thanh toán một kỳ, nhưng hợp đồng thanh toán theo lũy kế.",
+      "suggestion": "Mỗi hợp đồng chỉ dùng một cách xuất hóa đơn: chuyển hợp đồng sang thanh toán theo phần tăng thêm, hoặc nhập các hóa đơn lũy kế của nhà thầu."
+    },
+    "release_differs": {
+      "fail": "Số tiền đã xác nhận cho phép thanh toán của hóa đơn {number} thuộc hợp đồng {contract} là {stored}, nhưng theo điều khoản hợp đồng hôm nay ra {computed}.",
+      "suggestion": "Kiểm tra điều gì đã thay đổi kể từ lúc duyệt thanh toán (điều khoản, số tiền hóa đơn, khoản khấu trừ), rồi mở lại và xác nhận lại."
+    },
+    "rounding_out_of_range": {
+      "fail": "Hóa đơn {number} được làm tròn {rounding}, vượt ngoài bước làm tròn đã thỏa thuận là {step}.",
+      "suggestion": "Làm tròn chỉ cắt số tiền duyệt thanh toán ít hơn một bước; hãy bật làm tròn trong điều kiện thanh toán hoặc mở lại phần duyệt thanh toán."
+    },
+    "final_retention_without_warranty": {
+      "fail": "Hóa đơn quyết toán {number} của hợp đồng {contract} giữ lại {amount} tiền giữ lại, nhưng chưa thỏa thuận tiền giữ lại bảo hành.",
+      "suggestion": "Thỏa thuận tiền giữ lại bảo hành trong điều kiện thanh toán, hoặc mở lại phần duyệt thanh toán để trả toàn bộ tiền giữ lại cùng hóa đơn quyết toán."
+    },
+    "posting_exceeds_held": {
+      "fail": "Hợp đồng {contract} đã hoàn trả tiền giữ lại nhiều hơn số đang giữ: dư {amount}.",
+      "suggestion": "Hủy bút toán hoàn trả tiền giữ lại bị quá cao và hạch toán đúng số tiền thực sự đang giữ."
+    },
+    "posting_before_event": {
+      "fail": "Tiền giữ lại {amount} của hợp đồng {contract} đã được hoàn trả vào {posted}, trước khi sự kiện giải phóng đến hạn vào {due}.",
+      "suggestion": "Kiểm tra ngày của sự kiện giải phóng, hoặc hạch toán giải phóng sau khi sự kiện đã diễn ra."
+    },
+    "posting_without_event_date": {
+      "fail": "Tiền giữ lại {amount} của hợp đồng {contract} đã được hoàn trả, nhưng chưa ghi ngày của sự kiện giải phóng.",
+      "suggestion": "Ghi ngày sự kiện giải phóng đạt được, để có thể đối chiếu khoản thanh toán với ngày đó."
+    },
+    "retention_still_held": {
+      "fail": "Hợp đồng {contract} đã hoàn thành nhưng vẫn đang giữ lại {amount} tiền giữ lại.",
+      "suggestion": "Giải phóng tiền giữ lại theo sự kiện của nó trong sổ tiền giữ lại, hoặc tiếp tục giữ trong thời hạn bảo hành."
+    },
+    "discount_not_agreed": {
+      "fail": "Phần duyệt thanh toán của hóa đơn {number} thuộc hợp đồng {contract} áp dụng chiết khấu thanh toán sớm {amount}, nhưng hợp đồng không cho phép.",
+      "suggestion": "Bật chiết khấu thanh toán sớm trong điều kiện thanh toán, hoặc mở lại phần duyệt thanh toán mà không có chiết khấu."
+    },
+    "discount_after_deadline": {
+      "fail": "Đã giữ lại khoản chiết khấu {amount} trên hóa đơn {number}, nhưng lần thanh toán ngày {paid_on} đến sau ngày hết hạn chiết khấu {until}.",
+      "suggestion": "Trả thêm cả khoản chiết khấu, hoặc ghi lại lý do nhà thầu chấp nhận chiết khấu trễ."
+    },
+    "invoiced_over_measured": {
+      "fail": "Hợp đồng {contract} đã xuất hóa đơn {invoiced}, cao hơn {difference} so với khối lượng đã nghiệm thu {measured} (số lượng nhân đơn giá).",
+      "suggestion": "Kiểm tra lại số liệu đo bóc trước khi duyệt thêm tiền, hoặc giữ lại phần chênh ở lần duyệt thanh toán kế tiếp."
+    },
+    "invoiced_over_contract": {
+      "fail": "Hợp đồng {contract} đã xuất hóa đơn {invoiced}, cao hơn giá trị hợp đồng {value} là {difference}, và chưa có khối lượng nào được đo bóc.",
+      "suggestion": "Ghi nhận đo bóc hoặc phát sinh hợp đồng bao phủ khoản tiền vượt trước khi duyệt thêm."
+    },
+    "reverse_charge_with_vat": {
+      "fail": "Hóa đơn {number} áp dụng cơ chế khai thuế ngược (reverse charge) nhưng lại có {vat} VAT.",
+      "suggestion": "Hóa đơn khai thuế ngược không có VAT; hãy sửa số tiền VAT hoặc nhóm VAT của các dòng."
+    },
+    "line_without_vat_rate": {
+      "fail": "Hóa đơn {number} có VAT, nhưng {count} dòng không ghi thuế suất VAT.",
+      "suggestion": "Nhập thuế suất VAT cho mọi dòng để các khoản khấu trừ và xuất dữ liệu lấy đúng thuế."
+    },
+    "duplicate_number": {
+      "fail": "Số hóa đơn {number} của cùng một nhà thầu được nhập {count} lần.",
+      "suggestion": "Hủy bản sao, hoặc sửa số hóa đơn nếu đó là các hóa đơn khác nhau."
+    },
+    "possible_duplicate": {
+      "fail": "Hóa đơn {number} có cùng nhà thầu, số tiền ({amount}) và ngày ({on}) với hóa đơn {other}.",
+      "suggestion": "Kiểm tra xem có phải cùng một hóa đơn bị nhập hai lần dưới số khác hay không."
+    },
+    "certificate_missing": {
+      "fail": "Hóa đơn {number} theo hợp đồng {contract}: bên nhận thanh toán không có {certificate} còn hiệu lực vào ngày {on}, mà {reference} yêu cầu trước khi giải ngân khoản thanh toán.",
+      "suggestion": "Ghi nhận giấy này vào hồ sơ nhà thầu phụ của bên nhận, hoặc giữ lại khoản thanh toán cho đến khi giấy được xuất trình."
+    },
+    "split_payment_annotation_missing": {
+      "fail": "Hóa đơn {number} có công tác xây dựng hoặc hàng hóa khác thuộc split payment và vượt {threshold}, nhưng không có ghi chú «{annotation}».",
+      "suggestion": "Yêu cầu nhà cung cấp xuất hóa đơn đã sửa có ghi chú và trong mọi trường hợp vẫn thanh toán bằng split payment: nghĩa vụ thanh toán theo cách này không phụ thuộc vào ghi chú."
+    },
+    "split_payment_not_used": {
+      "fail": "Hóa đơn {number} thuộc diện split payment, nhưng khoản thanh toán của nó được ghi bằng phương thức khác. Bên mua phải chịu thêm {sanction}, bằng 30 phần trăm VAT của hóa đơn.",
+      "suggestion": "Hãy thanh toán các hóa đơn như vậy từ tài khoản VAT bằng split payment và ghi phương thức trên khoản thanh toán là split_payment."
+    },
+    "split_payment_annex_unknown": {
+      "fail": "Hóa đơn {number} vượt {threshold}, và chưa ghi nhận liệu có hàng hóa hay dịch vụ thuộc phụ lục split payment hay không.",
+      "suggestion": "Hãy ghi trên hóa đơn liệu có hàng hóa hay dịch vụ thuộc phụ lục (annex_15) hoặc mã của chúng (pkwiu_codes) để có thể kiểm tra phương thức thanh toán."
+    },
+    "reduced_rate_above_area_limit": {
+      "fail": "Hóa đơn {number} tính VAT {rate} phần trăm trên toàn bộ giá, nhưng căn hộ có diện tích sử dụng {area_m2} m2 và thuế suất ưu đãi chỉ áp dụng đến {limit_m2} m2 ({reference}).",
+      "suggestion": "Hãy tính thuế suất ưu đãi trên {reduced_share_percent} phần trăm giá và thuế suất thông thường trên phần còn lại."
+    },
+    "reduced_rate_object_unknown": {
+      "fail": "Hóa đơn {number} tính thuế suất nhà ở ưu đãi {rate} phần trăm, nhưng dự án không ghi nhận căn nhà nào và diện tích sử dụng của nó ({reference}).",
+      "suggestion": "Hãy ghi loại nhà ở và diện tích sử dụng trên dự án (vat_housing) để có thể kiểm tra thuế suất và giới hạn diện tích."
+    },
+    "reduced_rate_not_eligible": {
+      "fail": "Hóa đơn {number} tính thuế suất nhà ở ưu đãi {rate} phần trăm cho {object}, không đủ điều kiện áp dụng ({reference}).",
+      "suggestion": "Hãy tính thuế suất thông thường, hoặc sửa căn nhà đã ghi trên dự án."
+    },
+    "domestic_reverse_charge_ended": {
+      "fail": "Hóa đơn {number} áp dụng reverse charge cho {count} dòng, nhưng reverse charge trong nước đối với dịch vụ xây dựng đã chấm dứt ở quốc gia này.",
+      "suggestion": "Trừ khi nhà cung cấp đặt trụ sở ở nước ngoài, hãy yêu cầu hóa đơn có VAT; các hóa đơn này được thanh toán bằng split payment."
+    },
+    "payment_term_over_cap": {
+      "fail": "Hợp đồng {contract} thỏa thuận thời hạn thanh toán {days} ngày, dài hơn {cap} ngày mà luật chậm thanh toán cho phép giữa các doanh nghiệp.",
+      "suggestion": "Hãy rút ngắn thời hạn còn {cap} ngày, hoặc ghi lại lý do thời hạn dài hơn được thỏa thuận rõ ràng và không bất công nghiêm trọng đối với nhà thầu phụ."
+    }
+  },
+  "cost_forecast": {
+    "below_commitment": {
+      "fail": "{code}: dự báo {forecast} thấp hơn {owed} đã cam kết hoặc được yêu cầu trong các thay đổi chờ duyệt (thấp hơn {difference}), và không có gì giải thích điều này.",
+      "suggestion": "Đính kèm tài liệu đứng sau con số thấp hơn (giấy báo có, biên bản thanh lý, biên bản họp), hoặc ghi vào dòng lý do phương pháp của nó cho kết quả thấp hơn."
+    },
+    "move_without_evidence": {
+      "fail": "{code}: dự báo đã đổi từ {previous} sang {current} ({delta}) kể từ bản chốt đã khóa gần nhất, vượt ngưỡng của dự án, và chưa có ghi chú cũng như tài liệu chứng minh.",
+      "suggestion": "Ghi rõ vì sao con số thay đổi và liên kết tài liệu hoặc biên bản làm căn cứ trước khi khóa bản chốt."
+    },
+    "method_override_without_comment": {
+      "fail": "{code} được dự báo theo {method} thay vì {project_method} của dự án, và không có ghi chú nào giải thích lý do.",
+      "suggestion": "Thêm một ghi chú ngắn vào phương pháp của dòng, hoặc đặt dòng về phương pháp của dự án."
+    },
+    "method": {
+      "best_available": "nguồn tốt nhất hiện có",
+      "maximum": "giá trị lớn nhất",
+      "evm_cpi": "hiệu suất chi phí (CPI)",
+      "manual": "số tiền nhập tay"
+    }
+  },
+  "payment_release_certificate_types": {
+    "social_security_clearance": "giấy xác nhận hoàn thành nghĩa vụ bảo hiểm xã hội",
+    "construction_tax_exemption": "giấy chứng nhận miễn thuế xây dựng",
+    "employers_liability_clearance": "giấy xác nhận hoàn thành trách nhiệm của người sử dụng lao động",
+    "insurance": "giấy chứng nhận bảo hiểm",
+    "license": "giấy phép nhà thầu"
   }
 }

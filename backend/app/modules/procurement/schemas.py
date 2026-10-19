@@ -1013,6 +1013,10 @@ class RequisitionItemSourceIn(BaseModel):
     quantity: str = Field(default="0", max_length=50)
     unit: str | None = Field(default=None, max_length=20)
     cost_line_id: UUID | None = None
+    # The supplier the BOQ suggested for this source. Left out, the server reads
+    # it from the BOQ resource (or its position default); sent, it is kept as
+    # sent so an edited draft does not re-read a BOQ that has changed since.
+    suggested_vendor_id: UUID | None = None
 
     @field_validator("quantity")
     @classmethod
@@ -1037,6 +1041,18 @@ class RequisitionItemIn(BaseModel):
     catalog_item_id: UUID | None = None
     cost_line_id: UUID | None = None
     boq_position_id: UUID | None = None
+    # The supplier suggested for this line. Left out, the line inherits the one
+    # its sources agree on; sent (null included), it is the requester's choice.
+    suggested_vendor_id: UUID | None = None
+    # When this line is needed. Left out or null, the requisition's
+    # ``required_date`` applies. With ``schedule_activity_id`` and no date, the
+    # server proposes the activity start minus ``schedule_buffer_days``.
+    required_date: date | None = None
+    schedule_activity_id: UUID | None = None
+    schedule_buffer_days: int | None = Field(default=None, ge=0, le=365)
+    # The activity start the date was proposed from, echoed back by the editor
+    # so a saved draft keeps it. Left out, the activity's start now is used.
+    schedule_anchor_date: date | None = None
     sources: list[RequisitionItemSourceIn] = Field(default_factory=list, max_length=1000)
 
     @field_validator("quantity_requested", "unit_cost")
@@ -1058,6 +1074,14 @@ class RequisitionCreate(BaseModel):
     # The supplier from the Vendor directory, when the requester already knows it.
     vendor_id: UUID | None = None
     items: list[RequisitionItemIn] = Field(default_factory=list, max_length=1000)
+    # Where the orders are placed. Left out, the project's setting applies.
+    order_owner: Literal["ocerp", "external"] | None = None
+    # Designated approvers in order. Left out, the project's default applies;
+    # an empty list means any holder of the approval permission decides alone.
+    approval_chain: list[UUID] | None = Field(default=None, max_length=10)
+    # Makes the create idempotent: a second create in the project with the same
+    # key answers with the requisition the first one made.
+    client_request_id: str | None = Field(default=None, min_length=1, max_length=100)
 
 
 class RequisitionUpdate(BaseModel):
@@ -1077,6 +1101,9 @@ class RequisitionUpdate(BaseModel):
     # Sent as null, clears the supplier; left out, keeps it.
     vendor_id: UUID | None = None
     items: list[RequisitionItemIn] | None = Field(default=None, max_length=1000)
+    order_owner: Literal["ocerp", "external"] | None = None
+    # Sent (an empty list included), replaces the designated approvers.
+    approval_chain: list[UUID] | None = Field(default=None, max_length=10)
 
 
 class RequisitionCancel(BaseModel):
@@ -1103,12 +1130,31 @@ class RequisitionReject(BaseModel):
     comment: str = Field(..., min_length=1, max_length=2000)
 
 
+class RequisitionConvertLine(BaseModel):
+    """How much of one requisition line goes on the order, in the line's unit."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    requisition_item_id: UUID
+    quantity: str = Field(..., max_length=50)
+
+    @field_validator("quantity")
+    @classmethod
+    def _check_quantity(cls, v: str) -> str:
+        return _validate_non_negative_decimal(v)
+
+
 class RequisitionConvert(BaseModel):
     """Turn approved requisitions of one project into one draft purchase order.
 
     ``vendor_id`` names the supplier from the Vendor directory. Left out, the
     supplier the requisitions agree on is used; requisitions naming different
     suppliers cannot share an order.
+
+    ``lines`` orders part of the requisitions: each named line with the given
+    quantity, nothing else. Left out, every line is ordered with what is still
+    to order. ``idempotency_key`` makes a retry safe: a second conversion with
+    the same key in the project answers with the order the first one made.
     """
 
     model_config = ConfigDict(str_strip_whitespace=True)
@@ -1118,6 +1164,8 @@ class RequisitionConvert(BaseModel):
     vendor_id: UUID | None = None
     delivery_date: date | None = None
     notes: str | None = Field(default=None, max_length=5000)
+    lines: list[RequisitionConvertLine] | None = Field(default=None, max_length=1000)
+    idempotency_key: str | None = Field(default=None, min_length=1, max_length=100)
 
 
 class RequisitionConvertResponse(BaseModel):
@@ -1129,6 +1177,10 @@ class RequisitionConvertResponse(BaseModel):
     requisition_ids: list[UUID]
     line_count: int
     vendor_warnings: list[str] = Field(default_factory=list)
+    # True when the idempotency key matched an earlier conversion and nothing new was written.
+    replayed: bool = False
+    # Requisitions that are now fully ordered; the others still have quantity to order.
+    fully_ordered_requisition_ids: list[UUID] = Field(default_factory=list)
 
 
 class RequisitionPOItemRef(BaseModel):
@@ -1137,8 +1189,34 @@ class RequisitionPOItemRef(BaseModel):
     po_item_id: UUID
     po_id: UUID
     po_number: str | None = None
+    po_status: str | None = None
     quantity: str = "0"
     unit: str | None = None
+    # The supplier's dates, kept apart from the date the material is needed.
+    po_delivery_date: str | None = None
+    supplier_confirmed_delivery_date: str | None = None
+    # Received on confirmed goods receipts for this order line, in the order line's unit.
+    quantity_received: str = "0"
+    # True when the order line's unit cannot be restated in the requisition line's unit;
+    # such a line is shown but not counted.
+    unit_mismatch: bool = False
+
+
+class RequisitionExternalLineResponse(BaseModel):
+    """An external order line reported against a requisition line."""
+
+    id: UUID
+    external_system: str
+    external_order_number: str
+    external_line_ref: str = ""
+    status: str
+    quantity_ordered: str = "0"
+    quantity_received: str = "0"
+    unit: str | None = None
+    expected_delivery_date: str | None = None
+    confirmed_delivery_date: str | None = None
+    unit_mismatch: bool = False
+    updated_at: datetime | None = None
 
 
 class RequisitionItemSourceResponse(BaseModel):
@@ -1152,6 +1230,16 @@ class RequisitionItemSourceResponse(BaseModel):
     quantity: str = "0"
     unit: str | None = None
     cost_line_id: UUID | None = None
+    suggested_vendor_id: UUID | None = None
+    suggested_vendor_name: str | None = None
+
+
+class RequisitionVendorRef(BaseModel):
+    """A Vendor directory entry as a requisition shows it."""
+
+    id: UUID
+    name: str | None = None
+    status: str | None = None
 
 
 class RequisitionItemResponse(BaseModel):
@@ -1178,9 +1266,61 @@ class RequisitionItemResponse(BaseModel):
     catalog_item_id: UUID | None = None
     cost_line_id: UUID | None = None
     sort_order: int = 0
+    # Suggested supplier (issue #516). ``source_suggested_vendors`` lists every
+    # distinct supplier the BOQ sources suggested; more than one means they
+    # disagree, which ``suggestion_conflict`` states outright.
+    suggested_vendor_id: UUID | None = None
+    suggested_vendor_name: str | None = None
+    suggested_vendor_status: str | None = None
+    source_suggested_vendors: list[RequisitionVendorRef] = Field(default_factory=list)
+    suggestion_conflict: bool = False
+    # Needed-by date. ``effective_required_date`` is the line's own date or the
+    # header's; ``required_date_source`` says which (``line``, ``schedule``,
+    # ``requisition``) or is null when neither is set. ``latest_order_date`` is
+    # the effective date minus the requisition's lead time.
+    required_date: str | None = None
+    effective_required_date: str | None = None
+    required_date_source: str | None = None
+    latest_order_date: str | None = None
+    schedule_activity_id: UUID | None = None
+    schedule_activity_name: str | None = None
+    schedule_buffer_days: int | None = None
+    schedule_anchor_date: str | None = None
+    # The activity start as the schedule holds it now, and whether it moved
+    # since the date was proposed. The line's date is never rewritten for it.
+    schedule_activity_start: str | None = None
+    schedule_moved: bool = False
     sources: list[RequisitionItemSourceResponse] = Field(default_factory=list)
     # The purchase order lines converted from this line (issue #516).
     po_items: list[RequisitionPOItemRef] = Field(default_factory=list)
+    # Order lines placed in an external purchasing system for this line.
+    external_orders: list[RequisitionExternalLineResponse] = Field(default_factory=list)
+    # Requested minus ordered, never below zero: what can still go on an order.
+    quantity_to_order: str = "0"
+    # More was ordered than requested on live orders.
+    over_ordered: bool = False
+
+
+class RequisitionOrderRef(BaseModel):
+    """A purchase order that holds lines of a requisition."""
+
+    po_id: UUID
+    po_number: str | None = None
+    status: str | None = None
+
+
+class RequisitionApprovalStep(BaseModel):
+    """One designated approver and where they stand in the current round.
+
+    ``state`` is ``approved`` (done this round), ``next`` (the only one who may
+    decide now) or ``waiting``.
+    """
+
+    user_id: str
+    name: str | None = None
+    state: str
+    decided_at: str | None = None
+    comment: str | None = None
 
 
 class RequisitionResponse(BaseModel):
@@ -1195,6 +1335,9 @@ class RequisitionResponse(BaseModel):
     title: str | None = None
     required_date: str | None = None
     lead_time_days: int = 0
+    # The last day to order and still arrive by ``required_date``.
+    latest_order_date: str | None = None
+    # The delivery date of the order this requisition became; null before.
     estimated_delivery_date: str | None = None
     requester_id: str | None = None
     approver_id: str | None = None
@@ -1205,9 +1348,26 @@ class RequisitionResponse(BaseModel):
     vendor_id: UUID | None = None
     vendor_name: str | None = None
     vendor_status: str | None = None
+    # Distinct suppliers the lines suggest. Never applied to ``vendor_id`` on
+    # its own: with one entry the requester may adopt it, with several the
+    # suppliers differ and a person decides.
+    suggested_vendors: list[RequisitionVendorRef] = Field(default_factory=list)
     po_id: UUID | None = None
     po_number: str | None = None
     notes: str | None = None
+    # ``ocerp`` or ``external``: where the orders for this requisition are placed.
+    order_owner: str = "ocerp"
+    # ``none``, ``partial`` or ``full``: how much of the requested quantity is on live orders.
+    order_progress: str = "none"
+    # Every order with at least one line from this requisition, cancelled ones included.
+    purchase_orders: list[RequisitionOrderRef] = Field(default_factory=list)
+    # Designated approvers in order with where each stands; empty means one approval by
+    # any holder of ``procurement.approve_requisition``.
+    approval_chain: list[RequisitionApprovalStep] = Field(default_factory=list)
+    approval_step: int = 0
+    next_approver_id: str | None = None
+    row_version: int = 0
+    client_request_id: str | None = None
     items: list[RequisitionItemResponse] = Field(default_factory=list)
     reconciliation: dict[str, str] = Field(default_factory=dict)
     history: list[dict[str, Any]] = Field(default_factory=list)
@@ -1245,6 +1405,8 @@ class TracePOLine(BaseModel):
     po_item_id: UUID
     quantity: str = "0"
     unit: str | None = None
+    po_delivery_date: str | None = None
+    supplier_confirmed_delivery_date: str | None = None
 
 
 class PositionTraceRow(BaseModel):
@@ -1314,3 +1476,110 @@ class POTraceResponse(BaseModel):
     po_status: str | None = None
     requisitions: list[POTraceRequisition] = Field(default_factory=list)
     lines: list[POTraceLine] = Field(default_factory=list)
+
+
+class ScheduleActivityOption(BaseModel):
+    """A schedule activity a requisition line can take its needed-by date from."""
+
+    id: UUID
+    name: str
+    schedule_name: str | None = None
+    start_date: str
+    end_date: str | None = None
+    activity_type: str | None = None
+
+
+class ScheduleActivityOptionPage(BaseModel):
+    """One page of the schedule activities a requisition line can take its date from.
+
+    ``total`` counts every activity of the project, so a reader can tell when
+    the page was cut short.
+    """
+
+    items: list[ScheduleActivityOption]
+    total: int
+    offset: int = 0
+    limit: int = 500
+
+
+# ── Requisition order owner, external orders and change feed (issue #516) ─────
+
+
+class ProcurementSettingsResponse(BaseModel):
+    """A project's purchasing settings for requisitions."""
+
+    project_id: UUID
+    order_owner: str = "ocerp"
+    default_approvers: list[RequisitionApprovalStep] = Field(default_factory=list)
+
+
+class ProcurementSettingsUpdate(BaseModel):
+    """Change a project's purchasing settings. Fields left out are left alone."""
+
+    order_owner: Literal["ocerp", "external"] | None = None
+    default_approval_chain: list[UUID] | None = Field(default=None, max_length=10)
+
+
+class ExternalOrderLineIn(BaseModel):
+    """One external order line as the purchasing system reports it.
+
+    Quantities are in ``unit``, or in the requisition line's unit when it is left
+    out. A line is identified by the requisition line, the system, the order
+    number and ``external_line_ref``; reporting it again updates it.
+    """
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    requisition_item_id: UUID
+    external_line_ref: str = Field(default="", max_length=100)
+    status: Literal["open", "confirmed", "partially_received", "received", "cancelled"] = "open"
+    quantity_ordered: str = Field(..., max_length=50)
+    quantity_received: str = Field(default="0", max_length=50)
+    unit: str | None = Field(default=None, max_length=20)
+    expected_delivery_date: date | None = None
+    confirmed_delivery_date: date | None = None
+
+    @field_validator("quantity_ordered", "quantity_received")
+    @classmethod
+    def _check_quantities(cls, v: str) -> str:
+        return _validate_non_negative_decimal(v)
+
+
+class ExternalOrderReport(BaseModel):
+    """An external purchasing system reports an order placed against a requisition."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    external_system: str = Field(..., min_length=1, max_length=100)
+    external_order_number: str = Field(..., min_length=1, max_length=100)
+    lines: list[ExternalOrderLineIn] = Field(..., min_length=1, max_length=1000)
+
+
+class RequisitionFeedEntry(BaseModel):
+    """One change of a requisition, in the order the feed serves them."""
+
+    id: UUID
+    cursor: str
+    occurred_at: datetime
+    requisition_id: UUID
+    req_number: str | None = None
+    event: str
+    status: str
+    row_version: int = 0
+    actor_id: str | None = None
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class RequisitionFeedPage(BaseModel):
+    """One page of the change feed.
+
+    Pass ``next_cursor`` back as ``after`` to continue; it stays where it was
+    when the page is empty, so polling with it never skips an entry. Only
+    entries older than ``settled_before`` are served, so a change whose
+    transaction commits a little after it was written is not jumped over.
+    """
+
+    items: list[RequisitionFeedEntry]
+    next_cursor: str | None = None
+    settled_before: datetime
+    has_more: bool = False

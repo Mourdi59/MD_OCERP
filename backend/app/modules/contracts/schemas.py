@@ -209,10 +209,55 @@ class ContractResponse(BaseModel):
     # versions of its own.
     template_code: str | None = None
     template_version: int | None = None
+    # The contract's own account: the whole value of a lump-sum contract, and
+    # the default of its lines (see costmodel.inheritance_service).
+    cost_line_id: UUID | None = None
     created_by: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict, validation_alias="metadata_")
     created_at: datetime
     updated_at: datetime
+
+
+class VatRegimeOption(BaseModel):
+    """One VAT regime a contract on this project may state, with its rate on the day asked about.
+
+    ``nominal_rate_pct`` is the rate of the tax seed row the regime names, in
+    force that day; ``effective_rate_pct`` is that rate times
+    ``base_fraction``, the rate on the full price. Both are None when no row
+    is on file for the day: the regime is then offered without a number rather
+    than with a guessed one.
+    """
+
+    code: str
+    labels: dict[str, str]
+    activity: str
+    tax_code: str
+    base_fraction: Decimal
+    input_credit: bool
+    nominal_rate_pct: Decimal | None = None
+    effective_rate_pct: Decimal | None = None
+    is_default: bool
+    effective_from: date
+    effective_to: date | None = None
+    review_status: str
+    legal_reference: str
+    source_url: str
+    conditions: dict[str, str] = Field(default_factory=dict)
+    # The conditions as data, for a form that asks for the evidence they need.
+    contract_signed_before: date | None = None
+    required_evidence: list[str] = Field(default_factory=list)
+    subcontract_evidence: list[str] = Field(default_factory=list)
+    evidence_dated_before: date | None = None
+    scope_increase_ends_regime: bool = False
+
+
+class VatRegimesResponse(BaseModel):
+    """The regimes a contract on this project may state on one day; empty when the country has none."""
+
+    project_id: UUID
+    country_code: str | None = None
+    on: date
+    regimes: list[VatRegimeOption] = Field(default_factory=list)
 
 
 class ContractCountryDefaultsResponse(BaseModel):
@@ -326,6 +371,10 @@ class ContractLineResponse(BaseModel):
     unit_rate: Decimal
     total_value: Decimal
     order_index: int
+    # The cost line the line is costed on: inherited from its bid line or bill
+    # position, else the contract's account; ``metadata.cost_line_source`` says
+    # which, and ``metadata.cost_line_override`` holds a person's override.
+    cost_line_id: UUID | None = None
     metadata: dict[str, Any] = Field(default_factory=dict, validation_alias="metadata_")
     # True when a progress claim has billed on this line. The server then
     # refuses to change or delete it whatever the contract's status, and the
@@ -1941,3 +1990,42 @@ class HakedisResponse(BaseModel):
     carried_total: str | None = None
     findings: list[dict[str, Any]]
     can_certify: bool
+
+
+# ── Price adjustment by weighted cost indices ────────────────────────────
+
+
+class PriceAdjustmentCoefficientIn(BaseModel):
+    """One variable item: its coefficient and either its two index values or the series to read them from."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    item: str = Field(..., min_length=1, max_length=120)
+    coefficient: Decimal
+    base_index: Decimal | None = None
+    current_index: Decimal | None = None
+    # A cost-index series of the price_index module; its points for
+    # ``base_period`` and ``current_period`` are read when the values are not sent.
+    index_series_id: UUID | None = None
+
+
+class PriceAdjustmentComputeRequest(BaseModel):
+    """One settlement of a weighted index price adjustment."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    regime: str = Field(..., min_length=1, max_length=60)
+    value_subject: Decimal
+    coefficients: list[PriceAdjustmentCoefficientIn] = Field(..., min_length=1, max_length=50)
+    base_period: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}$")
+    current_period: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}$")
+
+
+class PriceAdjustmentComputeResponse(BaseModel):
+    """The adjustment: positive is owed to the contractor, negative is deducted."""
+
+    regime: str
+    value_subject: str
+    fixed_portion: str
+    items: list[dict[str, str]]
+    total: str

@@ -57,6 +57,11 @@ class LimitationRegime(StrEnum):
 
     DE_VOB_B = "de_vob_b"  # VOB/B agreed: four years for building works
     DE_BGB = "de_bgb"  # no VOB/B: the BGB's five years
+    EG_CIVIL_651 = "eg_civil_651"  # Egypt: decennial liability of the architect and the contractor
+    FR_CIVIL_1792_6 = "fr_civil_1792_6"  # France: garantie de parfait achèvement, one year
+    FR_CIVIL_1792_3 = "fr_civil_1792_3"  # France: garantie biennale de bon fonctionnement, two years
+    FR_CIVIL_1792 = "fr_civil_1792"  # France: responsabilité décennale, ten years
+    SA_SBC_DECENNIAL = "sa_sbc_decennial"  # Saudi Arabia: decennial liability under the building code law
 
 
 @dataclass(frozen=True)
@@ -120,6 +125,94 @@ LIMITATION_REGIMES: tuple[LimitationRegimeSpec, ...] = (
             "about a particular defect and nothing a register can compute."
         ),
     ),
+    LimitationRegimeSpec(
+        code=LimitationRegime.EG_CIVIL_651.value,
+        jurisdiction="Egypt",
+        country_code="EG",
+        statute="Civil Code (Law 131/1948) Art. 651 (decennial liability)",
+        statute_reference=(
+            "Art. 651 Egyptian Civil Code: ten years from delivery of the works; the claim lapses three years "
+            "after the collapse or the discovery of the defect (Art. 654)"
+        ),
+        months=120,
+        starts_from="acceptance",
+        notes=(
+            "The architect and the contractor are jointly liable for ten years for the total or partial collapse "
+            "of buildings and other fixed structures they built, and for defects that threaten their stability, "
+            "even where the defect lies in the ground or the owner approved the faulty work, unless the structure "
+            "was meant to last less than ten years. The ten years run from delivery, recorded here as the "
+            "acceptance date. An architect who only designed is liable only for design defects (Art. 652), and a "
+            "clause that excludes or limits the liability is void. A claim must be brought within three years of "
+            "the collapse or of the discovery of the defect (Art. 654), a second clock this register does not "
+            "compute because it starts on an event only a person can record. Read in secondary summaries of the "
+            "Civil Code; the article numbering of 652 and 653 differs between sources."
+        ),
+    ),
+    LimitationRegimeSpec(
+        code=LimitationRegime.FR_CIVIL_1792_6.value,
+        jurisdiction="France",
+        country_code="FR",
+        statute="Code civil art. 1792-6 (garantie de parfait achèvement)",
+        statute_reference=(
+            "Art. 1792-6 Code civil: one year from réception; for public works also CCAG-Travaux 2021 art. 44.1"
+        ),
+        months=12,
+        starts_from="acceptance",
+        notes=(
+            "For one year from réception the contractor repairs every defect reserved at réception or notified "
+            "during the year, whatever its seriousness. Réception with reservations starts the year too. The "
+            "retenue de garantie is released at its end unless the client objected (loi 71-584, art. 2)."
+        ),
+    ),
+    LimitationRegimeSpec(
+        code=LimitationRegime.FR_CIVIL_1792_3.value,
+        jurisdiction="France",
+        country_code="FR",
+        statute="Code civil art. 1792-3 (garantie biennale de bon fonctionnement)",
+        statute_reference="Art. 1792-3 Code civil: at least two years from réception",
+        months=24,
+        starts_from="acceptance",
+        notes=(
+            "Equipment that can be removed without damaging the structure (dissociable elements) must work for "
+            "at least two years from réception. The contract may agree a longer period, entered by hand."
+        ),
+    ),
+    LimitationRegimeSpec(
+        code=LimitationRegime.FR_CIVIL_1792.value,
+        jurisdiction="France",
+        country_code="FR",
+        statute="Code civil art. 1792 and 1792-4-1 (responsabilité décennale)",
+        statute_reference="Art. 1792 and 1792-4-1 Code civil: ten years from réception",
+        months=120,
+        starts_from="acceptance",
+        notes=(
+            "Builders are liable as of right for ten years from réception for damage that compromises the "
+            "solidity of the works or makes them unfit for their purpose. Builders must insure it (Code des "
+            "assurances L241-1) and the owner must take out dommages-ouvrage insurance (L242-1); neither "
+            "insurance is a period this register computes."
+        ),
+    ),
+    LimitationRegimeSpec(
+        code=LimitationRegime.SA_SBC_DECENNIAL.value,
+        jurisdiction="Saudi Arabia",
+        country_code="SA",
+        statute="Saudi Building Code Application Law (Royal Decree M/43 of 1438H), Art. 29",
+        statute_reference=(
+            "Art. 29 Saudi Building Code Application Law: the contractor, the designer and the supervising "
+            "consultant are jointly liable for ten years from completion"
+        ),
+        months=120,
+        starts_from="acceptance",
+        notes=(
+            "The contractor, the designer and the supervising consultant are jointly liable for ten years for "
+            "the total or partial collapse of the building and for defects that threaten its stability or "
+            "safety. The ten years run from completion and handover for occupation, recorded here as the "
+            "acceptance date. Inherent defects insurance covering the same decade is compulsory for "
+            "qualifying private projects (see MANDATORY_DEFECTS_INSURANCE). Read "
+            "in secondary summaries; the window for bringing a claim after a defect appears was not confirmed "
+            "and is not computed."
+        ),
+    ),
 )
 
 # Canonical ordered tuple of the shipped regime codes, exposed so the schemas,
@@ -129,6 +222,29 @@ LIMITATION_REGIMES: tuple[LimitationRegimeSpec, ...] = (
 ALL_LIMITATION_REGIMES: tuple[str, ...] = tuple(spec.code for spec in LIMITATION_REGIMES)
 
 _BY_CODE: dict[str, LimitationRegimeSpec] = {spec.code: spec for spec in LIMITATION_REGIMES}
+
+#: Insurance a country makes compulsory against the defects its decennial
+#: liability covers. Data shown beside the limitation regime; nothing enforces
+#: it. Saudi Arabia: Cabinet Resolution 509 made inherent defects
+#: insurance compulsory for qualifying private projects, starting on 2020-05-02
+#: in the main cities of five regions. The current
+#: scope (which regions and building types in 2025-2026) was not confirmed in
+#: a primary text, so the row is flagged for review.
+MANDATORY_DEFECTS_INSURANCE: dict[str, dict[str, object]] = {
+    "SA": {
+        "name": "Inherent defects insurance (IDI)",
+        "statute_reference": "Cabinet Resolution 509; standard policy wording of the insurance regulator",
+        "source_url": "https://www.hfw.com/insights/ksa-mandates-inherent-defects-insurance-policy-for-projects-oct-2021",
+        "read_date": "2026-10-19",
+        "effective_date": "2020-05-02",
+        "years": 10,
+        "limitation_regime": LimitationRegime.SA_SBC_DECENNIAL.value,
+        "covers": "Structural collapse and defects threatening stability or safety of the building",
+        "applies_to": "Qualifying private projects; at the start in 2020, those in the main cities of five regions",
+        "needs_expert_review": True,
+        "review_reason": "The scope in force in 2025-2026 and the phased list of regions were not read.",
+    },
+}
 
 
 @dataclass(frozen=True)
@@ -264,6 +380,7 @@ def describe(spec: LimitationRegimeSpec, end_date: date | None = None) -> str:
 __all__ = [
     "ALL_LIMITATION_REGIMES",
     "LIMITATION_REGIMES",
+    "MANDATORY_DEFECTS_INSURANCE",
     "LIMITATION_STARTS",
     "DerivedPeriod",
     "LimitationRegime",

@@ -169,6 +169,7 @@ _NOT_COMPARABLE: dict[str, str] = {
     "AFA_5": "one of Hungary's two reduced bands; no single-rate counterpart",
     "KDV_1": "Türkiye's list (I) tier; KDV_RED (list II) is the reduced rate compared",
     "IVA_SRED": "Spain's super-reduced tier; IVA_RED is the reduced rate compared",
+    "VAT_5": "Poland's 5 % tier; VAT_RED (8 %) is the reduced rate compared",
     "TVA_INT": "France's intermediate 10 % tier; neither standard nor reduced",
     "FPA_SRED": "Greece's super-reduced 6 % tier; FPA_RED is the reduced rate compared",
     "VAT_SPECIAL": "Swiss accommodation rate; no counterpart class",
@@ -185,6 +186,10 @@ _NOT_COMPARABLE: dict[str, str] = {
     "PST_SK": "Canadian provincial",
     "RST_MB": "Canadian provincial",
     "CA_SALES": "United States state sales tax; sub-national",
+    "VAT_CONSTR": (
+        "Egypt's construction line: a dated regime (5 % schedule tax to 2025-07-17, the standard 14 % "
+        "after), read by the bill as its construction tier; VAT is the standard rate compared"
+    ),
 }
 
 
@@ -360,12 +365,9 @@ _SERVED_BY_A_SHARED_REGION: dict[str, str] = {
         "the GULF stack carries 5, which is the rate in the UAE. Qatar has not implemented "
         "VAT either and the catalogue carries 0 for it, so the same overcharge applies"
     ),
-    "SA": (
-        "the GULF stack carries 5, which was Saudi Arabia's rate until 2020-06-30. It rose "
-        "to 15 on 2020-07-01 and both the seed and the catalogue say 15. This is the "
-        "largest absolute gap in the table and the one closest to being simply stale rather "
-        "than shared"
-    ),
+    # Saudi Arabia used to be named here: the GULF stack's 5 was its rate only
+    # until 2020-06-30. It now reads an SA stack of its own, the Gulf lines at
+    # 15, and is compared like any single-country region.
 }
 
 

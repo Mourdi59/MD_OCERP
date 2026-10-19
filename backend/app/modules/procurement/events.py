@@ -38,6 +38,13 @@ ends up with two purchase orders - whichever fires first wins, the second
 is an idempotent skip. Re-firing the same event (bus retry, manual
 replay) is likewise a no-op.
 
+Order owner
+-----------
+A project whose orders are placed in an external purchasing system
+(``procurement.order_owner.order_owner_for_project`` answers ``external``)
+gets no draft from any award: that system raises the order for the decision,
+and a local draft would be a second order for the same award (issue #516).
+
 Failure mode
 ------------
 Errors are logged and swallowed - the award itself must never be blocked
@@ -65,6 +72,7 @@ from app.modules.bid_management.models import (
 )
 from app.modules.procurement.cost_spine import resolve_cost_line_ids
 from app.modules.procurement.models import PurchaseOrder, PurchaseOrderItem
+from app.modules.procurement.order_owner import EXTERNAL, order_owner_for_project
 from app.modules.procurement.repository import (
     POItemRepository,
     PurchaseOrderRepository,
@@ -180,6 +188,13 @@ async def _create_po_from_award(event: Event) -> None:
                     "tender.awarded handler: package=%s or bid=%s not found",
                     package_id,
                     bid_id,
+                )
+                return
+            if await order_owner_for_project(session, package.project_id) == EXTERNAL:
+                logger.info(
+                    "tender.awarded: project %s orders in an external purchasing system; no draft for package %s",
+                    package.project_id,
+                    package_id,
                 )
                 return
 
@@ -327,6 +342,11 @@ async def _create_po_from_award(event: Event) -> None:
             for item in po_items:
                 item.po_id = po.id
                 await item_repo.create(item)
+            # A split position splits its order item too, the way it splits the
+            # contract line of the same award, so the pair meets on every line.
+            await _split_items_like_positions(
+                session, package.project_id, list(zip(po_items, [ref[1] for ref in position_refs], strict=False))
+            )
 
             await session.commit()
             logger.info(
@@ -400,6 +420,14 @@ async def _create_po_from_bid_award(event: Event) -> None:
                     bidder_id,
                 )
                 return
+            if await order_owner_for_project(session, package.project_id) == EXTERNAL:
+                logger.info(
+                    "bid_management.awarded: project %s orders in an external purchasing system; "
+                    "no draft for package %s",
+                    package.project_id,
+                    package_id,
+                )
+                return
 
             # Idempotency + reconciliation. Skip if a PO already exists for
             # this bid package OR for the tendering package it is linked to
@@ -434,6 +462,7 @@ async def _create_po_from_bid_award(event: Event) -> None:
             # Map the priced submission lines to PO items, joining each line
             # back to its package line for description/unit/quantity.
             po_items: list[PurchaseOrderItem] = []
+            item_lines: list[uuid.UUID] = []
             running_subtotal = Decimal("0")
             if winning_submission is not None:
                 sub_lines = (
@@ -466,8 +495,13 @@ async def _create_po_from_bid_award(event: Event) -> None:
                             wbs_id=None,
                             cost_category=None,
                             sort_order=idx,
+                            # The scope line's cost line, the one the contract
+                            # line of the same award takes, so the commitment
+                            # rules see one award on one line and count it once.
+                            cost_line_id=meta.get("cost_line_id"),  # type: ignore[arg-type]
                         )
                     )
+                    item_lines.append(line.line_item_id)
 
             # Award amount is the authoritative committed total; fall back to
             # the submission envelope total if the award amount is missing.
@@ -527,6 +561,9 @@ async def _create_po_from_bid_award(event: Event) -> None:
             for item in po_items:
                 item.po_id = po.id
                 await item_repo.create(item)
+            await _split_items_like_bid_lines(
+                session, package.project_id, list(zip(po_items, item_lines, strict=False))
+            )
 
             await session.commit()
             logger.info(
@@ -566,9 +603,46 @@ async def _bid_line_lookup(session: AsyncSession, package_id: uuid.UUID) -> dict
             "description": row.description,
             "unit": row.unit,
             "quantity": row.quantity,
+            "cost_line_id": row.cost_line_id,
         }
         for row in rows
     }
+
+
+async def _split_items_like_positions(
+    session: AsyncSession, project_id: uuid.UUID, pairs: list[tuple[PurchaseOrderItem, object]]
+) -> None:
+    """Order items of a tender award take the split of their bill position. Best effort, like the link itself."""
+    try:
+        from app.modules.costmodel.inheritance_service import split_po_items_like_positions  # noqa: PLC0415
+    except ImportError:  # pragma: no cover - the cost model is a core module
+        return
+    await split_po_items_like_positions(session, project_id, pairs)
+    await session.flush()
+
+
+async def _split_items_like_bid_lines(
+    session: AsyncSession, project_id: uuid.UUID, pairs: list[tuple[PurchaseOrderItem, uuid.UUID]]
+) -> None:
+    """Order items of a bid package award take the split of their scope line."""
+    try:
+        from app.modules.costmodel.inheritance import SOURCE_BID_LINE, SOURCE_PO_ITEM  # noqa: PLC0415
+        from app.modules.costmodel.inheritance_service import copy_line_split  # noqa: PLC0415
+    except ImportError:  # pragma: no cover - the cost model is a core module
+        return
+    for item, line_id in pairs:
+        if item.cost_line_id is None or line_id is None:
+            continue
+        await copy_line_split(
+            session,
+            project_id=project_id,
+            source_type=SOURCE_BID_LINE,
+            source_id=line_id,
+            source_main=item.cost_line_id,
+            target_type=SOURCE_PO_ITEM,
+            target_id=item.id,
+        )
+    await session.flush()
 
 
 async def _on_supplier_rating_update(event: Event) -> None:

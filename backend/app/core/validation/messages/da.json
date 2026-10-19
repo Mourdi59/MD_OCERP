@@ -1,4 +1,76 @@
 {
+  "cost_control": {
+    "unassigned_money": {
+      "fail": "Bundne midler er ikke tildelt nogen omkostningslinje.",
+      "suggestion": "Knyt kontrakt- eller ordrelinjerne til omkostningslinjer, så pengene vises det rigtige sted."
+    },
+    "certified_over_committed": {
+      "fail": "Attesteret arbejde overstiger tildelingen plus godkendte ændringer.",
+      "suggestion": "Godkend den ændring, der dækker ekstraarbejdet, eller kontroller kravet."
+    },
+    "forecast_over_plan": {
+      "fail": "Prognosen ligger over det planlagte beløb.",
+      "suggestion": "Kontroller prognosens kilde; registrer en manuel prognose med begrundelse, hvis du forventer besparelser."
+    },
+    "partly_awarded": {
+      "fail": "Kun en del af det planlagte beløb er tildelt; prognosen mangler måske arbejde, der endnu skal udbydes.",
+      "suggestion": "Hvis der stadig skal udbydes arbejde på denne linje, så angiv en manuel prognose."
+    },
+    "pending_changes": {
+      "fail": "Ændringsordrer afventer en beslutning.",
+      "suggestion": "Tag stilling til de afventende ændringsordrer; prognosen indeholder dem endnu ikke."
+    },
+    "snapshot_stale": {
+      "fail": "Der er ikke gemt nogen prognose i mere end en måned.",
+      "suggestion": "Gem et prognoseøjebliksbillede, så omkostningshistorikken forbliver læsbar."
+    }
+  },
+  "cost_structure": {
+    "account_code_duplicate": {
+      "fail": "Kontokoden {code} optræder mere end én gang i omkostningsstrukturen.",
+      "suggestion": "Behold én konto pr. kode og flyt dens omkostningslinjer over på den."
+    },
+    "mixed_standard": {
+      "fail": "Omkostningsstrukturen blander kodelister: {standards}.",
+      "suggestion": "Opbyg strukturen ud fra én kodeliste; map de øvrige koder til den."
+    },
+    "account_parent_cycle": {
+      "fail": "Konto {code} er sin egen forfader via {count} konti.",
+      "suggestion": "Giv en af disse konti en overordnet konto uden for løkken."
+    },
+    "account_too_deep": {
+      "fail": "Konto {code} ligger på niveau {level}, dybere end kodelistens {max} niveauer.",
+      "suggestion": "Placer kontoen under en overordnet konto inden for kodelistens dybde."
+    },
+    "no_account": {
+      "fail": "{count} omkostningslinjer til en værdi af {amount} ligger på ingen konto (første: {code}).",
+      "suggestion": "Giv disse poster en kode fra strukturens kodeliste, eller tildel omkostningslinjerne til en konto."
+    },
+    "invalid_account": {
+      "fail": "{count} omkostningslinjer til en værdi af {amount} ligger på en lukket konto eller en konto, der ikke modtager posteringer (første: {code}).",
+      "suggestion": "Flyt omkostningslinjerne til en åben konto, der modtager posteringer."
+    },
+    "own_amount_on_parent": {
+      "fail": "Konto {code} har underkonti og desuden et eget beløb på {amount}.",
+      "suggestion": "Flyt det egne beløb til en underkonto, eller behold det som en bevidst reserve."
+    },
+    "rollup_mismatch": {
+      "fail": "Strukturens sum {reported} afviger fra summen af delene {expected} med {difference}.",
+      "suggestion": "Genindlæs strukturen; hvis forskellen består, så kontroller konti uden overordnet konto."
+    },
+    "allocation_incomplete": {
+      "fail": "Andelene for post {ordinal} summerer til {total}{unit} i stedet for {expected}{unit}.",
+      "suggestion": "Justér andelene, så hele posten er fordelt, hverken mere eller mindre."
+    },
+    "allocation_mixed_modes": {
+      "fail": "Post {ordinal} er delvis fordelt i procent og delvis efter mængde.",
+      "suggestion": "Fordel posten på kun én måde."
+    },
+    "vector_not_inherited": {
+      "fail": "Kontraktlinjen {code} ligger på en omkostningslinje, som dens post i tilbudslisten ikke er tildelt.",
+      "suggestion": "Læg linjen tilbage på postens omkostningslinjer, eller registrer afvigelsen med begrundelse."
+    }
+  },
   "boq_markup": {
     "contingency_not_on_profit": {
       "fail": "Risikotillægget \"{markup}\" beregnes på et grundlag, der allerede indeholder fortjenestelinjen \"{profit}\", så der lægges avance på penge afsat til risiko",
@@ -59,6 +131,10 @@
     "offline_sync_delay": {
       "fail": "Arbejdet blev udført {date}, men oplysningerne nåede først kontoret {days} dage senere",
       "suggestion": "Kontrollér timerne mod den faktiske arbejdsdag før godkendelse; afregningen kan allerede være lukket"
+    },
+    "outdoor_heat_ban": {
+      "fail": "Linje {line} registrerer arbejde fra {start} til {end} den {date}, inden for middagsforbuddet mod udendørs arbejde fra {ban_from} til {ban_to}",
+      "suggestion": "Hvis arbejdet foregik udendørs i direkte sol, så flyt det uden for forbudstiden; indendørs arbejde og undtagne sektorer berøres ikke"
     }
   },
   "ai_takeoff": {
@@ -521,6 +597,20 @@
       "suggestion": "Begræns justeringerne til mellem -50% og +200% for at undgå urealistiske grundpriser"
     }
   },
+  "schedule_5d": {
+    "boq_coverage": {
+      "fail": "Position {ordinal} '{description}' ({amount}) er prissat i tilbudslisten, men ingen aktivitet bærer den, så dens pris er ikke med i tidsplanen",
+      "suggestion": "Giv positionen en mængde eller kobl den til en aktivitet, og generer derefter tidsplanen igen."
+    },
+    "cost_reconciliation": {
+      "fail": "Tidsplanen indeholder {planned} af tilbudslistens {bill}: {difference} af det prissatte arbejde ligger ikke på nogen aktivitet",
+      "suggestion": "Kontroller de positioner, som dækningskontrollen angiver, og generer derefter tidsplanen igen."
+    },
+    "duration_vs_norm": {
+      "fail": "Aktiviteten '{activity}' varer {duration} arbejdsdage, mens normerne for arbejdskraft og maskiner giver {norm}",
+      "suggestion": "Kontroller positionens mængde, mandskab og normtimer, eller en varighed, der er ændret manuelt."
+    }
+  },
   "schedule_quality": {
     "open_ends": {
       "fail": "Aktiviteten '{activity}' mangler logikkobling til {ends} (åben ende / fritstående aktivitet)",
@@ -656,6 +746,42 @@
     "requisition_line_cost_line": {
       "fail": "Linje {line} er ikke knyttet til en omkostningslinje, så dens ordre vises ikke som bundet mod budgettet",
       "suggestion": "Opret linjen fra BOQ, eller knyt den til en omkostningslinje før bestilling"
+    },
+    "requisition_suggested_vendor_in_directory": {
+      "fail": "Linje {line} foreslår leverandøren {vendor}, som ikke findes i leverandørregistret",
+      "suggestion": "Vælg den foreslåede leverandør fra leverandørregistret, eller fjern forslaget"
+    },
+    "requisition_suggested_vendor_active": {
+      "fail": "Linje {line} foreslår {vendor}, en leverandør, som ikke er aktiv i leverandørregistret",
+      "suggestion": "Foreslå en aktiv leverandør, eller overlad valget til indkøberen"
+    },
+    "requisition_suggestion_conflict": {
+      "fail": "BOQ-kilderne til linje {line} foreslår {count} forskellige leverandører",
+      "suggestion": "Vælg én leverandør til linjen, eller del den, så hver leverandør får sin egen linje"
+    },
+    "requisition_suggested_vendor_differs": {
+      "fail": "Linje {line} foreslår {vendor}, men rekvisitionen skal bestilles hos en anden leverandør",
+      "suggestion": "Kontroller, at den valgte leverandør kan levere denne linje, eller bestil den separat"
+    },
+    "requisition_line_needed_by_not_past": {
+      "fail": "Linje {line} er nødvendig til {date}, som allerede er overskredet (i dag er {today})",
+      "suggestion": "Angiv den dato, materialet reelt skal bruges på byggepladsen"
+    },
+    "requisition_line_schedule_moved": {
+      "fail": "Linje {line} var planlagt til en aktivitet med start {anchor}, men aktiviteten starter nu {start}",
+      "suggestion": "Kontroller linjens behovsdato mod den aktuelle tidsplan, og ret den om nødvendigt"
+    },
+    "requisition_approver_not_requester": {
+      "fail": "Personen, der har oprettet indkøbsanmodning {req}, er også dens udpegede godkender nummer {step}",
+      "suggestion": "Angiv en anden godkender til det trin, så en anden end anmoderen træffer beslutningen"
+    },
+    "requisition_line_over_ordered": {
+      "fail": "Linje {line} har {ordered} {unit} på ordrer, mere end de {requested} {unit}, der er anmodet om",
+      "suggestion": "Kontroller, om den ekstra mængde er tilsigtet, eller reducer ordrelinjen"
+    },
+    "requisition_order_unit_mismatch": {
+      "fail": "Ordre {order} indeholder linje {line} i {unit}, som ikke kan omregnes til linjens enhed {line_unit}",
+      "suggestion": "Ret enheden på ordrelinjen, så dens mængde tæller som bestilt"
     },
     "receipt_certificate_present": {
       "fail": "Linje {line} er bestilt med {required}, men leveringen indeholder {delivered}",
@@ -973,5 +1099,184 @@
     "parent_not_found": "Modellen, som denne upload skal være en ny version af, findes ikke i projektet. Vælg en anden, eller upload den som en separat model.",
     "parent_not_ready": "\"{name}\" er ikke færdigimporteret, så den kan ikke få en ny version endnu. Vent, til den er klar, eller upload denne som en separat model.",
     "parent_superseded": "\"{name}\" har allerede en nyere version, {version}. Upload i stedet denne som en ny version af den nyeste."
+  },
+  "cost_chain": {
+    "contract_without_schedule": {
+      "fail": "Kontrakt {code} er {amount} værd, men har ingen kontraktposter, så pengene ligger på ingen omkostningslinje.",
+      "suggestion": "Giv kontrakten en konto i omkostningsstyringen, eller tilføj dens poster."
+    },
+    "contract_sum_differs": {
+      "fail": "Kontrakt {code} er {total} værd, men posterne summerer til {lines} (forskel på {difference}).",
+      "suggestion": "Ret kontraktværdien eller posterne, så de stemmer overens."
+    },
+    "change_without_agreed_amount": {
+      "fail": "Tillægget {code} er godkendt uden aftalt beløb.",
+      "suggestion": "Registrer det beløb, der er aftalt med entreprenøren, før tillægget godkendes."
+    },
+    "change_without_approval_date": {
+      "fail": "Tillægget {code} er godkendt uden godkendelsesdato.",
+      "suggestion": "Registrer, hvornår tillægget blev godkendt."
+    },
+    "billed_before_approval": {
+      "fail": "Der er faktureret {amount} på kontrakt {contract} for tillæg {code}, som har status {status} og ikke er godkendt.",
+      "suggestion": "Godkend tillægget først, eller tag faktureringen af betalingsanmodningen."
+    },
+    "contract_over_target": {
+      "fail": "Kontrakt {code} binder {committed}, {difference} over de {target} i det tilbudsunderlag, den blev afgivet fra (mere end {tolerance} %).",
+      "suggestion": "Sammenhold tildelingen og dens tillæg med tilbudsunderlaget, og notér hvorfor arbejdet koster mere."
+    },
+    "account_over_plan": {
+      "fail": "Konto {code} bærer {committed} i forpligtelser, {difference} over planen på {planned} (mere end {tolerance} %).",
+      "suggestion": "Tjek forpligtelserne på kontoen, eller opdater planen med en begrundelse."
+    },
+    "quantity_overrun": {
+      "fail": "Post {code} i kontrakt {contract} er opmålt til {measured} {unit} mod {contracted} {unit} aftalt, {over} % over (tilladt {tolerance} %).",
+      "suggestion": "Tjek opmålingen, eller aftal den ekstra mængde som tillæg."
+    },
+    "measurement_exceeds_commitment": {
+      "fail": "Kontrakt {code} er opmålt til {measured}, {difference} over dens værdi med godkendte tillæg på {committed}.",
+      "suggestion": "Godkend det tillæg, der dækker det ekstra arbejde, eller tjek opmålingen."
+    },
+    "invoice_without_contract": {
+      "fail": "Leverandørfaktura {number} på {amount} hører ikke til nogen kontrakt eller ordre.",
+      "suggestion": "Knyt dens linjer til en kontrakt, eller bogfør den som direkte omkostning på en konto."
+    }
+  },
+  "payment_release": {
+    "cumulative_total_fell": {
+      "fail": "Faktura {number} på kontrakt {contract} viser {net} til dato, mindre end de {previous} på faktura {previous_number} før den, selvom kontrakten faktureres kumulativt.",
+      "suggestion": "Hvis fakturaen kun afregner det nye arbejde, faktureres kontrakten inkrementelt; hvis den nedsætter totalen, registrer den som kreditnota."
+    },
+    "invoice_after_final": {
+      "fail": "Faktura {number} på kontrakt {contract} kommer efter slutfakturaen {final}.",
+      "suggestion": "Registrer senere arbejde som regningsarbejde eller kreditnota, eller markér den rigtige faktura som slutfaktura."
+    },
+    "claim_invoice_in_cumulative": {
+      "fail": "Faktura {number} på kontrakt {contract} er oprettet ud fra et krav og afregner én periode, men kontrakten faktureres kumulativt.",
+      "suggestion": "Brug én faktureringsmåde pr. kontrakt: skift kontrakten til inkrementel fakturering, eller registrer entreprenørens kumulative fakturaer i stedet."
+    },
+    "release_differs": {
+      "fail": "Den bekræftede frigivelse for faktura {number} på kontrakt {contract} er {stored}, men kontraktens vilkår giver i dag {computed}.",
+      "suggestion": "Kontrollér, hvad der har ændret sig siden frigivelsen (vilkår, fakturabeløb, fradrag), og genåbn derefter frigivelsen og bekræft den igen."
+    },
+    "rounding_out_of_range": {
+      "fail": "Faktura {number} er afrundet med {rounding}, uden for det aftalte afrundingstrin på {step}.",
+      "suggestion": "Afrunding skærer kun en frigivelse ned med mindre end ét trin; slå afrunding til i betalingsvilkårene, eller genåbn frigivelsen."
+    },
+    "final_retention_without_warranty": {
+      "fail": "Slutfaktura {number} på kontrakt {contract} tilbageholder {amount} i tilbageholdelse, men der er ikke aftalt garantitilbageholdelse.",
+      "suggestion": "Aftal garantitilbageholdelse i betalingsvilkårene, eller genåbn frigivelsen, så al tilbageholdelse udbetales med slutfakturaen."
+    },
+    "posting_exceeds_held": {
+      "fail": "Der er udbetalt mere tilbageholdelse på kontrakt {contract}, end der holdes tilbage: {amount} for meget.",
+      "suggestion": "Annullér den for høje tilbageholdelsespostering og bogfør det beløb, der faktisk holdes tilbage."
+    },
+    "posting_before_event": {
+      "fail": "{amount} tilbageholdelse på kontrakt {contract} blev udbetalt den {posted}, før frigivelseshændelsen indtraf den {due}.",
+      "suggestion": "Kontrollér datoen for frigivelseshændelsen, eller bogfør frigivelsen, når hændelsen er indtruffet."
+    },
+    "posting_without_event_date": {
+      "fail": "{amount} tilbageholdelse på kontrakt {contract} blev udbetalt, men datoen for frigivelseshændelsen er ikke registreret.",
+      "suggestion": "Registrer datoen, hvor frigivelseshændelsen indtraf, så udbetalingen kan kontrolleres mod den."
+    },
+    "retention_still_held": {
+      "fail": "Kontrakt {contract} er afsluttet og holder stadig {amount} tilbage i tilbageholdelse.",
+      "suggestion": "Frigiv tilbageholdelsen ved dens hændelse i tilbageholdelsesregisteret, eller behold den i garantiperioden."
+    },
+    "discount_not_agreed": {
+      "fail": "Frigivelsen af faktura {number} på kontrakt {contract} trækker en kontantrabat på {amount}, men kontrakten tillader ingen.",
+      "suggestion": "Slå kontantrabat til i betalingsvilkårene, eller genåbn frigivelsen uden den."
+    },
+    "discount_after_deadline": {
+      "fail": "Der er tilbageholdt en rabat på {amount} på faktura {number}, men betalingen den {paid_on} kom efter rabatdatoen {until}.",
+      "suggestion": "Betal også rabatbeløbet, eller registrer, hvorfor entreprenøren accepterede den sene rabat."
+    },
+    "invoiced_over_measured": {
+      "fail": "Kontrakt {contract} er faktureret til {invoiced}, {difference} over de {measured}, der er opmålt (mængde gange enhedspris).",
+      "suggestion": "Kontrollér opmålingen, før der frigives flere penge, eller tilbagehold forskellen ved næste frigivelse."
+    },
+    "invoiced_over_contract": {
+      "fail": "Kontrakt {contract} er faktureret til {invoiced}, {difference} over værdien på {value}, og der er intet opmålt på den.",
+      "suggestion": "Registrer opmålingen eller det tillæg, der dækker de ekstra penge, før der frigives mere."
+    },
+    "reverse_charge_with_vat": {
+      "fail": "Faktura {number} er omvendt betalingspligt, men har {vat} moms.",
+      "suggestion": "En faktura med omvendt betalingspligt har ingen moms; ret momsbeløbet eller momskategorien på linjerne."
+    },
+    "line_without_vat_rate": {
+      "fail": "Faktura {number} har moms, men {count} af linjerne mangler momssats.",
+      "suggestion": "Angiv momssatsen på hver linje, så fradrag og eksport bruger den rigtige moms."
+    },
+    "duplicate_number": {
+      "fail": "Fakturanummer {number} fra samme entreprenør er registreret {count} gange.",
+      "suggestion": "Annullér kopien, eller ret fakturanummeret, hvis det er forskellige fakturaer."
+    },
+    "possible_duplicate": {
+      "fail": "Faktura {number} har samme entreprenør, beløb ({amount}) og dato ({on}) som faktura {other}.",
+      "suggestion": "Kontrollér, at det ikke er den samme faktura registreret to gange under et andet nummer."
+    },
+    "certificate_missing": {
+      "fail": "Faktura {number} på kontrakt {contract}: modtageren har ikke gyldig dokumentation pr. {on} ({certificate}), som {reference} kræver, før betalingen frigives.",
+      "suggestion": "Registrer dokumentationen på modtagerens underentreprenørpost, eller tilbagehold betalingen, indtil den fremvises."
+    },
+    "split_payment_annotation_missing": {
+      "fail": "Faktura {number} indeholder byggearbejder eller andre varer under split payment og overstiger {threshold}, men har ikke påtegningen «{annotation}».",
+      "suggestion": "Bed leverandøren om en rettet faktura med påtegningen og betal den under alle omstændigheder via split payment: pligten til at betale sådan afhænger ikke af påtegningen."
+    },
+    "split_payment_not_used": {
+      "fail": "Faktura {number} er omfattet af split payment, men en betaling af den blev registreret med en anden metode. Køber bliver desuden ansvarlig for {sanction}, 30 procent af dens moms.",
+      "suggestion": "Betal sådanne fakturaer fra momskontoen via split payment, og registrer metoden på betalingen som split_payment."
+    },
+    "split_payment_annex_unknown": {
+      "fail": "Faktura {number} overstiger {threshold}, og det er ikke registreret, om den indeholder varer eller ydelser fra bilaget til split payment.",
+      "suggestion": "Registrer på fakturaen, om den indeholder varer eller ydelser fra bilaget (annex_15), eller deres koder (pkwiu_codes), så betalingsmetoden kan kontrolleres."
+    },
+    "reduced_rate_above_area_limit": {
+      "fail": "Faktura {number} beregner {rate} procent moms af hele prisen, men boligen har {area_m2} m2 brugbart areal, og den nedsatte sats gælder op til {limit_m2} m2 ({reference}).",
+      "suggestion": "Beregn den nedsatte sats af {reduced_share_percent} procent af prisen og normalsatsen af resten."
+    },
+    "reduced_rate_object_unknown": {
+      "fail": "Faktura {number} beregner den nedsatte boligsats på {rate} procent, men projektet registrerer ikke, hvilken bolig det gælder, eller dens brugbare areal ({reference}).",
+      "suggestion": "Registrer boligtype og brugbart areal på projektet (vat_housing), så satsen og dens arealgrænse kan kontrolleres."
+    },
+    "reduced_rate_not_eligible": {
+      "fail": "Faktura {number} beregner den nedsatte boligsats på {rate} procent af {object}, som ikke er berettiget til den ({reference}).",
+      "suggestion": "Beregn normalsatsen, eller ret den bolig, der er registreret på projektet."
+    },
+    "domestic_reverse_charge_ended": {
+      "fail": "Faktura {number} anvender omvendt betalingspligt på {count} linje(r), men den indenlandske omvendte betalingspligt for byggeydelser er ophørt i dette land.",
+      "suggestion": "Medmindre leverandøren er etableret i udlandet, bed om en faktura med moms; sådanne fakturaer betales via split payment."
+    },
+    "payment_term_over_cap": {
+      "fail": "Kontrakt {contract} aftaler en betalingsfrist på {days} dage, længere end de {cap} dage, som loven om forsinket betaling tillader mellem virksomheder.",
+      "suggestion": "Forkort fristen til {cap} dage, eller registrer hvorfor den længere frist er udtrykkeligt aftalt og ikke groft urimelig over for underentreprenøren."
+    }
+  },
+  "cost_forecast": {
+    "below_commitment": {
+      "fail": "{code}: prognosen på {forecast} ligger under de {owed}, der allerede er forpligtet eller krævet i afventende ændringer ({difference} lavere), og intet forklarer det.",
+      "suggestion": "Vedhæft dokumentet bag det lavere tal (en kreditnota, et forlig, et referat), eller skriv på linjen, hvorfor metoden giver et lavere tal."
+    },
+    "move_without_evidence": {
+      "fail": "{code}: prognosen er ændret fra {previous} til {current} ({delta}) siden det seneste frosne øjebliksbillede, over projektets tærskel, og mangler endnu kommentar og dokumentation.",
+      "suggestion": "Skriv, hvorfor tallet er ændret, og tilknyt dokumentet eller referatet bag det, før øjebliksbilledet fryses."
+    },
+    "method_override_without_comment": {
+      "fail": "{code} prognosticeres med {method} i stedet for projektets {project_method}, og ingen kommentar angiver hvorfor.",
+      "suggestion": "Tilføj en kort kommentar til linjens metode, eller sæt linjen tilbage til projektets metode."
+    },
+    "method": {
+      "best_available": "bedste tilgængelige kilde",
+      "maximum": "højeste værdi",
+      "evm_cpi": "omkostningsydelse (CPI)",
+      "manual": "manuelt beløb"
+    }
+  },
+  "payment_release_certificate_types": {
+    "social_security_clearance": "udtalelse om betalte socialsikringsbidrag",
+    "construction_tax_exemption": "bevis for fritagelse for byggeskat",
+    "employers_liability_clearance": "udtalelse om arbejdsgiveransvar",
+    "insurance": "forsikringsbevis",
+    "license": "entreprenørlicens"
   }
 }

@@ -24,6 +24,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
+from app.core.pl_ids import PL_POSTCODE_REGEX
 from app.core.provenance import Provenance, declared, fell_back
 
 # ── Locality shapes ───────────────────────────────────────────────────────────
@@ -93,6 +94,19 @@ _COUNTRY_RULES: dict[str, dict[str, Any]] = {
         "locality_shape": POSTCODE_BEFORE_CITY,
         "state_required": False,
     },
+    # ── Poland ────────────────────────────────────────────────────────────
+    # Poczta Polska writes the code NN-NNN with the hyphen, before the city
+    # on one line ("ul. Marszałkowska 1" / "00-950 Warszawa"). There is no
+    # province line in a Polish postal address. The pattern lives with the
+    # other Polish identifiers in app.core.pl_ids.
+    "PL": {
+        "postcode_regex": PL_POSTCODE_REGEX,
+        "required_fields": ["street", "city", "postcode", "country"],
+        "field_order": ["street", "postcode", "city", "country"],
+        "locality_shape": POSTCODE_BEFORE_CITY,
+        "state_required": False,
+        "postcode_note": "Format: NN-NNN, e.g. 00-950",
+    },
     # ── UK ────────────────────────────────────────────────────────────────
     # British Postcode format (Royal Mail specification):
     # AN NAA / ANN NAA / AAN NAA / AANN NAA / ANA NAA / AANA NAA
@@ -120,6 +134,20 @@ _COUNTRY_RULES: dict[str, dict[str, Any]] = {
         "field_order": ["street", "city", "state", "postcode", "country"],
         "locality_shape": POSTCODE_AFTER_CITY_AND_STATE,
         "state_required": True,
+    },
+    # ── Egypt ─────────────────────────────────────────────────────────────
+    # The UPU addressing sheet (07/2023) gives 7-digit postcodes; 5-digit codes
+    # are still printed widely. Both are accepted until an expert confirms.
+    "EG": {
+        "postcode_regex": r"^\d{5}(?:\d{2})?$",
+        "required_fields": ["street", "city", "country"],
+        "field_order": ["street", "city", "postcode", "country"],
+        "locality_shape": POSTCODE_AFTER_CITY_AND_STATE,
+        "state_required": False,
+        "postcode_note": "Format: 5 or 7 digits, e.g. 11511",
+        "source": "UPU addressing sheet for Egypt, 07/2023",
+        "source_url": "https://www.upu.int/UPU/media/upu/PostalEntitiesFiles/addressingUnit/egyEn.pdf",
+        "needs_expert_review": True,
     },
     # ── India ─────────────────────────────────────────────────────────────
     "IN": {
@@ -222,8 +250,8 @@ _COUNTRY_RULES: dict[str, dict[str, Any]] = {
 # neutral-looking street-city-state-postcode, and that is a decision about
 # being wrong less often rather than a claim to knowledge. Every uncovered
 # country whose address a document is likely to carry - France, Spain, Italy,
-# the Netherlands, Norway, Poland, Sweden - writes the post code before the
-# city, and it is what every page this product has printed already said.
+# the Netherlands, Norway, Sweden - writes the post code before the city
+# (Poland too, which now has a row of its own), and it is what every page this product has printed already said.
 # ``jurisdiction`` remains the only thing that separates the stand-in from a
 # country that really was consulted.
 _DEFAULT_RULES: dict[str, Any] = {

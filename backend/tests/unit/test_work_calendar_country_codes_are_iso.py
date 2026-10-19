@@ -331,9 +331,12 @@ EXPECTED_CALENDAR_BY_COUNTRY = {
     "BH": "GULF",
     "KW": "GULF",
     "OM": "GULF",
+    # Egypt works Sunday to Thursday like the five, on an entry of its own.
+    "EG": "EGYPT",
     "CN": "CHINA",
     "IN": "INDIA",
     "IT": "ITALY",
+    "PL": "POLAND",
 }
 
 # Region ids the CWICR v3 catalogue ships today, for countries where the ISO
@@ -501,7 +504,10 @@ def test_the_six_day_countries_still_count_six() -> None:
     assert compute_duration(_WEEK_START, _WEEK_END_SATURDAY, "CN") == 6, "China works Saturdays"
     assert compute_duration(_WEEK_START, _WEEK_END_SATURDAY, "IN") == 6, "India works Saturdays"
     assert compute_duration(_WEEK_START, _WEEK_END_SATURDAY, "US") == 5
-    assert compute_duration(_WEEK_START, _WEEK_END_SATURDAY, "FR") == 5
+    # France is a five-day week too, but Monday 2026-04-06 is Easter Monday, a
+    # French public holiday (Code du travail L3133-1) that core.calendar now counts.
+    assert compute_duration(_WEEK_START, _WEEK_END_SATURDAY, "FR") == 4
+    assert compute_duration("2026-04-13", "2026-04-18", "FR") == 5
 
 
 def test_the_gulf_week_runs_sunday_to_thursday_at_the_consumer() -> None:

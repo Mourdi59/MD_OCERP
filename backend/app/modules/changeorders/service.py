@@ -14,6 +14,7 @@ import re
 import uuid
 from datetime import UTC, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
+from types import SimpleNamespace
 from typing import Any
 
 from fastapi import HTTPException, status
@@ -670,6 +671,10 @@ class ChangeOrderService:
                 last_exc = exc
                 continue
             await self._warn_standalone_overlap(order)
+            # Write the warning now, inside the async context. Left pending, it
+            # was flushed by the first lazy attribute access after create,
+            # which runs synchronously and fails outside the greenlet.
+            await self.session.flush()
             logger.info(
                 "Change order created: %s for project %s (attempt %d)",
                 code,
@@ -1350,7 +1355,7 @@ class ChangeOrderService:
         publish_after_commit(
             self.session,
             "changeorders.notify.awaiting_approval",
-            {"change_order_id": str(order_id), "actor_id": user_id},
+            {"change_order_id": str(order_id), "project_id": str(order.project_id), "actor_id": user_id},
             source_module="oe_changeorders",
         )
 
@@ -1392,6 +1397,7 @@ class ChangeOrderService:
         from app.modules.projects.models import Project
 
         order = await self.get_order(order_id)
+        order_project_id = str(order.project_id)
         # Idempotent: re-approving an already-approved change order is a
         # no-op (ENH-095). Prevents double budget-writeback if a client
         # retries an approval call after a flaky network round-trip.
@@ -1635,7 +1641,12 @@ class ChangeOrderService:
         publish_after_commit(
             self.session,
             "changeorders.notify.decided",
-            {"change_order_id": str(order_id), "decision": "approved", "actor_id": user_id},
+            {
+                "change_order_id": str(order_id),
+                "project_id": order_project_id,
+                "decision": "approved",
+                "actor_id": user_id,
+            },
             source_module="oe_changeorders",
         )
 
@@ -2228,6 +2239,7 @@ class ChangeOrderService:
         without tripping the gate.
         """
         order = await self.get_order(order_id)
+        order_project_id = str(order.project_id)
         # Gate the legacy single-step reject on the presence of an approval
         # chain so a non-approver cannot kill an in-flight chain without the
         # per-step authorization advance_approval enforces.
@@ -2268,7 +2280,12 @@ class ChangeOrderService:
         publish_after_commit(
             self.session,
             "changeorders.notify.decided",
-            {"change_order_id": str(order_id), "decision": "rejected", "actor_id": user_id},
+            {
+                "change_order_id": str(order_id),
+                "project_id": order_project_id,
+                "decision": "rejected",
+                "actor_id": user_id,
+            },
             source_module="oe_changeorders",
         )
         fresh = await self.repo.get_by_id(order_id)
@@ -2318,10 +2335,76 @@ class ChangeOrderService:
 
     # ── Items ─────────────────────────────────────────────────────────────
 
+    async def _decide_item_cost_line(
+        self,
+        order: ChangeOrder,
+        item: ChangeOrderItem,
+        metadata: dict[str, Any],
+        explicit: uuid.UUID | None,
+        reason: str | None,
+        actor_id: str | None,
+    ) -> None:
+        """Set ``item.cost_line_id`` and its source before the item is written.
+
+        Without an explicit choice the item inherits (see
+        ``costmodel.inheritance_service.change_item_inherits``). An explicit
+        line outside what it inherits is an override: refused without a reason,
+        recorded with the reason, who and when.
+        """
+        try:
+            from app.modules.costmodel.inheritance import (  # noqa: PLC0415
+                FROM_MANUAL,
+                OVERRIDE_META_KEY,
+                lines_in_project,
+            )
+            from app.modules.costmodel.inheritance_service import (  # noqa: PLC0415
+                MIN_REASON_LENGTH,
+                change_item_inherits,
+            )
+        except ImportError:  # pragma: no cover - the cost model is a core module
+            return
+        inherited = await change_item_inherits(self.session, order, metadata)
+        meta = dict(item.metadata_ or {})
+        if explicit is None:
+            item.cost_line_id = uuid.UUID(inherited.vector.main) if inherited.vector.main else None
+            item.cost_line_source = inherited.source
+            meta.pop(OVERRIDE_META_KEY, None)
+            item.metadata_ = meta
+            return
+        if not await lines_in_project(self.session, order.project_id, [explicit]):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail={"problem": "cost_line_not_found", "message": "The cost line is not in this project."},
+            )
+        override = bool(inherited.vector.lines) and str(explicit) not in inherited.vector.lines
+        clean = (reason or "").strip()
+        if override and len(clean) < MIN_REASON_LENGTH:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail={
+                    "problem": "override_reason_required",
+                    "message": "This item inherits another cost line. Say why it goes on this one.",
+                },
+            )
+        item.cost_line_id = explicit
+        if override:
+            item.cost_line_source = FROM_MANUAL
+            meta[OVERRIDE_META_KEY] = {
+                "reason": clean[:2000],
+                "by": actor_id,
+                "at": datetime.now(UTC).isoformat(),
+                "inherited": inherited.vector.main,
+            }
+        else:
+            item.cost_line_source = inherited.source or FROM_MANUAL
+            meta.pop(OVERRIDE_META_KEY, None)
+        item.metadata_ = meta
+
     async def add_item(
         self,
         order_id: uuid.UUID,
         data: ChangeOrderItemCreate,
+        actor_id: str | None = None,
     ) -> ChangeOrderItem:
         """Add an item to a change order and recalculate cost impact."""
         order = await self.get_order(order_id)
@@ -2364,6 +2447,11 @@ class ChangeOrderService:
             sort_order=data.sort_order,
             metadata_=data.metadata,
         )
+        # The account the item's money is costed on: inherited from what it
+        # changes, or the one a person chose (with a reason when it departs).
+        await self._decide_item_cost_line(
+            order, item, data.metadata or {}, data.cost_line_id, data.cost_line_reason, actor_id
+        )
         item = await self.repo.create_item(item)
 
         await self._recalculate_cost_impact(order_id)
@@ -2381,6 +2469,7 @@ class ChangeOrderService:
         order_id: uuid.UUID,
         item_id: uuid.UUID,
         data: ChangeOrderItemUpdate,
+        actor_id: str | None = None,
     ) -> ChangeOrderItem:
         """Update an item and recalculate cost impact."""
         order = await self.get_order(order_id)
@@ -2405,6 +2494,9 @@ class ChangeOrderService:
             )
 
         fields = data.model_dump(exclude_unset=True)
+        explicit_set = "cost_line_id" in fields
+        explicit = fields.pop("cost_line_id", None)
+        reason = fields.pop("cost_line_reason", None)
         if "metadata" in fields:
             _incoming = fields.pop("metadata")
             fields["metadata_"] = (
@@ -2412,6 +2504,26 @@ class ChangeOrderService:
                 if isinstance(_incoming, dict)
                 else _incoming
             )
+        # A new account chosen, or a new reference to what the item changes on
+        # an item that still follows what it inherits: decide the account again.
+        refs_moved = "metadata_" in fields and isinstance(fields["metadata_"], dict)
+        if explicit_set or (refs_moved and item.cost_line_source != "manual"):
+            probe = SimpleNamespace(
+                cost_line_id=item.cost_line_id,
+                cost_line_source=item.cost_line_source,
+                metadata_=fields.get("metadata_", item.metadata_),
+            )
+            await self._decide_item_cost_line(
+                order,
+                probe,  # type: ignore[arg-type]
+                probe.metadata_ or {},
+                explicit if explicit_set else None,
+                reason,
+                actor_id,
+            )
+            fields["cost_line_id"] = probe.cost_line_id
+            fields["cost_line_source"] = probe.cost_line_source
+            fields["metadata_"] = probe.metadata_
 
         # Recalculate cost_delta if quantities or rates changed. Decimal
         # throughout - mixing the stored string column with an incoming
@@ -2572,6 +2684,7 @@ class ChangeOrderService:
             )
 
         order = await self.get_order(order_id)
+        order_project_id = str(order.project_id)
         if order.status != "submitted":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -2655,7 +2768,7 @@ class ChangeOrderService:
         publish_after_commit(
             self.session,
             "changeorders.notify.awaiting_approval",
-            {"change_order_id": str(order_id), "actor_id": None},
+            {"change_order_id": str(order_id), "project_id": order_project_id, "actor_id": None},
             source_module="oe_changeorders",
         )
         logger.info(
@@ -2723,6 +2836,7 @@ class ChangeOrderService:
             )
 
         order = await self.get_order(order_id)
+        order_project_id = str(order.project_id)
         if order.status not in ("submitted",):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -2864,7 +2978,12 @@ class ChangeOrderService:
             publish_after_commit(
                 self.session,
                 "changeorders.notify.decided",
-                {"change_order_id": str(order_id), "decision": "rejected", "actor_id": str(user_id)},
+                {
+                    "change_order_id": str(order_id),
+                    "project_id": order_project_id,
+                    "decision": "rejected",
+                    "actor_id": str(user_id),
+                },
                 source_module="oe_changeorders",
             )
             logger.info(
@@ -2925,7 +3044,7 @@ class ChangeOrderService:
         publish_after_commit(
             self.session,
             "changeorders.notify.awaiting_approval",
-            {"change_order_id": str(order_id), "actor_id": str(user_id)},
+            {"change_order_id": str(order_id), "project_id": order_project_id, "actor_id": str(user_id)},
             source_module="oe_changeorders",
         )
         logger.info(

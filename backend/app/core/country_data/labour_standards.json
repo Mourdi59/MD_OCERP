@@ -1,0 +1,219 @@
+[
+  {
+    "country": "EG", "key": "max_hours_per_day", "value": "8", "unit": "hours",
+    "effective_from": "2025-09-01", "effective_to": null,
+    "source": "Labour Law 14/2025 (in force 2025-09-01), as summarised by law-firm commentary",
+    "source_url": "https://www.mondaq.com/employee-rights-labour-relations/1791586/egypt-labour-law-14-of-2025-%7C-workers-rights-employer-duties",
+    "confidence": "M", "needs_expert_review": false
+  },
+  {
+    "country": "EG", "key": "max_hours_per_week", "value": "48", "unit": "hours",
+    "effective_from": "2025-09-01", "effective_to": null,
+    "source": "Labour Law 14/2025, as summarised by law-firm commentary",
+    "source_url": "https://www.mondaq.com/employee-rights-labour-relations/1791586/egypt-labour-law-14-of-2025-%7C-workers-rights-employer-duties",
+    "confidence": "M", "needs_expert_review": false
+  },
+  {
+    "country": "EG", "key": "weekly_rest_hours_min", "value": "24", "unit": "hours",
+    "effective_from": "2025-09-01", "effective_to": null,
+    "source": "Labour Law 14/2025: at least 24 consecutive paid hours of weekly rest, Friday by custom",
+    "source_url": "https://global.lockton.com/us/en/news-insights/egypt-adopts-comprehensive-new-labor-law",
+    "confidence": "M", "needs_expert_review": false
+  },
+  {
+    "country": "EG", "key": "overtime_premium_day_pct", "value": "35", "unit": "percent of hourly wage",
+    "effective_from": "2025-09-01", "effective_to": null,
+    "source": "Ministry of Labour explanation of Labour Law 14/2025, as reported in the press; article number not found",
+    "source_url": "https://www.masrawy.com/news/news_egypt/details/2026/9/4/3043032",
+    "confidence": "M", "needs_expert_review": true,
+    "note": "Configurable default. One transcription of the law text (Art. 122) reads 25% for day hours; confirm against the Official Gazette."
+  },
+  {
+    "country": "EG", "key": "overtime_premium_night_pct", "value": "70", "unit": "percent of hourly wage",
+    "effective_from": "2025-09-01", "effective_to": null,
+    "source": "Ministry of Labour explanation of Labour Law 14/2025, as reported in the press; article number not found",
+    "source_url": "https://www.masrawy.com/news/news_egypt/details/2026/9/4/3043032",
+    "confidence": "M", "needs_expert_review": true,
+    "note": "Configurable default; the transcriptions agree on 70% for night hours but the article is not confirmed."
+  },
+  {
+    "country": "EG", "key": "public_holiday_work_extra_pay_multiplier", "value": "2", "unit": "x the day's wage, on top of the regular wage",
+    "effective_from": "2025-09-01", "effective_to": null,
+    "source": "Ministerial Decree 294/2025: double pay in addition to regular pay, or a compensatory day on written request",
+    "source_url": "https://www.mondaq.com/employee-rights-labour-relations/1733268/ministerial-decree-setting-official-paid-holidays-for-workers-no-294-of-2025",
+    "confidence": "M", "needs_expert_review": true,
+    "note": "Whether 'double pay in addition to regular pay' means 2x or 3x the day's wage in total needs an Egyptian labour lawyer."
+  },
+  {
+    "country": "EG", "key": "public_holiday_days", "value": "15", "unit": "days per year",
+    "effective_from": "2025-09-01", "effective_to": null,
+    "source": "Ministerial Decree 294/2025: twelve occasions, Eid al-Fitr two days, Arafat and Eid al-Adha three days",
+    "source_url": "https://www.mondaq.com/employee-rights-labour-relations/1733268/ministerial-decree-setting-official-paid-holidays-for-workers-no-294-of-2025",
+    "confidence": "M", "needs_expert_review": false
+  },
+  {
+    "country": "EG", "key": "annual_leave_days_first_year", "value": "15", "unit": "days per year",
+    "effective_from": "2025-09-01", "effective_to": null,
+    "source": "Labour Law 14/2025",
+    "source_url": "https://www.ey.com/en_gl/technical/tax-alerts/egypt-enacts-new-labor-law-with-changes-affecting-employers-beginning-1-september-2025",
+    "confidence": "H", "needs_expert_review": false
+  },
+  {
+    "country": "EG", "key": "annual_leave_days", "value": "21", "unit": "days per year",
+    "effective_from": "2025-09-01", "effective_to": null,
+    "source": "Labour Law 14/2025: after the first year of service",
+    "source_url": "https://www.ey.com/en_gl/technical/tax-alerts/egypt-enacts-new-labor-law-with-changes-affecting-employers-beginning-1-september-2025",
+    "confidence": "H", "needs_expert_review": false
+  },
+  {
+    "country": "EG", "key": "annual_leave_days_long_service", "value": "30", "unit": "days per year",
+    "effective_from": "2025-09-01", "effective_to": null,
+    "source": "Labour Law 14/2025: after 10 years of service or from age 50",
+    "source_url": "https://www.ey.com/en_gl/technical/tax-alerts/egypt-enacts-new-labor-law-with-changes-affecting-employers-beginning-1-september-2025",
+    "confidence": "H", "needs_expert_review": false
+  },
+  {
+    "country": "EG", "key": "annual_leave_days_disability", "value": "45", "unit": "days per year",
+    "effective_from": "2025-09-01", "effective_to": null,
+    "source": "Labour Law 14/2025: persons with disabilities",
+    "source_url": "https://www.clydeco.com/en/insights/2025/05/egypt-new-labour-law",
+    "confidence": "H", "needs_expert_review": false
+  },
+  {
+    "country": "EG", "key": "emergency_leave_days", "value": "7", "unit": "days per year",
+    "effective_from": "2025-09-01", "effective_to": null,
+    "source": "Labour Law 14/2025: at most two consecutive days, deducted from annual leave",
+    "source_url": "https://www.clydeco.com/en/insights/2025/05/egypt-new-labour-law",
+    "confidence": "M", "needs_expert_review": false
+  },
+  {
+    "country": "EG", "key": "maternity_leave_days", "value": "120", "unit": "days",
+    "effective_from": "2025-09-01", "effective_to": null,
+    "source": "Labour Law 14/2025: fully paid, up to three times",
+    "source_url": "https://www.ey.com/en_gl/technical/tax-alerts/egypt-enacts-new-labor-law-with-changes-affecting-employers-beginning-1-september-2025",
+    "confidence": "H", "needs_expert_review": false
+  },
+  {
+    "country": "EG", "key": "annual_increment_min_pct", "value": "3", "unit": "percent of insurable wage",
+    "effective_from": "2025-09-01", "effective_to": null,
+    "source": "Labour Law 14/2025",
+    "source_url": "https://www.ey.com/en_gl/technical/tax-alerts/egypt-enacts-new-labor-law-with-changes-affecting-employers-beginning-1-september-2025",
+    "confidence": "H", "needs_expert_review": false
+  },
+  {
+    "country": "EG", "key": "annual_increment_min_monthly", "value": "250", "unit": "EGP/month",
+    "effective_from": "2025-03-01", "effective_to": null,
+    "source": "National Wages Council decision",
+    "source_url": "https://moic.gov.eg/news/1998",
+    "confidence": "H", "needs_expert_review": false
+  },
+  {
+    "country": "EG", "key": "minimum_wage_monthly", "value": "7000", "unit": "EGP/month",
+    "effective_from": "2025-03-01", "effective_to": null,
+    "source": "National Wages Council decision, private sector, full time",
+    "source_url": "https://moic.gov.eg/news/1998",
+    "confidence": "H", "needs_expert_review": false
+  },
+  {
+    "country": "EG", "key": "minimum_wage_hourly_part_time", "value": "28", "unit": "EGP/hour net",
+    "effective_from": "2025-03-01", "effective_to": null,
+    "source": "National Wages Council decision, private sector, part time",
+    "source_url": "https://moic.gov.eg/news/1998",
+    "confidence": "H", "needs_expert_review": false
+  },
+  {
+    "country": "EG", "key": "employer_social_insurance_pct", "value": "18.75", "unit": "percent of insurable wage",
+    "effective_from": "2020-01-01", "effective_to": null,
+    "source": "Social Insurance Law 148/2019, general scheme; insurable wage capped per year",
+    "source_url": "https://taxsummaries.pwc.com/egypt/corporate/other-taxes",
+    "confidence": "H", "needs_expert_review": false,
+    "note": "Construction contracts are also assessed on a deemed wage from contract value (Decree 152/2019, Table 8); that mechanism is not modelled."
+  },
+  {
+    "country": "EG", "key": "employee_social_insurance_pct", "value": "11", "unit": "percent of insurable wage",
+    "effective_from": "2020-01-01", "effective_to": null,
+    "source": "Social Insurance Law 148/2019, general scheme",
+    "source_url": "https://taxsummaries.pwc.com/egypt/corporate/other-taxes",
+    "confidence": "H", "needs_expert_review": false
+  },
+  {
+    "country": "FR", "key": "legal_working_week_hours", "value": "35", "unit": "hours",
+    "effective_from": "2000-01-01", "effective_to": null,
+    "source": "Code du travail, art. L3121-27: the legal working week, above which hours are overtime",
+    "source_url": "https://www.legifrance.gouv.fr/codes/texte_lc/LEGITEXT000006072050",
+    "confidence": "H", "needs_expert_review": false,
+    "note": "A threshold, not a maximum: hours beyond 35 are overtime, paid at a premium. Thirty-five hours since loi 2000-37 (firms of 20 or fewer from 2002); the article number dates from the 2016 recodification."
+  },
+  {
+    "country": "FR", "key": "overtime_premium_first_8_hours_pct", "value": "25", "unit": "percent of hourly wage",
+    "effective_from": "2016-08-10", "effective_to": null,
+    "source": "Code du travail, art. L3121-36: default premium for the 36th to the 43rd hour of the week",
+    "source_url": "https://www.legifrance.gouv.fr/codes/texte_lc/LEGITEXT000006072050",
+    "confidence": "M", "needs_expert_review": false,
+    "note": "Default where no company or branch agreement sets another rate, which may not be below 10 percent."
+  },
+  {
+    "country": "FR", "key": "overtime_premium_beyond_8_hours_pct", "value": "50", "unit": "percent of hourly wage",
+    "effective_from": "2016-08-10", "effective_to": null,
+    "source": "Code du travail, art. L3121-36: default premium from the 44th hour of the week",
+    "source_url": "https://www.legifrance.gouv.fr/codes/texte_lc/LEGITEXT000006072050",
+    "confidence": "M", "needs_expert_review": false,
+    "note": "Default where no company or branch agreement sets another rate."
+  },
+  {
+    "country": "FR", "key": "public_holiday_days", "value": "11", "unit": "days per year",
+    "effective_from": "2008-05-01", "effective_to": null,
+    "source": "Code du travail, art. L3133-1 (eleven public holidays)",
+    "source_url": "https://www.legifrance.gouv.fr/codes/texte_lc/LEGITEXT000006072050",
+    "confidence": "H", "needs_expert_review": false,
+    "note": "Alsace-Moselle adds Good Friday and 26 December (L3134-13); the calendar engine computes both."
+  },
+  {
+    "country": "FR", "key": "minimum_wage_hourly", "value": "12.02", "unit": "EUR per hour, gross",
+    "effective_from": "2026-01-01", "effective_to": null,
+    "source": "Décret 2025-1228 du 17 décembre 2025 (SMIC from 1 January 2026)",
+    "source_url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F2300",
+    "confidence": "H", "needs_expert_review": true,
+    "note": "The figure from 1 January 2026 is confirmed. Whether a revision took effect later in 2026 was not, so the row is shown and not enforced until a reviewer closes it. Mayotte has its own SMIC (EUR 9.33)."
+  },
+  {
+    "country": "FR", "key": "minimum_wage_monthly", "value": "1823.03", "unit": "EUR per month, gross, at 35 hours a week",
+    "effective_from": "2026-01-01", "effective_to": null,
+    "source": "Décret 2025-1228 du 17 décembre 2025: 12.02 x 35 x 52 / 12 hours",
+    "source_url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F2300",
+    "confidence": "H", "needs_expert_review": true,
+    "note": "Follows the hourly SMIC, so it carries the same open question about a revision later in 2026."
+  },
+  {
+    "country": "FR", "key": "btp_paid_leave_fund_pct", "value": "20.20", "unit": "percent of gross wages",
+    "effective_from": "2026-04-01", "effective_to": "2027-03-31",
+    "source": "CIBTP Île-de-France rate sheet, campaign 2026-2027 (building and public works paid-leave fund)",
+    "source_url": "https://www.cibtp-idf.fr/media/ile-de-france/adhesion-cotisation/Page_des_taux_avril_2026.pdf",
+    "confidence": "M", "needs_expert_review": true,
+    "note": "Every building and public works employer pays its paid leave through a regional CIBTP caisse. The rate differs by caisse (about 20.2 to 20.7 percent); 20.20 is Île-de-France. The 2026 campaign abatement is EUR 96,168. A per-caisse table needs a region key and a reviewer."
+  },
+  {
+    "country": "FR", "key": "btp_bad_weather_fund_pct_structural_works", "value": "0.68", "unit": "percent of the capped social security base",
+    "effective_from": "2026-04-01", "effective_to": "2027-03-31",
+    "source": "CIBTP rate sheets 2026 (chômage intempéries): structural works and public works",
+    "source_url": "https://www.cibtp-idf.fr/media/ile-de-france/adhesion-cotisation/Page_des_taux_avril_2026.pdf",
+    "confidence": "M", "needs_expert_review": false,
+    "note": "Gros oeuvre and travaux publics. How the bad-weather indemnity is paid out (share of wage, waiting day) was not read and is not encoded."
+  },
+  {
+    "country": "FR", "key": "btp_bad_weather_fund_pct_finishing_works", "value": "0.13", "unit": "percent of the capped social security base",
+    "effective_from": "2026-04-01", "effective_to": "2027-03-31",
+    "source": "CIBTP rate sheets 2026 (chômage intempéries): finishing trades",
+    "source_url": "https://www.cibtp-idf.fr/media/ile-de-france/adhesion-cotisation/Page_des_taux_avril_2026.pdf",
+    "confidence": "M", "needs_expert_review": false,
+    "note": "Second oeuvre."
+  },
+  {
+    "country": "FR", "key": "btp_oppbtp_levy_pct", "value": "0.11", "unit": "percent of payroll, base grossed up for paid leave",
+    "effective_from": "2026-01-01", "effective_to": "2026-12-31",
+    "source": "OPPBTP contribution for 2026, as reported by a professional news service",
+    "source_url": "https://www.weblex.fr/weblex-actualite/cotisations-oppbtp-quel-taux-en-2026",
+    "confidence": "M", "needs_expert_review": false,
+    "note": "The building and public works health and safety body's levy."
+  }
+]

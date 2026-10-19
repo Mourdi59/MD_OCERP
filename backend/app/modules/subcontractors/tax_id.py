@@ -21,12 +21,15 @@ other without a cycle.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 
+from app.core.pl_ids import nip_is_valid
+from app.core.validation.identifiers import normalise_digits, rule_for
 from app.modules.subcontractors.schemas import TaxIdValidationResponse
 
 # Country -> (standard_name, compiled regex).
 # Patterns are *format* checks. They are deliberately permissive (no MOD-97 /
-# checksum validation) - the goal is to reject obviously broken input at the
+# checksum validation, except where ``_TAX_ID_CHECKSUMS`` names a country) - the goal is to reject obviously broken input at the
 # UI boundary, not to authenticate against a registry. Live VIES checks are a
 # follow-up module concern. Coverage: all 27 EU member states under the VAT
 # prefix VIES publishes for each; Greece is keyed twice, as EL (its VAT
@@ -83,6 +86,15 @@ _TAX_ID_RULES: dict[str, tuple[str, re.Pattern[str]]] = {
     "ZA": ("ZA VAT", re.compile(r"^\d{10}$")),
 }
 
+#: Check digits verified on top of the format, for the countries where the
+#: algorithm is known and a wrong digit is the common typing error. A number
+#: that matches the pattern and fails its check is refused with reason
+#: ``checksum_mismatch:<standard>``, so the form can tell "wrong shape" from
+#: "right shape, mistyped digit". Poland's NIP: see :mod:`app.core.pl_ids`.
+_TAX_ID_CHECKSUMS: dict[str, Callable[[str], bool]] = {
+    "PL": nip_is_valid,
+}
+
 #: Suffixes a register prints after the number to say the firm is in its VAT
 #: register, in the language of the region: one number, written with or
 #: without it. Dropped from the identity key only; the validator still
@@ -119,10 +131,26 @@ def _tax_id_candidates(country: str, raw: str) -> tuple[str, list[str]]:
     typed against an unknown country were silently cut off.
     """
     country_u = country.upper()[:2]
-    cleaned = re.sub(r"[\s\-./,_]", "", raw or "").upper()
+    # Digits typed on an Arabic or Persian keyboard are the same digits.
+    cleaned = re.sub(r"[\s\-./,_]", "", normalise_digits(raw or "")).upper()
     if country_u and cleaned.startswith(country_u) and len(cleaned) > 2:
         return country_u, [cleaned[2:], cleaned]
     return country_u, [cleaned]
+
+
+def _rule_for(country: str) -> tuple[str, re.Pattern[str]] | None:
+    """This module's own row, else the sourced row in the identifier catalogue.
+
+    The catalogue (``app.core.validation.identifiers``) is where a country's
+    tax registration number is filed with its source and review status; a
+    country this table does not carry is answered from there, so the number has
+    one home rather than a copy here that could drift from it.
+    """
+    own = _TAX_ID_RULES.get(country)
+    if own is not None:
+        return own
+    filed = rule_for(country, "tax_registration")
+    return (filed.label, filed.pattern) if filed is not None else None
 
 
 def validate_tax_id(country: str, tax_id: str) -> TaxIdValidationResponse:
@@ -143,7 +171,7 @@ def validate_tax_id(country: str, tax_id: str) -> TaxIdValidationResponse:
             standard=None,
             reason="empty_after_normalisation",
         )
-    rule = _TAX_ID_RULES.get(country_u)
+    rule = _rule_for(country_u)
     if rule is None:
         return TaxIdValidationResponse(
             country=country_u,
@@ -153,8 +181,17 @@ def validate_tax_id(country: str, tax_id: str) -> TaxIdValidationResponse:
             reason=None,
         )
     standard_name, pattern = rule
+    checksum = _TAX_ID_CHECKSUMS.get(country_u)
     for candidate in candidates:
         if pattern.fullmatch(candidate):
+            if checksum is not None and not checksum(candidate):
+                return TaxIdValidationResponse(
+                    country=country_u,
+                    tax_id_normalised=candidate,
+                    format_valid=False,
+                    standard=standard_name,
+                    reason=f"checksum_mismatch:{standard_name}",
+                )
             return TaxIdValidationResponse(
                 country=country_u,
                 tax_id_normalised=candidate,

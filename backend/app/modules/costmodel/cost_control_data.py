@@ -25,11 +25,19 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.costmodel.cost_control import CENT
+from app.modules.costmodel.inheritance import (
+    SOURCE_CONTRACT_LINE,
+    SOURCE_INVOICE_LINE,
+    SOURCE_PO_ITEM,
+    expand,
+    row_vectors,
+)
 from app.modules.costmodel.repository import (
     _CLAIM_CERTIFIED_STATUSES,
     _CONTRACT_UNBOUND_STATUSES,
@@ -68,13 +76,17 @@ class ContractFigures:
     pending_changes: Decimal = ZERO
     pending_count: int = 0
     cost_line_ids: set[str] = field(default_factory=set)
+    measured: Decimal = ZERO
+    invoiced: Decimal = ZERO
 
 
 @dataclass(slots=True)
 class UnassignedEntry:
     """One contract line or order item whose money is on no cost line yet."""
 
-    kind: str  # "contract_line" or "po_item", the target types the cost line link accepts
+    # "contract_line", "po_item" or "contract" (a bound contract with no schedule line,
+    # whose whole value is on no cost line until it gets an account).
+    kind: str
     id: str
     group_id: str
     group_code: str
@@ -105,6 +117,13 @@ class ControlData:
     pending_changes: Decimal
     pending_count: int
     unassigned_items: list[UnassignedEntry] = field(default_factory=list)
+    # Measured (quantity times contract rate) and invoiced (supplier invoices, net) per cost line.
+    measured: dict[str, Decimal] = field(default_factory=dict)
+    invoiced: dict[str, Decimal] = field(default_factory=dict)
+    unassigned_measured: Decimal = ZERO
+    unassigned_invoiced: Decimal = ZERO
+    # Change orders waiting for a decision, per cost line, from the lines of those orders.
+    pending_by_line: dict[str, Decimal] = field(default_factory=dict)
 
 
 def _dec(value: object) -> str:
@@ -138,6 +157,15 @@ def _paid_share(retention_held: object, completed: object) -> Decimal:
     return (done - held) / done
 
 
+async def _line_billing(session: AsyncSession, project_id: uuid.UUID) -> Any | None:
+    """Measured, invoiced and paid per schedule line from the payment release module, if installed."""
+    try:
+        from app.modules.payment_release.billing import line_billing, load_billing
+    except ImportError:  # pragma: no cover - an install without the module shows no invoice figures
+        return None
+    return line_billing(await load_billing(session, project_id))
+
+
 async def load_control_data(session: AsyncSession, project_id: uuid.UUID) -> ControlData:
     """Read every figure for one project. A fixed number of queries, none per line."""
     from app.modules.changeorders.models import ChangeOrder
@@ -167,7 +195,9 @@ async def load_control_data(session: AsyncSession, project_id: uuid.UUID) -> Con
     # ── Bound subcontracts and their lines ────────────────────────────────
     contract_rows = (
         await session.execute(
-            select(Contract.id, Contract.code, Contract.title, Contract.status, Contract.currency).where(
+            select(
+                Contract.id, Contract.code, Contract.title, Contract.status, Contract.currency, Contract.total_value
+            ).where(
                 Contract.project_id == project_id,
                 Contract.counterparty_type == "subcontractor",
                 Contract.status.not_in(_CONTRACT_UNBOUND_STATUSES),
@@ -176,12 +206,14 @@ async def load_control_data(session: AsyncSession, project_id: uuid.UUID) -> Con
     ).all()
     contracts: dict[str, ContractFigures] = {}
     contract_ccy: dict[str, str] = {}
-    for cid, code, title, status_, ccy in contract_rows:
+    contract_sum: dict[str, object] = {}
+    for cid, code, title, status_, ccy, total_value in contract_rows:
         key = str(cid)
         contracts[key] = ContractFigures(
             contract_id=key, code=code or "", title=title or "", status=(status_ or "").strip().lower()
         )
         contract_ccy[key] = (ccy or "").strip().upper()
+        contract_sum[key] = total_value
 
     line_rows = (
         (
@@ -234,15 +266,27 @@ async def load_control_data(session: AsyncSession, project_id: uuid.UUID) -> Con
                 if cash > paid_by_cl.get(key, ZERO):
                     paid_by_cl[key] = cash
 
+    # Measured, invoiced and paid on supplier invoices, per schedule line (payment release module).
+    billing = await _line_billing(session, project_id)
+
     changes: dict[str, Decimal] = {}
     certified: dict[str, Decimal] = {}
     paid: dict[str, Decimal] = {}
+    measured: dict[str, Decimal] = {}
+    invoiced: dict[str, Decimal] = {}
+    unassigned_measured = ZERO
+    unassigned_invoiced = ZERO
     open_lines: set[str] = set()
     lines_with_contracts: set[str] = set()
     unassigned_committed = ZERO
     unassigned_certified = ZERO
     unassigned_paid = ZERO
     unassigned_items: list[UnassignedEntry] = []
+
+    # A schedule line inherited from a split position carries money to several cost lines.
+    line_vectors = await row_vectors(
+        session, SOURCE_CONTRACT_LINE, {row[0]: row[2] for row in line_rows if row[2] is not None}
+    )
 
     for cl_id, contract_id, cost_line_id, total_value, original_value, origin, line_code, line_desc in line_rows:
         ckey = str(contract_id)
@@ -257,7 +301,10 @@ async def load_control_data(session: AsyncSession, project_id: uuid.UUID) -> Con
         else:
             change = ZERO
         cert = certified_by_cl.get(str(cl_id), ZERO)
-        pay = paid_by_cl.get(str(cl_id), ZERO)
+        meas = billing.measured.get(str(cl_id), ZERO) if billing else ZERO
+        inv = billing.invoiced.get(str(cl_id), ZERO) if billing else ZERO
+        # The same money can be marked paid on the claim and paid on its invoice: take it once.
+        pay = max(paid_by_cl.get(str(cl_id), ZERO), billing.paid.get(str(cl_id), ZERO) if billing else ZERO)
         # A terminated contract binds only what was certified; nothing of it is a change any more.
         bound = cert if terminated else total
         if terminated:
@@ -267,11 +314,15 @@ async def load_control_data(session: AsyncSession, project_id: uuid.UUID) -> Con
         figures.changes += change
         figures.certified += cert
         figures.paid += pay
+        figures.measured += meas
+        figures.invoiced += inv
 
         if cost_line_id is None:
             unassigned_committed += bound
             unassigned_certified += cert
             unassigned_paid += pay
+            unassigned_measured += meas
+            unassigned_invoiced += inv
             if bound != ZERO or cert != ZERO:
                 unassigned_items.append(
                     UnassignedEntry(
@@ -286,14 +337,53 @@ async def load_control_data(session: AsyncSession, project_id: uuid.UUID) -> Con
                     )
                 )
             continue
-        key = str(cost_line_id)
-        figures.cost_line_ids.add(key)
-        lines_with_contracts.add(key)
-        if figures.status != CONTRACT_COMPLETED:
-            open_lines.add(key)
-        changes[key] = changes.get(key, ZERO) + change
-        certified[key] = certified.get(key, ZERO) + cert
-        paid[key] = paid.get(key, ZERO) + pay
+        vector = line_vectors[str(cl_id)]
+        for figure, acc in ((change, changes), (cert, certified), (pay, paid), (meas, measured), (inv, invoiced)):
+            for key, part in expand(figure, vector):
+                acc[str(key)] = acc.get(str(key), ZERO) + part
+        for key in vector.lines:
+            figures.cost_line_ids.add(key)
+            lines_with_contracts.add(key)
+            if figures.status != CONTRACT_COMPLETED:
+                open_lines.add(key)
+
+    # A bound contract with no schedule at all: its whole value is committed and on no cost line.
+    with_lines = {str(row[1]) for row in line_rows}
+    for ckey, figures in contracts.items():
+        if ckey in with_lines or figures.status == CONTRACT_TERMINATED:
+            continue
+        value = _amount_in_base(_dec(contract_sum.get(ckey)), contract_ccy.get(ckey, ""), base, fx)
+        if value == ZERO:
+            continue
+        figures.awarded += value
+        unassigned_committed += value
+        unassigned_items.append(
+            UnassignedEntry(
+                kind="contract",
+                id=ckey,
+                group_id=ckey,
+                group_code=figures.code,
+                group_title=figures.title,
+                code=figures.code,
+                description=figures.title,
+                amount=value,
+            )
+        )
+
+    # Supplier invoice money on no bound schedule line goes to the invoice line's own cost line.
+    if billing is not None and billing.direct:
+        direct_vectors = await row_vectors(
+            session, SOURCE_INVOICE_LINE, {line_id: lid for line_id, lid, _i, _p in billing.direct if lid}
+        )
+        for line_id, lid, inv, pay in billing.direct:
+            vector = direct_vectors.get(line_id) if lid else None
+            if vector is None or vector.empty:
+                unassigned_invoiced += inv
+                unassigned_paid += pay
+                continue
+            for figure, acc in ((inv, invoiced), (pay, paid)):
+                for key, part in expand(figure, vector):
+                    acc[str(key)] = acc.get(str(key), ZERO) + part
 
     # Purchase-order money with no cost line is unaccounted for too. A line that
     # also carries an order is never "final" from its contracts alone: the
@@ -317,9 +407,10 @@ async def load_control_data(session: AsyncSession, project_id: uuid.UUID) -> Con
         )
     ).all()
     lines_with_orders: set[str] = set()
+    po_vectors = await row_vectors(session, SOURCE_PO_ITEM, {row[3]: row[1] for row in po_rows if row[1] is not None})
     for amount, po_cost_line_id, ccy, item_id, item_desc, po_id, po_number in po_rows:
         if po_cost_line_id is not None:
-            lines_with_orders.add(str(po_cost_line_id))
+            lines_with_orders.update(po_vectors[str(item_id)].lines)
             continue
         value = _amount_in_base(_dec(amount), (ccy or "").strip().upper(), base, fx)
         unassigned_committed += value
@@ -396,6 +487,7 @@ async def load_control_data(session: AsyncSession, project_id: uuid.UUID) -> Con
 
     pending_total = ZERO
     pending_count = 0
+    pending_ids: dict[uuid.UUID, str] = {}
     loose_total = ZERO
     loose_count = 0
     for co_id, co_status, impact, contractor_amount, approved_amount, ccy, meta in co_rows:
@@ -406,6 +498,7 @@ async def load_control_data(session: AsyncSession, project_id: uuid.UUID) -> Con
             value = _amount_in_base(_dec(raw), code, base, fx)
             pending_total += value
             pending_count += 1
+            pending_ids[co_id] = code
             if linked and linked in contracts:
                 contracts[linked].pending_changes += value
                 contracts[linked].pending_count += 1
@@ -420,6 +513,23 @@ async def load_control_data(session: AsyncSession, project_id: uuid.UUID) -> Con
             raw = approved_amount if approved_amount is not None else impact
             loose_total += _amount_in_base(_dec(raw), code, base, fx)
             loose_count += 1
+
+    # The lines of the waiting orders say which cost line each part of the money would land on.
+    pending_by_line: dict[str, Decimal] = {}
+    if pending_ids:
+        from app.modules.changeorders.models import ChangeOrderItem
+
+        item_rows = (
+            await session.execute(
+                select(ChangeOrderItem.change_order_id, ChangeOrderItem.cost_line_id, ChangeOrderItem.cost_delta).where(
+                    ChangeOrderItem.change_order_id.in_(list(pending_ids)),
+                    ChangeOrderItem.cost_line_id.is_not(None),
+                )
+            )
+        ).all()
+        for co_id, item_line, delta in item_rows:
+            value = _amount_in_base(_dec(delta), pending_ids.get(co_id, ""), base, fx)
+            pending_by_line[str(item_line)] = pending_by_line.get(str(item_line), ZERO) + value
 
     return ControlData(
         currency=base,
@@ -439,4 +549,9 @@ async def load_control_data(session: AsyncSession, project_id: uuid.UUID) -> Con
         pending_changes=pending_total,
         pending_count=pending_count,
         unassigned_items=sorted(unassigned_items, key=lambda e: (e.kind, e.group_code, e.code, e.description)),
+        measured=measured,
+        invoiced=invoiced,
+        unassigned_measured=unassigned_measured,
+        unassigned_invoiced=unassigned_invoiced,
+        pending_by_line=pending_by_line,
     )

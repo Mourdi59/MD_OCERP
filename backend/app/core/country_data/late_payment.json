@@ -1,0 +1,260 @@
+{
+  "_comment": "Statutory late payment in commercial transactions, per country. Read by app/core/late_payment.py. Every figure carries its source, the dates it holds for and a confidence (H official or two reliable sources agree, M one reliable secondary source or settled practice). Rates outside the listed periods are not known and are never extrapolated.",
+  "countries": {
+    "PL": {
+      "statute": "Ustawa z dnia 8 marca 2013 r. o przeciwdziałaniu nadmiernym opóźnieniom w transakcjach handlowych (consolidated text Dz.U. 2022 poz. 893)",
+      "source_url": "https://eli.gov.pl/eli/DU/2022/893/ogl/pol/pdf",
+      "currency": "PLN",
+      "review_status": "needs_expert_review",
+      "reference_rate": {
+        "name": "Narodowy Bank Polski reference rate (stopa referencyjna)",
+        "fixed_on": "first_day_of_half_year",
+        "note": "The rate in force on 1 January applies to the first half-year and the rate in force on 1 July to the second; the minister publishes the resulting rate in Monitor Polski."
+      },
+      "margins": [
+        {
+          "debtor_kind": "commercial",
+          "margin_percent": "10.00",
+          "effective_from": "2020-01-01",
+          "effective_to": null,
+          "statute_reference": "art. 4 pkt 3 lit. a",
+          "source_url": "https://www.podatki.biz/artykuly/odsetki-ustawowe-w-2026-r-725-925-1175-czy-1375_51_39945.htm",
+          "confidence": "H"
+        },
+        {
+          "debtor_kind": "public",
+          "margin_percent": "10.00",
+          "effective_from": "2020-01-01",
+          "effective_to": null,
+          "statute_reference": "art. 4 pkt 3 lit. a and art. 8",
+          "source_url": "https://www.podatki.biz/artykuly/odsetki-ustawowe-w-2026-r-725-925-1175-czy-1375_51_39945.htm",
+          "confidence": "M"
+        },
+        {
+          "debtor_kind": "public_medical",
+          "margin_percent": "8.00",
+          "effective_from": "2020-01-01",
+          "effective_to": null,
+          "statute_reference": "art. 4 pkt 3 lit. b",
+          "source_url": "https://www.podatki.biz/artykuly/odsetki-ustawowe-w-2026-r-725-925-1175-czy-1375_51_39945.htm",
+          "confidence": "H"
+        }
+      ],
+      "reference_rate_periods": [
+        {
+          "effective_from": "2026-01-01",
+          "effective_to": "2026-06-30",
+          "reference_rate_percent": "4.00",
+          "published_rates": {"commercial": "14.00", "public_medical": "12.00"},
+          "source_url": "https://www.podatki.biz/artykuly/odsetki-ustawowe-w-2026-r-725-925-1175-czy-1375_51_39945.htm",
+          "confidence": "H"
+        },
+        {
+          "effective_from": "2026-07-01",
+          "effective_to": "2026-12-31",
+          "reference_rate_percent": "3.75",
+          "published_rates": {"commercial": "13.75", "public_medical": "11.75"},
+          "source_url": "https://www.podatki.biz/artykuly/odsetki-ustawowe-w-2026-r-725-925-1175-czy-1375_51_39945.htm",
+          "confidence": "H"
+        }
+      ],
+      "term_caps": [
+        {
+          "debtor_kind": "commercial",
+          "max_days": 60,
+          "counted_from": "invoice_delivery",
+          "effective_from": "2013-04-28",
+          "effective_to": null,
+          "statute_reference": "art. 7 ust. 2; art. 7 ust. 2a (no exception where a large enterprise pays an SME, from 2020-01-01)",
+          "source_url": "https://poradnikprzedsiebiorcy.pl/-odsetki-za-opoznienie-w-transakcjach-handlowych",
+          "confidence": "H",
+          "note": "A longer term between undertakings is allowed only if expressly agreed and not grossly unfair to the creditor, and never where the debtor is a large enterprise and the creditor an SME. Where no term was agreed, interest runs after 30 days."
+        },
+        {
+          "debtor_kind": "public",
+          "max_days": 30,
+          "counted_from": "invoice_delivery",
+          "effective_from": "2013-04-28",
+          "effective_to": null,
+          "statute_reference": "art. 8 ust. 1",
+          "source_url": "https://eli.gov.pl/eli/DU/2022/893/ogl/pol/pdf",
+          "confidence": "M"
+        },
+        {
+          "debtor_kind": "public_medical",
+          "max_days": 60,
+          "counted_from": "invoice_delivery",
+          "effective_from": "2013-04-28",
+          "effective_to": null,
+          "statute_reference": "art. 8 ust. 2",
+          "source_url": "https://eli.gov.pl/eli/DU/2022/893/ogl/pol/pdf",
+          "confidence": "M"
+        }
+      ],
+      "recovery_compensation": {
+        "currency": "EUR",
+        "statute_reference": "art. 10 ust. 1",
+        "source_url": "https://poradnikprzedsiebiorcy.pl/-odsetki-za-opoznienie-w-transakcjach-handlowych",
+        "effective_from": "2020-01-01",
+        "effective_to": null,
+        "confidence": "M",
+        "conversion": "Converted to PLN at the NBP average euro rate of the last business day of the month before the month in which the payment became due. The rate is an input; it is not fetched.",
+        "note": "Tier boundaries follow the statute wording: 40 euro where the claim does not exceed PLN 5,000, 70 euro where it is higher than PLN 5,000 but lower than PLN 50,000, 100 euro where it is equal to or higher than PLN 50,000. The creditor may also claim higher actual recovery costs.",
+        "tiers": [
+          {"lower_pln": null, "lower_inclusive": false, "upper_pln": "5000.00", "upper_inclusive": true, "amount": "40"},
+          {"lower_pln": "5000.00", "lower_inclusive": false, "upper_pln": "50000.00", "upper_inclusive": false, "amount": "70"},
+          {"lower_pln": "50000.00", "lower_inclusive": true, "upper_pln": null, "upper_inclusive": false, "amount": "100"}
+        ]
+      }
+    },
+    "FR": {
+      "statute": "Code de commerce L441-10 and D441-5 (business to business); Code de la commande publique R2192-10, R2192-11 and R2192-31 to R2192-37 (public buyers)",
+      "source_url": "https://www.fntp.fr/?p=4008",
+      "currency": "EUR",
+      "review_status": "needs_expert_review",
+      "reference_rate": {
+        "name": "European Central Bank main refinancing operations rate",
+        "fixed_on": "first_day_of_half_year",
+        "note": "Business to business (L441-10 II): the rate in force on 1 January applies to the first half-year and the rate in force on 1 July to the second, re-priced per period. Public buyers (R2192-31) are fixed once, at the first day of the half-year in which interest started to run, and held for the whole delay: their margin row says rate_fixing at_delay_start."
+      },
+      "margins": [
+        {
+          "debtor_kind": "commercial",
+          "margin_percent": "10.00",
+          "effective_from": null,
+          "effective_to": null,
+          "statute_reference": "Code de commerce L441-10 II (ten points over the ECB rate where the contract is silent; an agreed rate may not be lower than three times the legal interest rate, a floor this table does not apply)",
+          "source_url": "https://www.fntp.fr/?p=4008",
+          "confidence": "M",
+          "note": "Commencement date not read. The rate periods below bound where the figure is used."
+        },
+        {
+          "debtor_kind": "public",
+          "margin_percent": "8.00",
+          "rate_fixing": "at_delay_start",
+          "effective_from": "2019-04-01",
+          "effective_to": null,
+          "statute_reference": "Code de la commande publique R2192-31 (ECB main refinancing rate in force on the first day of the half-year in which the delay started, plus eight points, held for the whole delay)",
+          "source_url": "https://www.fntp.fr/?p=4008",
+          "confidence": "H"
+        }
+      ],
+      "reference_rate_periods": [
+        {
+          "effective_from": "2025-07-01",
+          "effective_to": "2025-12-31",
+          "reference_rate_percent": "2.15",
+          "published_rates": {
+            "commercial": "12.15",
+            "public": "10.15"
+          },
+          "source_url": "https://www.ecb.europa.eu/press/pr/date/2025/html/ecb.mp250605~3b5f67d007.en.html",
+          "confidence": "H",
+          "note": "ECB rate cut to 2.15 percent effective 11 June 2025, so the rate on 1 July 2025."
+        },
+        {
+          "effective_from": "2026-01-01",
+          "effective_to": "2026-06-30",
+          "reference_rate_percent": "2.15",
+          "published_rates": {
+            "commercial": "12.15",
+            "public": "10.15"
+          },
+          "source_url": "https://www.ecb.europa.eu/press/pr/date/2025/html/ecb.mp250605~3b5f67d007.en.html",
+          "confidence": "H"
+        },
+        {
+          "effective_from": "2026-07-01",
+          "effective_to": "2026-12-31",
+          "reference_rate_percent": "2.40",
+          "published_rates": {
+            "commercial": "12.40",
+            "public": "10.40"
+          },
+          "source_url": "https://www.fntp.fr/?p=4008",
+          "confidence": "M",
+          "note": "ECB rate 2.40 percent since 17 June 2026, read in the public works federation half-yearly note (one secondary source), which states the resulting 12.40 percent."
+        }
+      ],
+      "legal_interest_rates": [
+        {
+          "rate_percent": "2.62",
+          "creditor": "professional",
+          "effective_from": "2026-01-01",
+          "effective_to": "2026-06-30",
+          "statute_reference": "Code monetaire et financier L313-2; half-yearly arrete",
+          "source_url": "https://www.service-public.gouv.fr/particuliers/vosdroits/A15398",
+          "confidence": "M"
+        },
+        {
+          "rate_percent": "2.75",
+          "creditor": "professional",
+          "effective_from": "2026-07-01",
+          "effective_to": "2026-12-31",
+          "statute_reference": "Arrete of 26 June 2026 (JO 30 June 2026)",
+          "source_url": "https://www.service-public.gouv.fr/particuliers/vosdroits/A15398",
+          "confidence": "H"
+        }
+      ],
+      "agreed_rate_floor": {
+        "debtor_kinds": ["commercial"],
+        "multiple_of_legal_rate": "3",
+        "statute_reference": "Code de commerce L441-10 II: the agreed late payment rate may not be lower than three times the legal interest rate",
+        "source_url": "https://www.fntp.fr/?p=4008",
+        "confidence": "M"
+      },
+      "term_caps": [
+        {
+          "debtor_kind": "commercial",
+          "max_days": 60,
+          "counted_from": "invoice_date",
+          "effective_from": null,
+          "effective_to": null,
+          "statute_reference": "Code de commerce L441-10 I al. 2",
+          "source_url": "https://www.fntp.fr/?p=4008",
+          "confidence": "M",
+          "note": "An agreed term may not exceed 60 days from the invoice date or, as an alternative, 45 days end of month; the later of the two limits applies. Only the 60 day limit is a number here. Where no term was agreed the statutory term is 30 days."
+        },
+        {
+          "debtor_kind": "public",
+          "max_days": 30,
+          "counted_from": "receipt_of_payment_request",
+          "effective_from": "2019-04-01",
+          "effective_to": null,
+          "statute_reference": "Code de la commande publique R2192-10",
+          "source_url": "https://www.code-commande-publique.com",
+          "confidence": "M"
+        },
+        {
+          "debtor_kind": "public_medical",
+          "max_days": 50,
+          "counted_from": "receipt_of_payment_request",
+          "effective_from": "2019-04-01",
+          "effective_to": null,
+          "statute_reference": "Code de la commande publique R2192-11 (public health establishments; public undertakings have 60 days)",
+          "source_url": "https://www.code-commande-publique.com",
+          "confidence": "M"
+        }
+      ],
+      "recovery_compensation": {
+        "currency": "EUR",
+        "statute_reference": "Code de commerce D441-5; Code de la commande publique R2192-40 and following",
+        "source_url": "https://www.fntp.fr/?p=4008",
+        "effective_from": null,
+        "effective_to": null,
+        "confidence": "M",
+        "conversion": "The indemnity is stated in euro; pass a euro rate of 1.",
+        "note": "A flat EUR 40 per late invoice, owed on top of interest, for business to business and public debtors alike. The creditor may claim more where the real recovery costs were higher. The tier fields keep the names the Polish row needed; there is a single tier with no bounds.",
+        "tiers": [
+          {
+            "lower_pln": null,
+            "lower_inclusive": false,
+            "upper_pln": null,
+            "upper_inclusive": false,
+            "amount": "40"
+          }
+        ]
+      }
+    }
+  }
+}

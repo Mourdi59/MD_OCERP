@@ -22,6 +22,7 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Any
 
 from fastapi import HTTPException, status
+from sqlalchemy import update as sa_update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -126,20 +127,24 @@ def _mr_assert_transition(current: str, target: str) -> None:
         )
 
 
-def _compute_delivery_date(required_date: str | None, lead_time_days: int) -> str | None:
-    """Compute estimated delivery date = required_date - lead_time_days.
+def _latest_order_date(required_date: str | None, lead_time_days: int) -> str | None:
+    """The last day an order can be placed and still arrive by ``required_date``.
 
-    Returns an ISO-8601 date string, or None if inputs are invalid.
-    Zero lead_time means "deliver on the required date" - returns None to
-    signal that no meaningful pre-order window exists.
-    Note: uses calendar days, not working-day calendar.
+    ``required_date - lead_time_days``, in calendar days. This is an ordering
+    deadline, not a delivery forecast: the supplier's expected or confirmed
+    delivery date lives on the purchase order (``delivery_date`` and
+    ``supplier_confirmed_delivery_date``). Until 18.6.x this value was stored
+    as the requisition's ``estimated_delivery_date``, which read an ordering
+    deadline as an arrival (issue #516).
+
+    Returns None when either input is missing or invalid, or when there is no
+    lead time, because the deadline then equals the required date itself.
     """
     if not required_date or lead_time_days <= 0:
         return None
     try:
         req = date.fromisoformat(required_date)
-        est = req - timedelta(days=lead_time_days)
-        return est.isoformat()
+        return (req - timedelta(days=lead_time_days)).isoformat()
     except (ValueError, TypeError):
         return None
 
@@ -1283,9 +1288,24 @@ class ProcurementService:
         if fields:
             await self.po_repo.update(po_id, **fields)
 
+        # A requisition's delivery date is a copy of its order's date. Keep the
+        # copy in step on the write that moves the date, not at the next boot.
+        if "delivery_date" in fields:
+            await self.session.execute(
+                sa_update(MaterialRequisition)
+                .where(MaterialRequisition.po_id == po_id)
+                .values(estimated_delivery_date=fields["delivery_date"])
+                .execution_options(synchronize_session=False)
+            )
+
         # Replace items if provided. The goods-receipt refusal and the cost
         # line resolution for this replace both run above, before any write.
         if data.items is not None:
+            # Issue #516: whether a requisition line is on this order before or
+            # after the replace decides whether requisitions need a recount.
+            touches_requisitions = any(
+                getattr(old, "requisition_item_id", None) for old in (getattr(po, "items", None) or [])
+            ) or any(getattr(new, "requisition_item_id", None) for new in data.items)
             await self.po_item_repo.delete_by_po(po_id)
             item_amounts: list[Decimal] = []
             for idx, item_data in enumerate(data.items):
@@ -1339,6 +1359,14 @@ class ProcurementService:
                     tax_amount=current_tax,
                     amount_total=recomputed_total,
                 )
+
+            # Issue #516: a requisition line's ordered quantity is read from its
+            # order lines, so a changed line can leave quantity to order again
+            # (or none). Bring the requisitions' status in step in this write.
+            if touches_requisitions:
+                from app.modules.procurement.requisition_service import sync_requisitions_for_po
+
+                await sync_requisitions_for_po(self.session, po_id, actor_id=None)
 
         updated = await self.po_repo.get(po_id)
         if updated is None:
@@ -1499,9 +1527,12 @@ class ProcurementService:
         """Refuse a line replace that links a line to a requisition not converted into this order.
 
         Issue #516. A replace sends every line's ``requisition_item_id`` back so
-        the provenance survives the edit. A link may only point at a line of a
-        requisition whose ``po_id`` is this order; anything else would claim a
-        requisition that was never converted into it. Checked before any write.
+        the provenance survives the edit. A link may only point at a requisition
+        line this order already carries, or at a line of a requisition whose
+        ``po_id`` is this order; anything else would claim a requisition line
+        that was never converted into it. A requisition may be ordered over
+        several orders, so its ``po_id`` alone no longer names every order it
+        went on. Checked before any write.
         """
         wanted = {item.requisition_item_id for item in items if getattr(item, "requisition_item_id", None)}
         if not wanted:
@@ -1515,7 +1546,15 @@ class ProcurementService:
                 .where(MaterialRequisitionItem.id.in_(wanted), MaterialRequisition.po_id == po.id)
             )
         ).scalars()
-        foreign = wanted - set(rows)
+        carried = (
+            await self.session.execute(
+                select(PurchaseOrderItem.requisition_item_id).where(
+                    PurchaseOrderItem.po_id == po.id,
+                    PurchaseOrderItem.requisition_item_id.in_(wanted),
+                )
+            )
+        ).scalars()
+        foreign = wanted - set(rows) - set(carried)
         if foreign:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -3485,7 +3524,6 @@ class MaterialRequisitionService:
         correct on the day the endpoint lands, rather than being a second
         omission to discover then.
         """
-        est_delivery = _compute_delivery_date(required_date, lead_time_days)
         # Insert the requisition with a per-project sequential req_number, retrying
         # on the unique-constraint collision a concurrent insert can cause. The
         # number is derived from the NUMERIC MAX of existing "MR-<digits>" rows
@@ -3496,7 +3534,8 @@ class MaterialRequisitionService:
             title=title,
             required_date=required_date,
             lead_time_days=lead_time_days,
-            estimated_delivery_date=est_delivery,
+            # No delivery forecast exists before an order does; see _latest_order_date.
+            estimated_delivery_date=None,
             notes=notes,
         )
 

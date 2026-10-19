@@ -76,6 +76,9 @@ import { ResourceSummary } from './ResourceSummary';
 import { CommentDrawer, type CommentEntry } from './CommentDrawer';
 import { PriceAnalysisPanel } from './PriceAnalysisPanel';
 import { PositionActualsDrawer } from '@/features/costmodel/PositionActualsDrawer';
+import { costStructureApi, statusOf, type PositionAllocation } from '@/features/costmodel/structureApi';
+import { CostAllocationDrawer } from './CostAllocationDrawer';
+import { CostAllocationCoverageBar, CostAllocationCoverageError } from './CostAllocationCoverage';
 import { PositionProcurementDrawer } from '@/features/procurement/PositionProcurementDrawer';
 import { MeasurementDrawer } from './MeasurementDrawer';
 import { GaebSiteExchangeDialog } from './GaebSiteExchangeDialog';
@@ -132,6 +135,7 @@ import { CatalogPickerModal, type CatalogResource } from './CatalogPickerModal';
 import { CustomColumnsDialog } from './CustomColumnsDialog';
 import { BOQVariablesDialog } from './BOQVariablesDialog';
 import { CostPerAreaBenchmark } from './CostPerAreaBenchmark';
+import { HistoricalRangePanel } from '@/features/analytics/HistoricalRange';
 import { RenumberDialog, type RenumberScheme, type RenumberCustom } from './RenumberDialog';
 import { LinkedPositionsModal } from './LinkedPositionsModal';
 import { repointedMetadata } from './repointedMetadata';
@@ -2549,6 +2553,52 @@ export function BOQEditorPage() {
   const showResourceSplit = resourceSplitMode === 'columns';
   const showResourceSplitPill = resourceSplitMode === 'pill';
 
+  /* Cost allocation: where each position's money lands on the cost structure.
+   *  The list feeds the coverage bar, the optional read-only column and the
+   *  allocation drawer. It is refetched whenever the bill changes, since a
+   *  remeasured position can break a quantity split. The column choice is a
+   *  per-viewer preference, like the resource split. */
+  const COST_ALLOCATION_COLUMN_KEY = 'oe_boq_cost_allocation_column';
+  const [showCostAllocation, setShowCostAllocation] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(COST_ALLOCATION_COLUMN_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const toggleCostAllocation = useCallback(() => {
+    setShowCostAllocation((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(COST_ALLOCATION_COLUMN_KEY, next ? '1' : '0');
+      } catch { /* localStorage unavailable - the choice lasts for this visit */ }
+      return next;
+    });
+  }, []);
+  const allocationsQuery = useQuery({
+    queryKey: ['boq-allocations', boqId],
+    queryFn: () => costStructureApi.getBoqAllocations(boqId!),
+    enabled: !!boqId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+  useEffect(() => {
+    if (!boqId || !boq) return;
+    queryClient.invalidateQueries({ queryKey: ['boq-allocations', boqId] });
+  }, [boq, boqId, queryClient]);
+  const costAllocations = useMemo(() => {
+    const map = new Map<string, PositionAllocation>();
+    const positions = allocationsQuery.data?.positions;
+    for (const p of Array.isArray(positions) ? positions : []) map.set(p.position_id, p);
+    return map;
+  }, [allocationsQuery.data]);
+  const [allocationPositionId, setAllocationPositionId] = useState<string | null>(null);
+  // A viewer without cost-model access (or with the module off) simply sees no
+  // allocation; any other failure is said out loud instead of looking empty.
+  const allocationsStatus = allocationsQuery.isError ? statusOf(allocationsQuery.error) : null;
+  const allocationsFailed =
+    allocationsQuery.isError && allocationsStatus !== 401 && allocationsStatus !== 403 && allocationsStatus !== 404;
+
   const displayCurrencyMeta = useMemo(() => {
     if (!displayCurrency) return null;
     const fx = fxRates.find((f) => f.currency === displayCurrency);
@@ -4685,6 +4735,14 @@ export function BOQEditorPage() {
 
   /* ── AG Grid footer rows (must be before early returns — Rules of Hooks) */
   const hasPositions = boq ? boq.positions.length > 0 : false;
+  // Measured work only: section rows carry no unit and have no history to match.
+  const historicalPositions = useMemo(
+    () =>
+      (boq?.positions ?? [])
+        .filter((p) => Boolean(p.unit))
+        .map((p) => ({ id: p.id, ordinal: p.ordinal, description: p.description })),
+    [boq?.positions],
+  );
 
   const boqFooterRows = useMemo(() => {
     type FooterRow = { _isFooter: true; _footerType: string; id: string; description: string; total: number; ordinal: string; unit: string; quantity: number; unit_rate: number; _resourceSplitMoney?: Record<string, number> };
@@ -5494,6 +5552,15 @@ export function BOQEditorPage() {
         // keeps its own internal horizontal scrollbar, which is what the
         // user expects (toolbar and headers stay aligned with the page).
         <div className="mb-2 min-w-0" data-testid="boq-grid">
+        {allocationsQuery.data?.coverage && allocationsQuery.data.coverage.positions_total > 0 && (
+          <CostAllocationCoverageBar
+            coverage={allocationsQuery.data.coverage}
+            currency={allocationsQuery.data.currency || currencyCode}
+            showColumn={showCostAllocation}
+            onToggleColumn={toggleCostAllocation}
+          />
+        )}
+        {allocationsFailed && <CostAllocationCoverageError onRetry={() => void allocationsQuery.refetch()} />}
         <BOQFilterBar
           search={boqSearch}
           onSearch={setBoqSearch}
@@ -5580,6 +5647,9 @@ export function BOQEditorPage() {
           customColumns={boqCustomColumns}
           showResourceSplit={showResourceSplit}
           showResourceSplitPill={showResourceSplitPill}
+          showCostAllocation={showCostAllocation}
+          costAllocations={costAllocations}
+          onOpenCostAllocation={setAllocationPositionId}
           boqVariables={boqVariables}
           bimModelId={bimModelId}
           onHighlightBIMElements={handleHighlightBIMElements}
@@ -5641,6 +5711,11 @@ export function BOQEditorPage() {
           locale={locale}
         />
       )}
+
+      {/* ── Historical actuals per position ──────────────────────────────
+          Closed by default; loads only when opened. Distinct from the market
+          price check and from the estimate class accuracy band. */}
+      {boqId && hasPositions && <HistoricalRangePanel positions={historicalPositions} />}
 
       {/* ── Resource Summary ──────────────────────────────────────────── */}
       {boqId && hasPositions && <div className="mt-6" data-testid="boq-resource-summary"><ResourceSummary boqId={boqId} locale={locale} currency={currencyCode} /></div>}
@@ -6213,6 +6288,14 @@ export function BOQEditorPage() {
           />
         );
       })()}
+
+      <CostAllocationDrawer
+        open={allocationPositionId !== null}
+        onClose={() => setAllocationPositionId(null)}
+        projectId={boq?.project_id}
+        allocation={allocationPositionId ? costAllocations.get(allocationPositionId) : undefined}
+        currency={allocationsQuery.data?.currency || currencyCode}
+      />
 
       {/* Issue #516: requisitions and purchase order lines for one position. */}
       {(() => {

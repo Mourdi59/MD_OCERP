@@ -1,4 +1,76 @@
 {
+  "cost_control": {
+    "unassigned_money": {
+      "fail": "Dana yang sudah dikomitmenkan belum dialokasikan ke baris biaya mana pun.",
+      "suggestion": "Hubungkan baris kontrak atau pesanan ke baris biaya agar dana tampil di tempat yang benar."
+    },
+    "certified_over_committed": {
+      "fail": "Pekerjaan yang disertifikasi melebihi nilai penunjukan ditambah perubahan yang disetujui.",
+      "suggestion": "Setujui perubahan yang mencakup pekerjaan tambahan, atau periksa klaimnya."
+    },
+    "forecast_over_plan": {
+      "fail": "Prakiraan berada di atas jumlah yang direncanakan.",
+      "suggestion": "Periksa sumber prakiraan; catat prakiraan manual beserta alasannya jika Anda memperkirakan ada penghematan."
+    },
+    "partly_awarded": {
+      "fail": "Hanya sebagian dari jumlah rencana yang ditunjuk; prakiraan mungkin belum memuat pekerjaan yang masih akan ditenderkan.",
+      "suggestion": "Jika pada baris ini masih ada pekerjaan yang akan ditenderkan, masukkan prakiraan manual."
+    },
+    "pending_changes": {
+      "fail": "Perintah perubahan menunggu keputusan.",
+      "suggestion": "Putuskan perintah perubahan yang tertunda; prakiraan belum memasukkannya."
+    },
+    "snapshot_stale": {
+      "fail": "Sudah lebih dari sebulan tidak ada prakiraan yang disimpan.",
+      "suggestion": "Simpan snapshot prakiraan agar riwayat biaya tetap terbaca."
+    }
+  },
+  "cost_structure": {
+    "account_code_duplicate": {
+      "fail": "Kode akun {code} muncul lebih dari sekali dalam struktur biaya.",
+      "suggestion": "Pertahankan satu akun per kode dan pindahkan baris biayanya ke akun tersebut."
+    },
+    "mixed_standard": {
+      "fail": "Struktur biaya mencampur daftar kode: {standards}.",
+      "suggestion": "Susun struktur dari satu daftar kode; petakan kode lainnya ke daftar tersebut."
+    },
+    "account_parent_cycle": {
+      "fail": "Akun {code} menjadi leluhur bagi dirinya sendiri melalui {count} akun.",
+      "suggestion": "Beri salah satu akun ini induk di luar siklus."
+    },
+    "account_too_deep": {
+      "fail": "Akun {code} berada di tingkat {level}, lebih dalam daripada {max} tingkat pada daftar kodenya.",
+      "suggestion": "Pasang akun ke induk dalam batas kedalaman daftar kode."
+    },
+    "no_account": {
+      "fail": "{count} baris biaya senilai {amount} tidak berada di akun mana pun (pertama: {code}).",
+      "suggestion": "Beri item-item ini kode dari daftar kode struktur, atau tetapkan baris biaya ke sebuah akun."
+    },
+    "invalid_account": {
+      "fail": "{count} baris biaya senilai {amount} berada di akun yang sudah ditutup atau yang tidak menerima posting (pertama: {code}).",
+      "suggestion": "Pindahkan baris biaya ke akun terbuka yang menerima posting."
+    },
+    "own_amount_on_parent": {
+      "fail": "Akun {code} memiliki sub-akun dan juga jumlahnya sendiri sebesar {amount}.",
+      "suggestion": "Pindahkan jumlah sendiri ke sub-akun, atau pertahankan sebagai dana cadangan yang disengaja."
+    },
+    "rollup_mismatch": {
+      "fail": "Total struktur {reported} berbeda dari jumlah bagiannya {expected} sebesar {difference}.",
+      "suggestion": "Muat ulang struktur; jika selisih tetap ada, periksa akun yang tidak memiliki induk."
+    },
+    "allocation_incomplete": {
+      "fail": "Porsi item {ordinal} berjumlah {total}{unit}, bukan {expected}{unit}.",
+      "suggestion": "Sesuaikan porsi agar seluruh item teralokasi, tidak lebih dan tidak kurang."
+    },
+    "allocation_mixed_modes": {
+      "fail": "Item {ordinal} dibagi sebagian berdasarkan persen dan sebagian berdasarkan kuantitas.",
+      "suggestion": "Bagi item dengan satu cara saja."
+    },
+    "vector_not_inherited": {
+      "fail": "Baris kontrak {code} berada pada baris biaya yang tidak dialokasikan untuk item BOQ-nya.",
+      "suggestion": "Kembalikan baris ke baris biaya milik item, atau catat pengecualian beserta alasannya."
+    }
+  },
   "boq_markup": {
     "contingency_not_on_profit": {
       "fail": "Cadangan risiko \"{markup}\" dihitung dari dasar yang sudah memuat baris laba \"{profit}\", sehingga margin dibebankan pada dana yang disisihkan untuk risiko",
@@ -59,6 +131,10 @@
     "offline_sync_delay": {
       "fail": "Pekerjaan dilakukan pada {date}, tetapi baru diterima kantor {days} hari kemudian",
       "suggestion": "Periksa jam terhadap catatan hari tersebut sebelum menyetujui; periode penilaian pembayaran mungkin sudah ditutup"
+    },
+    "outdoor_heat_ban": {
+      "fail": "Baris {line} mencatat pekerjaan dari {start} sampai {end} pada {date}, yang masuk dalam larangan kerja di luar ruangan saat tengah hari dari {ban_from} sampai {ban_to}",
+      "suggestion": "Jika pekerjaan ini dilakukan di luar ruangan di bawah sinar matahari langsung, pindahkan ke luar jam larangan; pekerjaan di dalam ruangan dan sektor yang dikecualikan tidak terpengaruh"
     }
   },
   "ai_takeoff": {
@@ -521,6 +597,20 @@
       "suggestion": "Batasi penyesuaian antara -50% dan +200% untuk menghindari harga kavling yang tidak realistis"
     }
   },
+  "schedule_5d": {
+    "boq_coverage": {
+      "fail": "Item {ordinal} '{description}' ({amount}) sudah diberi harga di RAB, tetapi tidak ada aktivitas yang memuatnya, sehingga biayanya tidak ada di jadwal",
+      "suggestion": "Isi volume pada item atau hubungkan ke sebuah aktivitas, lalu buat ulang jadwal."
+    },
+    "cost_reconciliation": {
+      "fail": "Jadwal memuat {planned} dari {bill} RAB: {difference} pekerjaan yang sudah diberi harga tidak ada di aktivitas mana pun",
+      "suggestion": "Periksa item yang dicantumkan pemeriksaan cakupan, lalu buat ulang jadwal."
+    },
+    "duration_vs_norm": {
+      "fail": "Aktivitas '{activity}' berlangsung {duration} hari kerja, sedangkan koefisien tenaga kerja dan alat memberi {norm}",
+      "suggestion": "Periksa volume, regu, dan jam koefisien item, atau durasi yang diubah manual."
+    }
+  },
   "schedule_quality": {
     "open_ends": {
       "fail": "Aktivitas '{activity}' tidak memiliki hubungan {ends} (ujung terbuka / aktivitas terputus)",
@@ -656,6 +746,42 @@
     "requisition_line_cost_line": {
       "fail": "Baris {line} tidak terhubung ke baris biaya, sehingga pesanannya tidak akan tampil sebagai komitmen terhadap anggaran",
       "suggestion": "Buat baris dari BOQ, atau hubungkan ke baris biaya sebelum memesan"
+    },
+    "requisition_suggested_vendor_in_directory": {
+      "fail": "Baris {line} menyarankan pemasok {vendor}, yang tidak ada di daftar pemasok",
+      "suggestion": "Pilih pemasok yang disarankan dari daftar pemasok, atau hapus sarannya"
+    },
+    "requisition_suggested_vendor_active": {
+      "fail": "Baris {line} menyarankan {vendor}, pemasok yang tidak aktif di daftar pemasok",
+      "suggestion": "Sarankan pemasok yang aktif, atau serahkan pilihan kepada bagian pembelian"
+    },
+    "requisition_suggestion_conflict": {
+      "fail": "Sumber BOQ pada baris {line} menyarankan {count} pemasok yang berbeda",
+      "suggestion": "Pilih satu pemasok untuk baris ini, atau pecah baris agar setiap pemasok punya barisnya sendiri"
+    },
+    "requisition_suggested_vendor_differs": {
+      "fail": "Baris {line} menyarankan {vendor}, tetapi permintaan pembelian akan dipesan dari pemasok lain",
+      "suggestion": "Pastikan pemasok yang dipilih bisa memasok baris ini, atau pesan secara terpisah"
+    },
+    "requisition_line_needed_by_not_past": {
+      "fail": "Baris {line} dibutuhkan pada {date}, tanggal yang sudah lewat (hari ini {today})",
+      "suggestion": "Isi tanggal material benar-benar dibutuhkan di lokasi proyek"
+    },
+    "requisition_line_schedule_moved": {
+      "fail": "Baris {line} direncanakan untuk aktivitas yang dimulai {anchor}, tetapi aktivitas kini dimulai {start}",
+      "suggestion": "Cocokkan tanggal dibutuhkan baris dengan jadwal terkini dan ubah jika perlu"
+    },
+    "requisition_approver_not_requester": {
+      "fail": "Pembuat permintaan {req} juga merupakan penyetuju nomor {step} yang ditunjuk",
+      "suggestion": "Tunjuk penyetuju lain untuk langkah itu, agar keputusan diambil orang selain pemohon"
+    },
+    "requisition_line_over_ordered": {
+      "fail": "Baris {line} memiliki {ordered} {unit} pada pesanan, melebihi {requested} {unit} yang diminta",
+      "suggestion": "Periksa apakah kelebihan kuantitas disengaja, atau kurangi baris pesanan"
+    },
+    "requisition_order_unit_mismatch": {
+      "fail": "Pesanan {order} memuat baris {line} dalam {unit}, yang tidak dapat dikonversi ke satuan baris {line_unit}",
+      "suggestion": "Perbaiki satuan pada baris pesanan agar kuantitasnya terhitung sebagai dipesan"
     },
     "receipt_certificate_present": {
       "fail": "Baris {line} dipesan dengan {required}, tetapi pengiriman membawa {delivered}",
@@ -973,5 +1099,184 @@
     "parent_not_found": "Model yang seharusnya menjadi induk versi baru dari unggahan ini tidak ada di proyek ini. Pilih model lain, atau unggah sebagai model terpisah.",
     "parent_not_ready": "Impor \"{name}\" belum selesai, sehingga belum dapat menerima versi baru. Tunggu sampai siap, atau unggah file ini sebagai model terpisah.",
     "parent_superseded": "\"{name}\" sudah memiliki versi yang lebih baru, {version}. Unggah file ini sebagai versi baru dari yang terbaru."
+  },
+  "cost_chain": {
+    "contract_without_schedule": {
+      "fail": "Kontrak {code} bernilai {amount} tetapi tidak punya baris jadwal, jadi uangnya tidak ada di baris biaya mana pun.",
+      "suggestion": "Beri kontrak satu akun di pengendalian biaya, atau tambahkan baris jadwalnya."
+    },
+    "contract_sum_differs": {
+      "fail": "Kontrak {code} bernilai {total}, tetapi baris jadwalnya berjumlah {lines} (selisih {difference}).",
+      "suggestion": "Perbaiki nilai kontrak atau baris jadwal agar sama."
+    },
+    "change_without_agreed_amount": {
+      "fail": "Perubahan {code} disetujui tanpa jumlah yang disepakati.",
+      "suggestion": "Catat jumlah yang disepakati dengan kontraktor sebelum perubahan disetujui."
+    },
+    "change_without_approval_date": {
+      "fail": "Perubahan {code} disetujui tanpa tanggal persetujuan.",
+      "suggestion": "Catat kapan perubahan itu disetujui."
+    },
+    "billed_before_approval": {
+      "fail": "{amount} ditagihkan pada kontrak {contract} untuk perubahan {code}, yang berstatus {status} dan belum disetujui.",
+      "suggestion": "Setujui perubahan lebih dulu, atau tarik penagihan dari tagihan termin."
+    },
+    "contract_over_target": {
+      "fail": "Kontrak {code} mengikat {committed}, {difference} di atas {target} dari BQ tempat kontrak ini ditenderkan (lebih dari {tolerance} %).",
+      "suggestion": "Cocokkan penunjukan dan perubahannya dengan BQ, lalu catat mengapa pekerjaan lebih mahal."
+    },
+    "account_over_plan": {
+      "fail": "Akun {code} memuat komitmen {committed}, {difference} di atas rencananya sebesar {planned} (lebih dari {tolerance} %).",
+      "suggestion": "Periksa komitmen di akun ini, atau perbarui rencana beserta alasannya."
+    },
+    "quantity_overrun": {
+      "fail": "Baris {code} kontrak {contract} terukur {measured} {unit} dari {contracted} {unit} di kontrak, lebih {over} % (batas {tolerance} %).",
+      "suggestion": "Periksa pengukuran, atau sepakati kuantitas tambahan sebagai perubahan."
+    },
+    "measurement_exceeds_commitment": {
+      "fail": "Kontrak {code} terukur {measured}, {difference} di atas nilainya beserta perubahan yang disetujui sebesar {committed}.",
+      "suggestion": "Setujui perubahan yang menutup pekerjaan tambahan, atau periksa pengukuran."
+    },
+    "invoice_without_contract": {
+      "fail": "Faktur pemasok {number} sebesar {amount} tidak termasuk kontrak atau pesanan mana pun.",
+      "suggestion": "Kaitkan barisnya ke kontrak, atau catat sebagai biaya langsung di satu akun."
+    }
+  },
+  "payment_release": {
+    "cumulative_total_fell": {
+      "fail": "Faktur {number} pada kontrak {contract} mencatat {net} sampai saat ini, lebih kecil dari {previous} pada faktur sebelumnya {previous_number}, padahal kontrak ditagih secara kumulatif.",
+      "suggestion": "Jika faktur hanya menagih pekerjaan baru, kontrak ditagih secara inkremental; jika faktur mengurangi total, catat sebagai nota kredit."
+    },
+    "invoice_after_final": {
+      "fail": "Faktur {number} pada kontrak {contract} terbit setelah faktur final {final}.",
+      "suggestion": "Catat pekerjaan berikutnya sebagai pekerjaan harian atau nota kredit, atau tandai faktur yang benar sebagai faktur final."
+    },
+    "claim_invoice_in_cumulative": {
+      "fail": "Faktur {number} pada kontrak {contract} dibuat dari klaim dan menagih satu periode, tetapi kontrak ditagih secara kumulatif.",
+      "suggestion": "Gunakan satu cara penagihan per kontrak: ubah kontrak ke penagihan inkremental, atau catat faktur kumulatif kontraktor sebagai gantinya."
+    },
+    "release_differs": {
+      "fail": "Pencairan yang dikonfirmasi untuk faktur {number} pada kontrak {contract} sebesar {stored}, tetapi ketentuan kontrak hari ini menghasilkan {computed}.",
+      "suggestion": "Periksa apa yang berubah sejak pencairan (ketentuan, jumlah faktur, potongan), lalu buka kembali pencairan dan konfirmasi ulang."
+    },
+    "rounding_out_of_range": {
+      "fail": "Faktur {number} dibulatkan sebesar {rounding}, di luar langkah pembulatan yang disepakati yaitu {step}.",
+      "suggestion": "Pembulatan hanya mengurangi pencairan kurang dari satu langkah; aktifkan pembulatan di ketentuan pembayaran atau buka kembali pencairan."
+    },
+    "final_retention_without_warranty": {
+      "fail": "Faktur final {number} pada kontrak {contract} menahan retensi {amount}, tetapi tidak ada retensi garansi yang disepakati.",
+      "suggestion": "Sepakati retensi garansi di ketentuan pembayaran, atau buka kembali pencairan agar seluruh retensi dibayar bersama faktur final."
+    },
+    "posting_exceeds_held": {
+      "fail": "Retensi yang dikembalikan pada kontrak {contract} lebih besar dari yang ditahan: kelebihan {amount}.",
+      "suggestion": "Batalkan pencatatan retensi yang terlalu besar dan catat jumlah yang benar-benar ditahan."
+    },
+    "posting_before_event": {
+      "fail": "Retensi {amount} pada kontrak {contract} dikembalikan pada {posted}, sebelum peristiwa pencairannya jatuh tempo pada {due}.",
+      "suggestion": "Periksa tanggal peristiwa pencairan, atau catat pencairan setelah peristiwa itu terjadi."
+    },
+    "posting_without_event_date": {
+      "fail": "Retensi {amount} pada kontrak {contract} dikembalikan, tetapi tanggal peristiwa pencairannya tidak dicatat.",
+      "suggestion": "Catat tanggal peristiwa pencairan tercapai, agar pembayaran dapat dicocokkan dengannya."
+    },
+    "retention_still_held": {
+      "fail": "Kontrak {contract} sudah selesai dan masih menahan retensi {amount}.",
+      "suggestion": "Cairkan retensi pada peristiwanya di register retensi, atau tetap tahan selama masa garansi."
+    },
+    "discount_not_agreed": {
+      "fail": "Pencairan faktur {number} pada kontrak {contract} mengambil diskon pembayaran dini sebesar {amount}, padahal kontrak tidak mengizinkannya.",
+      "suggestion": "Aktifkan diskon pembayaran dini di ketentuan pembayaran, atau buka kembali pencairan tanpa diskon."
+    },
+    "discount_after_deadline": {
+      "fail": "Diskon {amount} ditahan pada faktur {number}, tetapi pembayaran pada {paid_on} terjadi setelah batas diskon {until}.",
+      "suggestion": "Bayar juga jumlah diskonnya, atau catat alasan kontraktor menerima diskon yang terlambat."
+    },
+    "invoiced_over_measured": {
+      "fail": "Kontrak {contract} ditagih sebesar {invoiced}, {difference} di atas {measured} yang terukur (volume kali harga satuan).",
+      "suggestion": "Periksa pengukuran sebelum mencairkan dana lagi, atau tahan selisihnya pada pencairan berikutnya."
+    },
+    "invoiced_over_contract": {
+      "fail": "Kontrak {contract} ditagih sebesar {invoiced}, {difference} di atas nilainya yaitu {value}, dan belum ada yang terukur.",
+      "suggestion": "Catat pengukuran atau perubahan pekerjaan yang mencakup kelebihan dana sebelum mencairkan lebih banyak."
+    },
+    "reverse_charge_with_vat": {
+      "fail": "Faktur {number} berstatus reverse charge tetapi memuat PPN {vat}.",
+      "suggestion": "Faktur reverse charge tidak memuat PPN; perbaiki jumlah PPN atau kategori PPN pada barisnya."
+    },
+    "line_without_vat_rate": {
+      "fail": "Faktur {number} memuat PPN, tetapi {count} barisnya tidak mencantumkan tarif PPN.",
+      "suggestion": "Isi tarif PPN pada setiap baris agar potongan dan ekspor memakai pajak yang benar."
+    },
+    "duplicate_number": {
+      "fail": "Nomor faktur {number} dari kontraktor yang sama dimasukkan {count} kali.",
+      "suggestion": "Batalkan salinannya, atau perbaiki nomor faktur jika faktur-faktur itu berbeda."
+    },
+    "possible_duplicate": {
+      "fail": "Faktur {number} memiliki kontraktor, jumlah ({amount}) dan tanggal ({on}) yang sama dengan faktur {other}.",
+      "suggestion": "Pastikan ini bukan faktur yang sama yang dimasukkan dua kali dengan nomor lain."
+    },
+    "certificate_missing": {
+      "fail": "Faktur {number} pada kontrak {contract}: penerima pembayaran tidak memiliki {certificate} yang berlaku pada {on}, yang disyaratkan {reference} sebelum pembayaran dicairkan.",
+      "suggestion": "Catat sertifikat pada data subkontraktor penerima pembayaran, atau tahan pembayaran sampai sertifikat ditunjukkan."
+    },
+    "split_payment_annotation_missing": {
+      "fail": "Faktur {number} memuat pekerjaan konstruksi atau barang lain di bawah split payment dan melebihi {threshold}, tetapi tidak mencantumkan keterangan «{annotation}».",
+      "suggestion": "Minta pemasok menerbitkan faktur yang diperbaiki dengan keterangan itu, dan tetap bayar dengan split payment: kewajiban membayar dengan cara itu tidak bergantung pada keterangan."
+    },
+    "split_payment_not_used": {
+      "fail": "Faktur {number} termasuk split payment, tetapi pembayarannya dicatat dengan metode lain. Pembeli menanggung tambahan {sanction}, 30 persen dari PPN-nya.",
+      "suggestion": "Bayar faktur seperti itu dari rekening PPN dengan split payment, dan catat metode pada pembayaran sebagai split_payment."
+    },
+    "split_payment_annex_unknown": {
+      "fail": "Faktur {number} melebihi {threshold}, dan belum dicatat apakah memuat barang atau jasa dari lampiran split payment.",
+      "suggestion": "Catat pada faktur apakah memuat barang atau jasa dari lampiran (annex_15), atau kodenya (pkwiu_codes), agar metode pembayaran dapat diperiksa."
+    },
+    "reduced_rate_above_area_limit": {
+      "fail": "Faktur {number} mengenakan PPN {rate} persen pada seluruh harga, tetapi hunian itu memiliki luas bersih {area_m2} m2 dan tarif rendah berlaku hingga {limit_m2} m2 ({reference}).",
+      "suggestion": "Kenakan tarif rendah pada {reduced_share_percent} persen dari harga dan tarif standar pada sisanya."
+    },
+    "reduced_rate_object_unknown": {
+      "fail": "Faktur {number} mengenakan tarif hunian rendah {rate} persen, tetapi proyek tidak mencatat hunian mana yang dimaksud maupun luas bersihnya ({reference}).",
+      "suggestion": "Catat jenis hunian dan luas bersih pada proyek (vat_housing) agar tarif dan batas luasnya dapat diperiksa."
+    },
+    "reduced_rate_not_eligible": {
+      "fail": "Faktur {number} mengenakan tarif hunian rendah {rate} persen pada {object}, yang tidak memenuhi syarat ({reference}).",
+      "suggestion": "Kenakan tarif standar, atau perbaiki hunian yang tercatat pada proyek."
+    },
+    "domestic_reverse_charge_ended": {
+      "fail": "Faktur {number} menerapkan reverse charge pada {count} baris, tetapi reverse charge domestik untuk jasa konstruksi sudah berakhir di negara ini.",
+      "suggestion": "Kecuali pemasok berdomisili di luar negeri, minta faktur dengan PPN; faktur seperti itu dibayar dengan split payment."
+    },
+    "payment_term_over_cap": {
+      "fail": "Kontrak {contract} menyepakati jangka waktu pembayaran {days} hari, lebih lama dari {cap} hari yang diizinkan undang-undang keterlambatan pembayaran antarpelaku usaha.",
+      "suggestion": "Persingkat jangka waktu menjadi {cap} hari, atau catat mengapa jangka waktu yang lebih lama disepakati secara tegas dan tidak sangat merugikan subkontraktor."
+    }
+  },
+  "cost_forecast": {
+    "below_commitment": {
+      "fail": "{code}: forecast sebesar {forecast} lebih rendah dari {owed} yang sudah terikat kontrak atau diminta dalam perubahan tertunda (selisih {difference}), dan tidak ada yang menjelaskannya.",
+      "suggestion": "Lampirkan dokumen di balik angka yang lebih rendah (nota kredit, penyelesaian, notulen), atau tulis pada baris mengapa metodenya memberi hasil lebih kecil."
+    },
+    "move_without_evidence": {
+      "fail": "{code}: forecast berubah dari {previous} menjadi {current} ({delta}) sejak snapshot beku terakhir, melewati ambang batas proyek, dan belum ada komentar maupun bukti pendukung.",
+      "suggestion": "Tulis alasan angka berubah dan tautkan dokumen atau notulen yang mendasarinya sebelum snapshot dibekukan."
+    },
+    "method_override_without_comment": {
+      "fail": "{code} diforecast dengan {method}, bukan {project_method} milik proyek, dan tidak ada komentar yang menjelaskan alasannya.",
+      "suggestion": "Tambahkan komentar singkat pada metode baris, atau kembalikan baris ke metode proyek."
+    },
+    "method": {
+      "best_available": "sumber terbaik yang tersedia",
+      "maximum": "nilai maksimum",
+      "evm_cpi": "kinerja biaya (CPI)",
+      "manual": "jumlah manual"
+    }
+  },
+  "payment_release_certificate_types": {
+    "social_security_clearance": "surat keterangan bebas tunggakan jaminan sosial",
+    "construction_tax_exemption": "surat keterangan bebas pajak konstruksi",
+    "employers_liability_clearance": "surat keterangan bebas tanggung jawab pemberi kerja",
+    "insurance": "sertifikat asuransi",
+    "license": "izin kontraktor"
   }
 }

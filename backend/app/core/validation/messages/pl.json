@@ -1,4 +1,76 @@
 {
+  "cost_control": {
+    "unassigned_money": {
+      "fail": "Środki zaangażowane nie są przypisane do żadnej pozycji kosztowej.",
+      "suggestion": "Powiąż pozycje umowy lub zamówienia z pozycjami kosztowymi, aby środki wyświetlały się we właściwym miejscu."
+    },
+    "certified_over_committed": {
+      "fail": "Roboty potwierdzone przekraczają wartość zlecenia wraz z zatwierdzonymi zmianami.",
+      "suggestion": "Zatwierdź zmianę obejmującą dodatkowe roboty lub sprawdź wniosek o płatność."
+    },
+    "forecast_over_plan": {
+      "fail": "Prognoza jest wyższa niż kwota planowana.",
+      "suggestion": "Sprawdź źródło prognozy; jeśli spodziewasz się oszczędności, wprowadź prognozę ręczną z uzasadnieniem."
+    },
+    "partly_awarded": {
+      "fail": "Zlecono tylko część kwoty planowanej; w prognozie mogą brakować robót, które jeszcze trzeba zlecić.",
+      "suggestion": "Jeśli na tej pozycji kosztowej są jeszcze roboty do zlecenia, wprowadź prognozę ręczną."
+    },
+    "pending_changes": {
+      "fail": "Zmiany zamówień czekają na decyzję.",
+      "suggestion": "Rozstrzygnij oczekujące zmiany zamówień; prognoza jeszcze ich nie uwzględnia."
+    },
+    "snapshot_stale": {
+      "fail": "Od ponad miesiąca nie zapisano żadnej prognozy.",
+      "suggestion": "Zapisz migawkę prognozy, aby historia kosztów pozostała czytelna."
+    }
+  },
+  "cost_structure": {
+    "account_code_duplicate": {
+      "fail": "Kod konta {code} występuje w strukturze kosztów więcej niż raz.",
+      "suggestion": "Zostaw jedno konto na kod i przenieś na nie jego pozycje kosztowe."
+    },
+    "mixed_standard": {
+      "fail": "Struktura kosztów miesza klasyfikacje: {standards}.",
+      "suggestion": "Zbuduj strukturę z jednej klasyfikacji; pozostałe kody przypisz do niej."
+    },
+    "account_parent_cycle": {
+      "fail": "Konto {code} jest własnym przodkiem przez {count} kont.",
+      "suggestion": "Nadaj jednemu z tych kont konto nadrzędne spoza pętli."
+    },
+    "account_too_deep": {
+      "fail": "Konto {code} leży na poziomie {level}, głębiej niż {max} poziomów jego klasyfikacji.",
+      "suggestion": "Przypisz konto do konta nadrzędnego w granicach głębokości klasyfikacji."
+    },
+    "no_account": {
+      "fail": "{count} pozycji kosztowych o wartości {amount} nie ma przypisanego konta (pierwsza: {code}).",
+      "suggestion": "Nadaj tym pozycjom kosztorysu kod z klasyfikacji struktury lub przypisz pozycje kosztowe do konta."
+    },
+    "invalid_account": {
+      "fail": "{count} pozycji kosztowych o wartości {amount} jest na koncie zamkniętym lub niedopuszczającym księgowań (pierwsza: {code}).",
+      "suggestion": "Przenieś pozycje kosztowe na otwarte konto dopuszczające księgowania."
+    },
+    "own_amount_on_parent": {
+      "fail": "Konto {code} ma podkonta, a także własną kwotę {amount}.",
+      "suggestion": "Przenieś własną kwotę na podkonto lub zachowaj ją jako świadomą rezerwę."
+    },
+    "rollup_mismatch": {
+      "fail": "Suma struktury {reported} różni się od sumy jej części {expected} o {difference}.",
+      "suggestion": "Wczytaj strukturę ponownie; jeśli różnica pozostaje, sprawdź konta bez konta nadrzędnego."
+    },
+    "allocation_incomplete": {
+      "fail": "Udziały pozycji {ordinal} sumują się do {total}{unit} zamiast {expected}{unit}.",
+      "suggestion": "Dostosuj udziały tak, aby cała pozycja była rozdzielona, nie więcej i nie mniej."
+    },
+    "allocation_mixed_modes": {
+      "fail": "Pozycja {ordinal} jest podzielona częściowo procentowo, a częściowo ilościowo.",
+      "suggestion": "Dziel pozycję tylko w jeden sposób."
+    },
+    "vector_not_inherited": {
+      "fail": "Pozycja umowy {code} jest na pozycji kosztowej, do której nie przypisano jej pozycji kosztorysu.",
+      "suggestion": "Przywróć pozycję na pozycje kosztowe tej pozycji kosztorysu lub zapisz odstępstwo z uzasadnieniem."
+    }
+  },
   "boq_markup": {
     "contingency_not_on_profit": {
       "fail": "Rezerwa na ryzyko „{markup}” jest naliczana od podstawy zawierającej już pozycję zysku „{profit}”, więc marża obejmuje środki przeznaczone na ryzyko",
@@ -59,6 +131,10 @@
     "offline_sync_delay": {
       "fail": "Pracę wykonano dnia {date}, a dane dotarły do biura dopiero po {days} dniach",
       "suggestion": "Przed zatwierdzeniem zweryfikuj godziny z tego dnia; rozliczenie robót może być już zamknięte"
+    },
+    "outdoor_heat_ban": {
+      "fail": "Wiersz {line} rejestruje pracę od {start} do {end} w dniu {date}, w czasie południowego zakazu pracy na zewnątrz od {ban_from} do {ban_to}",
+      "suggestion": "Jeśli praca odbywała się na zewnątrz w pełnym słońcu, przesuń ją poza godziny zakazu; prace wewnątrz budynków i wyłączone sektory nie podlegają ograniczeniu"
     }
   },
   "ai_takeoff": {
@@ -521,6 +597,20 @@
       "suggestion": "Ogranicz modyfikatory do przedziału od -50% do +200%, aby uniknąć nierealistycznych cen działek"
     }
   },
+  "schedule_5d": {
+    "boq_coverage": {
+      "fail": "Pozycja {ordinal} „{description}” ({amount}) jest wyceniona w kosztorysie, ale żadna czynność jej nie niesie, więc jej koszt nie jest ujęty w harmonogramie",
+      "suggestion": "Podaj ilość pozycji lub powiąż ją z czynnością, a następnie wygeneruj harmonogram ponownie."
+    },
+    "cost_reconciliation": {
+      "fail": "Harmonogram obejmuje {planned} z {bill} kosztorysu: {difference} wycenionych robót nie przypisano do żadnej czynności",
+      "suggestion": "Sprawdź pozycje wymienione przez kontrolę pokrycia, a następnie wygeneruj harmonogram ponownie."
+    },
+    "duration_vs_norm": {
+      "fail": "Czynność „{activity}” trwa {duration} dni roboczych, a normy robocizny i sprzętu dają {norm}",
+      "suggestion": "Sprawdź ilość, brygadę i nakłady (r-g, m-g) pozycji albo czas trwania zmieniony ręcznie."
+    }
+  },
   "schedule_quality": {
     "open_ends": {
       "fail": "Czynność „{activity}” nie ma powiązania logicznego typu {ends} (otwarty koniec / niepowiązana czynność)",
@@ -656,6 +746,42 @@
     "requisition_line_cost_line": {
       "fail": "Pozycja {line} nie jest powiązana z pozycją kosztową, więc jej zamówienie nie pokaże się jako zobowiązanie wobec budżetu",
       "suggestion": "Utwórz pozycję z BOQ albo przed zamówieniem powiąż ją z pozycją kosztową"
+    },
+    "requisition_suggested_vendor_in_directory": {
+      "fail": "Pozycja {line} sugeruje dostawcę {vendor}, którego nie ma w rejestrze dostawców",
+      "suggestion": "Wybierz sugerowanego dostawcę z rejestru dostawców lub usuń sugestię"
+    },
+    "requisition_suggested_vendor_active": {
+      "fail": "Pozycja {line} sugeruje dostawcę {vendor}, który nie jest aktywny w rejestrze dostawców",
+      "suggestion": "Zasugeruj aktywnego dostawcę lub zostaw wybór zaopatrzeniowcowi"
+    },
+    "requisition_suggestion_conflict": {
+      "fail": "Źródła BOQ pozycji {line} sugerują różnych dostawców: {count}",
+      "suggestion": "Wybierz jednego dostawcę dla pozycji albo podziel ją tak, aby każdy dostawca miał własną pozycję"
+    },
+    "requisition_suggested_vendor_differs": {
+      "fail": "Pozycja {line} sugeruje dostawcę {vendor}, ale zapotrzebowanie ma być zamówione u innego dostawcy",
+      "suggestion": "Sprawdź, czy wybrany dostawca może dostarczyć tę pozycję, lub zamów ją osobno"
+    },
+    "requisition_line_needed_by_not_past": {
+      "fail": "Pozycja {line} jest potrzebna do {date}, a ten termin już minął (dziś jest {today})",
+      "suggestion": "Podaj datę, kiedy materiał jest faktycznie potrzebny na budowie"
+    },
+    "requisition_line_schedule_moved": {
+      "fail": "Pozycja {line} była zaplanowana pod czynność zaczynającą się {anchor}, ale czynność zaczyna się teraz {start}",
+      "suggestion": "Porównaj termin potrzeby pozycji z aktualnym harmonogramem i w razie potrzeby zmień go"
+    },
+    "requisition_approver_not_requester": {
+      "fail": "Osoba, która utworzyła zapotrzebowanie {req}, jest jednocześnie jego wyznaczonym zatwierdzającym nr {step}",
+      "suggestion": "Wskaż dla tego kroku innego zatwierdzającego, aby decydował ktoś inny niż zgłaszający"
+    },
+    "requisition_line_over_ordered": {
+      "fail": "Pozycja {line} ma w zamówieniach {ordered} {unit}, więcej niż zgłoszone {requested} {unit}",
+      "suggestion": "Sprawdź, czy dodatkowa ilość jest zamierzona, lub zmniejsz pozycję zamówienia"
+    },
+    "requisition_order_unit_mismatch": {
+      "fail": "Zamówienie {order} zawiera pozycję {line} w {unit}, której nie można przeliczyć na jednostkę pozycji {line_unit}",
+      "suggestion": "Popraw jednostkę w pozycji zamówienia, aby jej ilość liczyła się jako zamówiona"
     },
     "receipt_certificate_present": {
       "fail": "Pozycja {line} zamówiona z {required}, ale dostawa zawiera {delivered}",
@@ -973,5 +1099,184 @@
     "parent_not_found": "Model, którego nową wersją ma być to wgranie, nie należy do tego projektu. Wybierz inny albo wgraj plik jako osobny model.",
     "parent_not_ready": "Import modelu \"{name}\" jeszcze się nie zakończył, więc nie może on na razie przyjąć nowej wersji. Poczekaj, aż będzie gotowy, albo wgraj ten plik jako osobny model.",
     "parent_superseded": "Model \"{name}\" ma już nowszą wersję, {version}. Wgraj ten plik zamiast tego jako nową wersję najnowszego."
+  },
+  "cost_chain": {
+    "contract_without_schedule": {
+      "fail": "Umowa {code} jest warta {amount}, ale nie ma pozycji harmonogramu, więc jej kwota nie leży na żadnej pozycji kosztowej.",
+      "suggestion": "Przypisz umowie konto w kontroli kosztów albo dodaj jej pozycje."
+    },
+    "contract_sum_differs": {
+      "fail": "Umowa {code} jest warta {total}, ale jej pozycje sumują się do {lines} (różnica {difference}).",
+      "suggestion": "Popraw wartość umowy lub pozycje, aby się zgadzały."
+    },
+    "change_without_agreed_amount": {
+      "fail": "Zmiana {code} jest zatwierdzona bez uzgodnionej kwoty.",
+      "suggestion": "Wpisz kwotę uzgodnioną z wykonawcą, zanim zmiana zostanie zatwierdzona."
+    },
+    "change_without_approval_date": {
+      "fail": "Zmiana {code} jest zatwierdzona bez daty zatwierdzenia.",
+      "suggestion": "Wpisz, kiedy zmianę zatwierdzono."
+    },
+    "billed_before_approval": {
+      "fail": "Na umowę {contract} zafakturowano {amount} za zmianę {code}, która ma status {status} i nie jest zatwierdzona.",
+      "suggestion": "Najpierw zatwierdź zmianę albo zdejmij fakturowanie z wniosku o płatność."
+    },
+    "contract_over_target": {
+      "fail": "Umowa {code} zobowiązuje {committed}, czyli o {difference} więcej niż {target} z przedmiaru, z którego ją zlecono (ponad {tolerance} %).",
+      "suggestion": "Porównaj zlecenie i jego zmiany z przedmiarem i zapisz, dlaczego robota kosztuje więcej."
+    },
+    "account_over_plan": {
+      "fail": "Konto {code} niesie zobowiązania {committed}, o {difference} powyżej planu {planned} (ponad {tolerance} %).",
+      "suggestion": "Sprawdź zobowiązania na tym koncie albo zaktualizuj plan z uzasadnieniem."
+    },
+    "quantity_overrun": {
+      "fail": "Pozycja {code} umowy {contract} jest obmierzona na {measured} {unit} wobec {contracted} {unit} w umowie, czyli {over} % więcej (dozwolone {tolerance} %).",
+      "suggestion": "Sprawdź obmiar albo uzgodnij dodatkową ilość jako zmianę."
+    },
+    "measurement_exceeds_commitment": {
+      "fail": "Umowa {code} jest obmierzona na {measured}, o {difference} więcej niż jej wartość ze zmianami zatwierdzonymi ({committed}).",
+      "suggestion": "Zatwierdź zmianę obejmującą dodatkowe roboty albo sprawdź obmiar."
+    },
+    "invoice_without_contract": {
+      "fail": "Faktura dostawcy {number} na {amount} nie należy do żadnej umowy ani zamówienia.",
+      "suggestion": "Powiąż jej pozycje z umową albo zapisz ją jako koszt bezpośredni na jednym koncie."
+    }
+  },
+  "payment_release": {
+    "cumulative_total_fell": {
+      "fail": "Faktura {number} do umowy {contract} wykazuje {net} narastająco, czyli mniej niż {previous} z poprzedniej faktury {previous_number}, mimo że umowa jest fakturowana narastająco.",
+      "suggestion": "Jeśli faktura obejmuje tylko nowe roboty, umowa jest fakturowana przyrostowo; jeśli zmniejsza sumę, wprowadź ją jako fakturę korygującą."
+    },
+    "invoice_after_final": {
+      "fail": "Faktura {number} do umowy {contract} jest wystawiona po fakturze końcowej {final}.",
+      "suggestion": "Wprowadź późniejsze roboty jako roboty dodatkowe w regie lub fakturę korygującą, albo oznacz właściwą fakturę jako końcową."
+    },
+    "claim_invoice_in_cumulative": {
+      "fail": "Faktura {number} do umowy {contract} powstała z roszczenia i obejmuje jeden okres, ale umowa jest fakturowana narastająco.",
+      "suggestion": "Stosuj jeden sposób fakturowania na umowę: przełącz umowę na fakturowanie przyrostowe albo wprowadź narastające faktury wykonawcy."
+    },
+    "release_differs": {
+      "fail": "Zatwierdzona do wypłaty kwota dla faktury {number} do umowy {contract} wynosi {stored}, ale warunki umowy dają dziś {computed}.",
+      "suggestion": "Sprawdź, co zmieniło się od zatwierdzenia (warunki, kwoty faktury, potrącenia), a następnie otwórz zatwierdzenie ponownie i potwierdź je jeszcze raz."
+    },
+    "rounding_out_of_range": {
+      "fail": "Faktura {number} jest zaokrąglona o {rounding}, poza uzgodnionym krokiem zaokrąglenia {step}.",
+      "suggestion": "Zaokrąglenie zmniejsza kwotę do wypłaty o mniej niż jeden krok; włącz zaokrąglanie w warunkach płatności albo otwórz zatwierdzenie ponownie."
+    },
+    "final_retention_without_warranty": {
+      "fail": "Faktura końcowa {number} do umowy {contract} zatrzymuje {amount} kaucji, ale nie uzgodniono kaucji gwarancyjnej.",
+      "suggestion": "Uzgodnij kaucję gwarancyjną w warunkach płatności albo otwórz zatwierdzenie ponownie, aby całą kaucję wypłacić z fakturą końcową."
+    },
+    "posting_exceeds_held": {
+      "fail": "W umowie {contract} zwrócono więcej kaucji, niż jest zatrzymane: o {amount} za dużo.",
+      "suggestion": "Anuluj zbyt wysoki zapis zwrotu kaucji i zaksięguj kwotę faktycznie zatrzymaną."
+    },
+    "posting_before_event": {
+      "fail": "Kaucję {amount} w umowie {contract} zwrócono {posted}, przed zdarzeniem zwalniającym, którego termin przypadał na {due}.",
+      "suggestion": "Sprawdź datę zdarzenia zwalniającego albo zaksięguj zwolnienie dopiero po tym zdarzeniu."
+    },
+    "posting_without_event_date": {
+      "fail": "Kaucję {amount} w umowie {contract} zwrócono, ale nie zapisano daty zdarzenia zwalniającego.",
+      "suggestion": "Zapisz datę nastąpienia zdarzenia zwalniającego, aby można było sprawdzić zwrot względem niej."
+    },
+    "retention_still_held": {
+      "fail": "Umowa {contract} jest zakończona i nadal zatrzymuje {amount} kaucji.",
+      "suggestion": "Zwolnij kaucję przy jej zdarzeniu w rejestrze kaucji albo zatrzymaj ją na okres gwarancji."
+    },
+    "discount_not_agreed": {
+      "fail": "Zatwierdzenie faktury {number} do umowy {contract} uwzględnia rabat za wcześniejszą płatność {amount}, ale umowa go nie przewiduje.",
+      "suggestion": "Włącz rabat za wcześniejszą płatność w warunkach płatności albo otwórz zatwierdzenie ponownie bez niego."
+    },
+    "discount_after_deadline": {
+      "fail": "Z faktury {number} zatrzymano rabat {amount}, ale płatność z dnia {paid_on} nastąpiła po terminie rabatu {until}.",
+      "suggestion": "Zapłać także kwotę rabatu albo zapisz, dlaczego wykonawca zaakceptował spóźniony rabat."
+    },
+    "invoiced_over_measured": {
+      "fail": "Umowa {contract} jest zafakturowana na {invoiced}, czyli o {difference} powyżej obmierzonych {measured} (ilość razy cena).",
+      "suggestion": "Sprawdź obmiar przed wypłatą kolejnych środków albo zatrzymaj różnicę przy następnym zatwierdzeniu."
+    },
+    "invoiced_over_contract": {
+      "fail": "Umowa {contract} jest zafakturowana na {invoiced}, czyli o {difference} powyżej jej wartości {value}, a nic nie jest obmierzone.",
+      "suggestion": "Zapisz obmiar lub zmianę, która pokrywa dodatkową kwotę, zanim wypłacisz więcej."
+    },
+    "reverse_charge_with_vat": {
+      "fail": "Faktura {number} podlega odwrotnemu obciążeniu, ale zawiera VAT {vat}.",
+      "suggestion": "Faktura z odwrotnym obciążeniem nie zawiera VAT; popraw kwotę VAT albo kategorię VAT jej pozycji."
+    },
+    "line_without_vat_rate": {
+      "fail": "Faktura {number} zawiera VAT, ale {count} jej pozycji nie ma stawki VAT.",
+      "suggestion": "Wpisz stawkę VAT w każdej pozycji, aby potrącenia i eksporty stosowały właściwy podatek."
+    },
+    "duplicate_number": {
+      "fail": "Numer faktury {number} tego samego wykonawcy wprowadzono {count} razy.",
+      "suggestion": "Anuluj kopię albo popraw numer faktury, jeśli to różne faktury."
+    },
+    "possible_duplicate": {
+      "fail": "Faktura {number} ma tego samego wykonawcę, kwotę ({amount}) i datę ({on}) co faktura {other}.",
+      "suggestion": "Sprawdź, czy to nie ta sama faktura wprowadzona dwa razy pod innym numerem."
+    },
+    "certificate_missing": {
+      "fail": "Faktura {number} do umowy {contract}: odbiorca płatności nie posiada na dzień {on} ważnego dokumentu ({certificate}), którego {reference} wymaga przed zwolnieniem płatności.",
+      "suggestion": "Zapisz dokument w rekordzie podwykonawcy odbiorcy płatności albo wstrzymaj płatność do czasu jego okazania."
+    },
+    "split_payment_annotation_missing": {
+      "fail": "Faktura {number} obejmuje roboty budowlane lub inne towary objęte mechanizmem podzielonej płatności i przekracza {threshold}, ale nie zawiera adnotacji „{annotation}”.",
+      "suggestion": "Poproś dostawcę o fakturę korygującą z adnotacją i zapłać ją w mechanizmie podzielonej płatności w każdym przypadku: obowiązek nie zależy od adnotacji."
+    },
+    "split_payment_not_used": {
+      "fail": "Faktura {number} podlega mechanizmowi podzielonej płatności, ale jej płatność zapisano inną metodą. Nabywcy grozi dodatkowe zobowiązanie {sanction}, czyli 30 procent podatku VAT z faktury.",
+      "suggestion": "Płać takie faktury w mechanizmie podzielonej płatności i zapisz metodę płatności jako split_payment."
+    },
+    "split_payment_annex_unknown": {
+      "fail": "Faktura {number} przekracza {threshold}, a nie zapisano, czy obejmuje towary lub usługi z załącznika nr 15.",
+      "suggestion": "Zapisz na fakturze, czy obejmuje towary lub usługi z załącznika (annex_15), albo ich kody PKWiU (pkwiu_codes), aby można było sprawdzić sposób zapłaty."
+    },
+    "reduced_rate_above_area_limit": {
+      "fail": "Faktura {number} stosuje stawkę {rate} procent do całej ceny, ale lokal ma {area_m2} m2 powierzchni użytkowej, a stawka obniżona obowiązuje do {limit_m2} m2 ({reference}).",
+      "suggestion": "Zastosuj stawkę obniżoną do {reduced_share_percent} procent ceny, a stawkę podstawową do reszty."
+    },
+    "reduced_rate_object_unknown": {
+      "fail": "Faktura {number} stosuje obniżoną stawkę {rate} procent dla budownictwa mieszkaniowego, ale w projekcie nie zapisano rodzaju obiektu ani jego powierzchni użytkowej ({reference}).",
+      "suggestion": "Zapisz w projekcie rodzaj obiektu i powierzchnię użytkową (vat_housing), aby można było sprawdzić stawkę i limit powierzchni."
+    },
+    "reduced_rate_not_eligible": {
+      "fail": "Faktura {number} stosuje obniżoną stawkę {rate} procent do obiektu {object}, który nie jest objęty tą stawką ({reference}).",
+      "suggestion": "Zastosuj stawkę podstawową albo popraw obiekt zapisany w projekcie."
+    },
+    "domestic_reverse_charge_ended": {
+      "fail": "Faktura {number} rozlicza w odwrotnym obciążeniu {count} pozycji, ale krajowe odwrotne obciążenie usług budowlanych zostało zniesione.",
+      "suggestion": "Jeśli dostawca nie ma siedziby za granicą, poproś o fakturę z VAT; takie faktury płaci się w mechanizmie podzielonej płatności."
+    },
+    "payment_term_over_cap": {
+      "fail": "Umowa {contract} przewiduje termin zapłaty {days} dni, dłuższy niż {cap} dni dopuszczalne między przedsiębiorcami w ustawie o przeciwdziałaniu nadmiernym opóźnieniom.",
+      "suggestion": "Skróć termin do {cap} dni albo zapisz, dlaczego dłuższy termin został wyraźnie uzgodniony i nie jest rażąco nieuczciwy wobec podwykonawcy."
+    }
+  },
+  "cost_forecast": {
+    "below_commitment": {
+      "fail": "{code}: prognoza {forecast} jest niższa niż {owed} już zakontraktowane lub zgłoszone w zmianach oczekujących (o {difference}) i nic tego nie wyjaśnia.",
+      "suggestion": "Dołącz dokument uzasadniający niższą kwotę (fakturę korygującą, ugodę, protokół) albo napisz przy pozycji, dlaczego jej metoda daje mniej."
+    },
+    "move_without_evidence": {
+      "fail": "{code}: prognoza zmieniła się z {previous} na {current} ({delta}) od ostatniego zamrożonego zapisu stanu, powyżej progu projektu, i nie ma jeszcze komentarza ani dokumentu potwierdzającego.",
+      "suggestion": "Opisz, dlaczego kwota się zmieniła, i powiąż dokument lub protokół, który to potwierdza, zanim zapis stanu zostanie zamrożony."
+    },
+    "method_override_without_comment": {
+      "fail": "{code} jest prognozowany metodą {method} zamiast metodą projektu ({project_method}), a żaden komentarz nie mówi dlaczego.",
+      "suggestion": "Dodaj krótki komentarz do metody pozycji albo przywróć dla pozycji metodę projektu."
+    },
+    "method": {
+      "best_available": "najlepsze dostępne źródło",
+      "maximum": "wartość maksymalna",
+      "evm_cpi": "wskaźnik wydajności kosztowej (CPI)",
+      "manual": "kwota ręczna"
+    }
+  },
+  "payment_release_certificate_types": {
+    "social_security_clearance": "zaświadczenie o niezaleganiu w ubezpieczeniu społecznym",
+    "construction_tax_exemption": "zaświadczenie o zwolnieniu z podatku budowlanego",
+    "employers_liability_clearance": "zaświadczenie o rozliczeniu odpowiedzialności pracodawców",
+    "insurance": "zaświadczenie ubezpieczeniowe",
+    "license": "licencja wykonawcy"
   }
 }

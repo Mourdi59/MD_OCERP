@@ -218,5 +218,147 @@
       "fail": "{line} kalemi bugüne kadar {stated} olarak kayıtlı, ancak miktarı veya yüzdesi {computed} veriyor",
       "suggestion": "Satırın iki sütunu uyuşsun diye belgedeki miktarı veya tutarı düzeltin"
     }
+  },
+  "public_works": {
+    "retention_above_limit": {
+      "fail": "Yüzde {percent} oranındaki teminat kesintisi, kamu yapım işleri kanununun her hakedişte izin verdiği yüzde {limit} oranını aşıyor",
+      "suggestion": "Sözleşmedeki teminat kesintisini yasal orana düşürün"
+    },
+    "advance_above_cap": {
+      "fail": "Avans teminatı sözleşme bedelinin yüzde {percent} oranını karşılıyor, bu oran kamu yapım işlerinde maliye bakanının onayı olmadan izin verilen yüzde {limit} oranını aşıyor",
+      "suggestion": "Avansı azaltın veya ihaleden önce alınan onayı sözleşme koşullarına kaydedin"
+    },
+    "delay_damages_uncapped": {
+      "fail": "Bir gecikme cezası maddesinde azami tutar yok, oysa kamu yapım işleri kanunu gecikme cezasını sözleşme bedelinin yüzde {limit} oranıyla sınırlıyor",
+      "suggestion": "Gecikme cezası maddesinin azami tutarını girin"
+    },
+    "delay_damages_above_cap": {
+      "fail": "Bir gecikme cezası maddesi sözleşme bedelinin yüzde {percent} oranıyla sınırlı, bu oran kamu yapım işleri kanununun izin verdiği yüzde {limit} oranını aşıyor",
+      "suggestion": "Maddenin azami tutarını yasal sınıra düşürün"
+    },
+    "performance_security_missing": {
+      "fail": "Kayıtlı bir kesin teminat yok, oysa kamu yapım işleri sözleşme bedelinin yüzde {limit} oranında teminat istiyor",
+      "suggestion": "Kesin teminatı teminat mektubu veya banka teminatı olarak kaydedin"
+    },
+    "performance_security_below": {
+      "fail": "Kesin teminat sözleşme bedelinin yüzde {percent} oranını karşılıyor, bu oran kamu yapım işlerinin istediği yüzde {limit} oranının altında",
+      "suggestion": "Yasal oranın tamamı için bir kesin teminat kaydedin"
+    },
+    "price_adjustment": {
+      "no_coefficients": {
+        "fail": "{months} ay ve üzeri süreli kamu yapım işlerinde kanunen fiyat farkı verilmelidir, ancak sözleşmede değişken kalemleri için katsayı belirtilmemiş",
+        "suggestion": "Yüklenicinin teknik zarfta belirttiği katsayıları girin"
+      },
+      "duplicate_item": {
+        "fail": "{item} değişken kalemi fiyat farkı katsayıları arasında iki kez yer alıyor",
+        "suggestion": "Her değişken kalem için tek bir katsayı bırakın"
+      },
+      "coefficient_not_a_number": {
+        "fail": "{item} kaleminin fiyat farkı katsayısı bir sayı değil",
+        "suggestion": "Katsayıyı ondalık sayı olarak girin, örneğin 0.15"
+      },
+      "coefficient_not_positive": {
+        "fail": "{item} kaleminin fiyat farkı katsayısı sıfır veya daha küçük, oysa kanun her katsayının sıfırdan büyük olmasını istiyor",
+        "suggestion": "Sıfırdan büyük bir katsayı girin veya kalemi kaldırın"
+      },
+      "coefficient_negative": {
+        "fail": "{item} kaleminin fiyat farkı katsayısı negatif",
+        "suggestion": "Sıfır veya daha büyük bir katsayı girin"
+      },
+      "coefficient_sum_not_below_one": {
+        "fail": "Fiyat farkı katsayılarının toplamı {item} ediyor, oysa kanun toplamın birin altında kalmasını istiyor",
+        "suggestion": "Fiyatın sabit bir kısmı kalacak şekilde katsayıları düşürün"
+      },
+      "coefficient_sum_above_one": {
+        "fail": "Fiyat farkı katsayılarının toplamı {item} ediyor, bu birden fazla",
+        "suggestion": "Toplamları bir veya daha az olacak şekilde katsayıları düşürün"
+      },
+      "no_coefficients_advisory": {
+        "fail": "Hammaddelerin maliyetin önemli bir kısmını oluşturduğu {months} aydan uzun kamu yapım işleri bir fiyat revizyonu maddesi içerir ve sözleşmede revizyon ağırlıkları belirtilmemiştir",
+        "suggestion": "Revizyon formülünün ağırlıklarını özel şartlardan girin veya fiyatın sabit olduğunu kaydedin"
+      }
+    },
+    "advance_below_minimum": {
+      "fail": "Avans sözleşme bedelinin yüzde {percent} oranındadır ve kamu ihale mevzuatının bu yüklenici ve idare için öngördüğü yüzde {limit} asgari oranın altındadır",
+      "suggestion": "Avansı asgari orana yükseltin veya yüklenici avanstan vazgeçtiyse sıfır girin"
+    },
+    "advance_above_maximum": {
+      "fail": "Avans sözleşme bedelinin yüzde {percent} oranındadır ve kamu ihale mevzuatının olağan üst sınır olarak belirlediği yüzde {limit} oranını aşmaktadır",
+      "suggestion": "Özel şartların daha yüksek avansa izin verdiğini kontrol edin ve gerekli teminatı kaydedin"
+    },
+    "delay_damages_rate_differs": {
+      "fail": "Bir gecikme cezası maddesi günlük {amount} uygulamaktadır, oysa genel şartlar günlük {expected}, yani sözleşme bedelinin {divisor}'de birini öngörmektedir",
+      "suggestion": "Genel şartların günlük oranını koruyun veya farklı oranı özel şartlardaki istisnalar arasında belirtin"
+    },
+    "delay_damages_above_general_conditions": {
+      "fail": "Bir gecikme cezası maddesinin üst sınırı sözleşme bedelinin yüzde {percent} oranıdır ve genel şartlardaki yüzde {limit} oranını aşmaktadır",
+      "suggestion": "Üst sınırı genel şartlardaki değere indirin veya özel şartlardaki istisnalar arasında belirtin"
+    }
+  },
+  "works_contract": {
+    "direct_payment_waived": {
+      "fail": "{amount} tutarındaki bu alt yüklenici sözleşmesi, kamu idaresinin doğrudan ödemesi için {limit} eşiğine ulaşmaktadır ve sözleşme bundan feragat etmektedir; kanun buna izin vermez",
+      "suggestion": "Kamu idaresinin alt yükleniciye doğrudan ödeme yaptığını kaydedin"
+    },
+    "direct_payment_unstated": {
+      "fail": "{amount} tutarındaki bu alt yüklenici sözleşmesi, kamu idaresinin doğrudan ödemesi için {limit} eşiğine ulaşmaktadır ve sözleşme bunu kaydetmemektedir",
+      "suggestion": "Alt yüklenicinin onaylanıp onaylanmadığını ve kamu idaresi tarafından doğrudan ödenip ödenmediğini kaydedin"
+    },
+    "payment_guarantee_missing": {
+      "fail": "Özel yapım işlerine ait bu alt yüklenici sözleşmesinde ne banka teminatı ne de iş sahibine ödeme talimatı kayıtlıdır; bunlardan biri olmadan sözleşme iptal edilebilir",
+      "suggestion": "Ana yüklenicinin banka teminatını veya iş sahibine verilen ödeme talimatını kaydedin"
+    },
+    "private_retention_above_limit": {
+      "fail": "Yüzde {percent} oranındaki kesinti, kanunun özel yapım işlerinde izin verdiği yüzde {limit} oranını aşmaktadır",
+      "suggestion": "Sözleşmedeki kesintiyi yasal üst sınıra indirin"
+    }
+  },
+  "vat_regime": {
+    "unknown": {
+      "fail": "{contract} sözleşmesi {regime} KDV rejimini belirtiyor, ancak {country} için böyle bir rejim yok",
+      "suggestion": "Proje ülkesi için sunulan KDV rejimlerinden birini seçin veya seçimi kaldırın"
+    },
+    "country_unknown": {
+      "fail": "{contract} sözleşmesi {regime} KDV rejimini belirtiyor, ancak projesinde ülke belirtilmemiş, bu nedenle rejim denetlenemiyor",
+      "suggestion": "Projenin ülkesini belirleyin"
+    },
+    "contract_date_missing": {
+      "fail": "{regime} KDV rejimi yalnızca {cutoff} tarihinden önce imzalanan sözleşmeler içindir ve bu sözleşmede ne imza ne de başlangıç tarihi kayıtlı",
+      "suggestion": "Sözleşmenin imzalandığı tarihi girin"
+    },
+    "contract_too_late": {
+      "fail": "{regime} KDV rejimi yalnızca {cutoff} tarihinden önce imzalanan sözleşmeler içindir ve bu sözleşme {contract_date} tarihli",
+      "suggestion": "Bu sözleşme için genel KDV rejimini seçin"
+    },
+    "evidence_missing": {
+      "fail": "{regime} KDV rejimi {evidence} gerektiriyor ve sözleşmede bu belge kayıtlı değil",
+      "suggestion": "Belgenin numarasını ve düzenlenme tarihini sözleşmenin KDV rejimine kaydedin"
+    },
+    "evidence_date_missing": {
+      "fail": "{regime} KDV rejimi için kaydedilen belgenin ({evidence}) düzenlenme tarihi yok, bu nedenle {cutoff} tarihinden önce olduğu gösterilemiyor",
+      "suggestion": "Belgenin düzenlendiği tarihi girin"
+    },
+    "evidence_too_late": {
+      "fail": "{regime} KDV rejimi için kaydedilen belge ({evidence}) {issued_on} tarihinde düzenlenmiş, rejim ise {cutoff} tarihinden önce düzenlenmiş bir belge gerektiriyor",
+      "suggestion": "Daha önceki bir belge kaydedin veya genel KDV rejimini seçin"
+    },
+    "scope_increase_unjudged": {
+      "fail": "Sözleşme bedeli {original_value} tutarından {current_value} tutarına çıktı ve sözleşmede izin verilen artış belirtilmemiş, bu nedenle {regime} KDV rejiminin hâlâ geçerli olup olmadığı değerlendirilemiyor",
+      "suggestion": "Sözleşmenin izin verdiği iş artışını kaydedin"
+    },
+    "scope_increase_new_contract": {
+      "fail": "Sözleşme bedeli {original_value} tutarından {current_value} tutarına, sözleşmenin izin verdiği yüzde {allowed_increase_pct} artışın üzerine çıktı; KDV bakımından bu yeni bir sözleşmedir ve {regime} KDV rejimi artık uygulanmaz",
+      "suggestion": "Sözleşmeyi genel KDV rejimine geçirin"
+    },
+    "evidence_kinds": {
+      "approved_certificate": "kontrol mühendisince onaylanmış bir hakediş belgesi",
+      "einvoice": "bir e-fatura veya e-makbuz",
+      "main_contractor_certificate": "ana yüklenicinin proje için KDV ödendiğine dair belgesi"
+    },
+    "not_in_force": {
+      "before": "{claim} hakedişi {on} tarihli, {regime} KDV rejimi ise ancak {effective_from} tarihinden itibaren geçerli; o gün geçerli olanlar: {instead}",
+      "after": "{claim} hakedişi {on} tarihli, {regime} KDV rejimi ise {effective_to} tarihinde sona erdi; o gün geçerli olanlar: {instead}",
+      "suggestion": "Sözleşmenin KDV rejimini hakediş tarihinde geçerli olan bir rejimle değiştirin veya hakediş tarihini düzeltin"
+    }
   }
 }

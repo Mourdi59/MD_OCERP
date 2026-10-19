@@ -1,4 +1,76 @@
 {
+  "cost_control": {
+    "unassigned_money": {
+      "fail": "Preuzete obveze nisu dodijeljene nijednoj troškovnoj stavci.",
+      "suggestion": "Povežite stavke ugovora ili narudžbe s troškovnim stavkama kako bi se novac prikazao na pravom mjestu."
+    },
+    "certified_over_committed": {
+      "fail": "Ovjereni radovi premašuju ugovoreno uz odobrene izmjene.",
+      "suggestion": "Odobrite izmjenu koja pokriva dodatne radove ili provjerite zahtjev za plaćanje."
+    },
+    "forecast_over_plan": {
+      "fail": "Prognoza je iznad planiranog iznosa.",
+      "suggestion": "Provjerite izvor prognoze; ako očekujete uštede, unesite ručnu prognozu s razlogom."
+    },
+    "partly_awarded": {
+      "fail": "Ugovoren je samo dio planiranog iznosa; u prognozi možda nedostaju radovi koje tek treba ugovoriti.",
+      "suggestion": "Ako na ovoj stavci tek treba ugovoriti radove, unesite ručnu prognozu."
+    },
+    "pending_changes": {
+      "fail": "Izmjene naloga čekaju odluku.",
+      "suggestion": "Odlučite o izmjenama koje čekaju; prognoza ih još ne uključuje."
+    },
+    "snapshot_stale": {
+      "fail": "Više od mjesec dana nije spremljena nijedna prognoza.",
+      "suggestion": "Spremite snimku prognoze kako bi povijest troškova ostala čitljiva."
+    }
+  },
+  "cost_structure": {
+    "account_code_duplicate": {
+      "fail": "Šifra konta {code} pojavljuje se više puta u troškovnoj strukturi.",
+      "suggestion": "Zadržite jedno konto po šifri i premjestite na njega njegove troškovne stavke."
+    },
+    "mixed_standard": {
+      "fail": "Troškovna struktura miješa klasifikacije: {standards}.",
+      "suggestion": "Izgradite strukturu iz jedne klasifikacije; ostale šifre mapirajte na nju."
+    },
+    "account_parent_cycle": {
+      "fail": "Konto {code} je vlastiti predak preko {count} konta.",
+      "suggestion": "Dodijelite jednom od ovih konta nadređeno konto izvan petlje."
+    },
+    "account_too_deep": {
+      "fail": "Konto {code} je na razini {level}, dublje od {max} razina njegove klasifikacije.",
+      "suggestion": "Pridružite konto nadređenom kontu unutar dubine klasifikacije."
+    },
+    "no_account": {
+      "fail": "{count} troškovnih stavki vrijednih {amount} nije ni na jednom kontu (prva: {code}).",
+      "suggestion": "Dodijelite ovim stavkama troškovnika šifru iz klasifikacije strukture ili pridružite troškovne stavke kontu."
+    },
+    "invalid_account": {
+      "fail": "{count} troškovnih stavki vrijednih {amount} je na zatvorenom kontu ili kontu koji ne prima knjiženja (prva: {code}).",
+      "suggestion": "Premjestite troškovne stavke na otvoreni konto koji prima knjiženja."
+    },
+    "own_amount_on_parent": {
+      "fail": "Konto {code} ima podkonta i uz to vlastiti iznos od {amount}.",
+      "suggestion": "Premjestite vlastiti iznos na podkonto ili ga zadržite kao namjernu pričuvu."
+    },
+    "rollup_mismatch": {
+      "fail": "Zbroj strukture {reported} razlikuje se od zbroja njezinih dijelova {expected} za {difference}.",
+      "suggestion": "Ponovno učitajte strukturu; ako razlika ostane, provjerite konta bez nadređenog konta."
+    },
+    "allocation_incomplete": {
+      "fail": "Udjeli stavke {ordinal} zbrajaju se u {total}{unit} umjesto {expected}{unit}.",
+      "suggestion": "Prilagodite udjele tako da je cijela stavka raspoređena, ni više ni manje."
+    },
+    "allocation_mixed_modes": {
+      "fail": "Stavka {ordinal} podijeljena je djelomično postotno, a djelomično po količini.",
+      "suggestion": "Podijelite stavku samo na jedan način."
+    },
+    "vector_not_inherited": {
+      "fail": "Stavka ugovora {code} je na troškovnoj stavci kojoj njezina stavka troškovnika nije dodijeljena.",
+      "suggestion": "Vratite stavku na troškovne stavke njezine stavke troškovnika ili zabilježite odstupanje s razlogom."
+    }
+  },
   "boq_markup": {
     "contingency_not_on_profit": {
       "fail": "Pričuva „{markup}” računa se na osnovicu koja već uključuje stavku dobiti „{profit}”, pa se marža obračunava na novac izdvojen za rizik",
@@ -59,6 +131,10 @@
     "offline_sync_delay": {
       "fail": "Rad je obavljen {date}, a podaci su stigli u ured tek {days} dana kasnije",
       "suggestion": "Prije odobrenja usporedite sate s podacima za taj dan; obračunsko razdoblje možda je već zatvoreno"
+    },
+    "outdoor_heat_ban": {
+      "fail": "Redak {line} bilježi rad od {start} do {end} dana {date}, unutar podnevne zabrane rada na otvorenom od {ban_from} do {ban_to}",
+      "suggestion": "Ako se rad odvijao na otvorenom na izravnom suncu, premjestite ga izvan sati zabrane; rad u zatvorenom i izuzeti sektori nisu obuhvaćeni"
     }
   },
   "ai_takeoff": {
@@ -521,6 +597,20 @@
       "suggestion": "Ograničite korekcije na -50% do +200% kako biste izbjegli nerealne cijene parcela"
     }
   },
+  "schedule_5d": {
+    "boq_coverage": {
+      "fail": "Stavka {ordinal} '{description}' ({amount}) ocijenjena je u troškovniku, ali je nijedna aktivnost ne nosi, pa njezin trošak nije u terminskom planu",
+      "suggestion": "Stavci zadajte količinu ili je povežite s aktivnošću, pa ponovno generirajte terminski plan."
+    },
+    "cost_reconciliation": {
+      "fail": "Terminski plan nosi {planned} od {bill} troškovnika: {difference} ocijenjenih radova nije ni na jednoj aktivnosti",
+      "suggestion": "Provjerite stavke koje navodi provjera pokrivenosti, pa ponovno generirajte terminski plan."
+    },
+    "duration_vs_norm": {
+      "fail": "Aktivnost '{activity}' traje {duration} radnih dana, dok norme rada i strojeva daju {norm}",
+      "suggestion": "Provjerite količinu, ekipu i normirane sate stavke ili ručno promijenjeno trajanje."
+    }
+  },
   "schedule_quality": {
     "open_ends": {
       "fail": "Aktivnosti '{activity}' nedostaje veza tipa {ends} (otvoreni kraj / nepovezana aktivnost)",
@@ -656,6 +746,42 @@
     "requisition_line_cost_line": {
       "fail": "Stavka {line} nije povezana s troškovnom stavkom, pa se njezina narudžba neće prikazati kao preuzeta obveza prema proračunu",
       "suggestion": "Izradite stavku iz BOQ-a ili je prije naručivanja povežite s troškovnom stavkom"
+    },
+    "requisition_suggested_vendor_in_directory": {
+      "fail": "Stavka {line} predlaže dobavljača {vendor}, koji nije u imeniku dobavljača",
+      "suggestion": "Odaberite predloženog dobavljača iz imenika dobavljača ili obrišite prijedlog"
+    },
+    "requisition_suggested_vendor_active": {
+      "fail": "Stavka {line} predlaže {vendor}, dobavljača koji nije aktivan u imeniku dobavljača",
+      "suggestion": "Predložite aktivnog dobavljača ili prepustite izbor nabavi"
+    },
+    "requisition_suggestion_conflict": {
+      "fail": "BOQ izvori stavke {line} predlažu različite dobavljače: {count}",
+      "suggestion": "Odaberite jednog dobavljača za stavku ili je podijelite tako da svaki dobavljač ima svoju stavku"
+    },
+    "requisition_suggested_vendor_differs": {
+      "fail": "Stavka {line} predlaže {vendor}, ali se zahtjev za nabavu namjerava naručiti od drugog dobavljača",
+      "suggestion": "Provjerite može li odabrani dobavljač isporučiti ovu stavku ili je naručite zasebno"
+    },
+    "requisition_line_needed_by_not_past": {
+      "fail": "Stavka {line} potrebna je do {date}, a taj je datum već prošao (danas je {today})",
+      "suggestion": "Unesite datum kada je materijal doista potreban na gradilištu"
+    },
+    "requisition_line_schedule_moved": {
+      "fail": "Stavka {line} planirana je za aktivnost koja počinje {anchor}, ali aktivnost sada počinje {start}",
+      "suggestion": "Usporedite datum potrebe stavke s trenutnim planom i po potrebi ga promijenite"
+    },
+    "requisition_approver_not_requester": {
+      "fail": "Osoba koja je podnijela zahtjev {req} ujedno je i njegov određeni odobravatelj broj {step}",
+      "suggestion": "Odredite drugog odobravatelja za taj korak, kako bi odlučivao netko drugi, a ne podnositelj zahtjeva"
+    },
+    "requisition_line_over_ordered": {
+      "fail": "Stavka {line} ima {ordered} {unit} u narudžbama, više od traženih {requested} {unit}",
+      "suggestion": "Provjerite je li dodatna količina namjerna ili smanjite stavku narudžbe"
+    },
+    "requisition_order_unit_mismatch": {
+      "fail": "Narudžba {order} sadrži stavku {line} u {unit}, što se ne može pretvoriti u jedinicu stavke {line_unit}",
+      "suggestion": "Ispravite jedinicu na stavci narudžbe kako bi se njezina količina računala kao naručena"
     },
     "receipt_certificate_present": {
       "fail": "Stavka {line} naručena je s {required}, ali isporuka sadrži {delivered}",
@@ -973,5 +1099,184 @@
     "parent_not_found": "Model čija bi nova verzija trebala biti ovaj prijenos nije u ovom projektu. Odaberite drugi ili ga prenesite kao zaseban model.",
     "parent_not_ready": "Uvoz modela \"{name}\" još nije završen pa još ne može primiti novu verziju. Pričekajte da bude spreman ili prenesite ovu datoteku kao zaseban model.",
     "parent_superseded": "Model \"{name}\" već ima noviju verziju, {version}. Umjesto toga prenesite ovu datoteku kao novu verziju najnovije."
+  },
+  "cost_chain": {
+    "contract_without_schedule": {
+      "fail": "Ugovor {code} vrijedi {amount}, ali nema stavki troškovnika, pa njegov novac nije ni na jednoj stavci troška.",
+      "suggestion": "Dodijelite ugovoru račun u kontroli troškova ili dodajte njegove stavke."
+    },
+    "contract_sum_differs": {
+      "fail": "Ugovor {code} vrijedi {total}, ali njegove stavke zbrajaju {lines} (razlika {difference}).",
+      "suggestion": "Ispravite vrijednost ugovora ili stavke da se podudaraju."
+    },
+    "change_without_agreed_amount": {
+      "fail": "Izmjena {code} odobrena je bez dogovorenog iznosa.",
+      "suggestion": "Upišite iznos dogovoren s izvođačem prije odobrenja izmjene."
+    },
+    "change_without_approval_date": {
+      "fail": "Izmjena {code} odobrena je bez datuma odobrenja.",
+      "suggestion": "Upišite kada je izmjena odobrena."
+    },
+    "billed_before_approval": {
+      "fail": "Na ugovor {contract} fakturirano je {amount} za izmjenu {code}, koja je u statusu {status} i nije odobrena.",
+      "suggestion": "Prvo odobrite izmjenu ili uklonite fakturiranje iz situacije."
+    },
+    "contract_over_target": {
+      "fail": "Ugovor {code} obvezuje {committed}, to je {difference} više od {target} troškovnika iz kojeg je ugovoren (više od {tolerance} %).",
+      "suggestion": "Usporedite ugovaranje i njegove izmjene s troškovnikom i zapišite zašto radovi koštaju više."
+    },
+    "account_over_plan": {
+      "fail": "Račun {code} nosi obveze od {committed}, {difference} iznad plana od {planned} (više od {tolerance} %).",
+      "suggestion": "Provjerite obveze na ovom računu ili ažurirajte plan uz razlog."
+    },
+    "quantity_overrun": {
+      "fail": "Stavka {code} ugovora {contract} izmjerena je na {measured} {unit} prema ugovorenih {contracted} {unit}, to je {over} % više (dopušteno {tolerance} %).",
+      "suggestion": "Provjerite izmjeru ili dogovorite dodatnu količinu kao izmjenu."
+    },
+    "measurement_exceeds_commitment": {
+      "fail": "Ugovor {code} izmjeren je na {measured}, to je {difference} više od njegove vrijednosti s odobrenim izmjenama od {committed}.",
+      "suggestion": "Odobrite izmjenu koja pokriva dodatne radove ili provjerite izmjeru."
+    },
+    "invoice_without_contract": {
+      "fail": "Račun dobavljača {number} na {amount} ne pripada nijednom ugovoru ni narudžbi.",
+      "suggestion": "Povežite njegove stavke s ugovorom ili ga knjižite kao izravni trošak na jednom računu."
+    }
+  },
+  "payment_release": {
+    "cumulative_total_fell": {
+      "fail": "Račun {number} na ugovoru {contract} navodi {net} do danas, manje od {previous} s prethodnog računa {previous_number}, iako se ugovor fakturira kumulativno.",
+      "suggestion": "Ako račun naplaćuje samo nove radove, ugovor se fakturira inkrementalno; ako smanjuje ukupni iznos, unesite ga kao odobrenje (knjižno odobrenje)."
+    },
+    "invoice_after_final": {
+      "fail": "Račun {number} na ugovoru {contract} slijedi nakon završnog računa {final}.",
+      "suggestion": "Naknadne radove unesite kao radove u režiji ili odobrenje, ili označite ispravan račun kao završni."
+    },
+    "claim_invoice_in_cumulative": {
+      "fail": "Račun {number} na ugovoru {contract} nastao je iz zahtjeva i naplaćuje jedno razdoblje, ali se ugovor fakturira kumulativno.",
+      "suggestion": "Koristite jedan način fakturiranja po ugovoru: prebacite ugovor na inkrementalno fakturiranje ili umjesto toga unesite kumulativne račune izvođača."
+    },
+    "release_differs": {
+      "fail": "Potvrđeno puštanje u isplatu za račun {number} na ugovoru {contract} iznosi {stored}, ali uvjeti ugovora danas daju {computed}.",
+      "suggestion": "Provjerite što se promijenilo od puštanja (uvjeti, iznosi računa, odbici), zatim ponovno otvorite puštanje i potvrdite ga."
+    },
+    "rounding_out_of_range": {
+      "fail": "Račun {number} zaokružen je za {rounding}, izvan dogovorenog koraka zaokruživanja od {step}.",
+      "suggestion": "Zaokruživanje smanjuje isplatu za manje od jednog koraka; uključite zaokruživanje u uvjetima plaćanja ili ponovno otvorite puštanje."
+    },
+    "final_retention_without_warranty": {
+      "fail": "Završni račun {number} na ugovoru {contract} zadržava {amount} zadržanog iznosa, ali jamstveni zadržani iznos nije dogovoren.",
+      "suggestion": "Dogovorite jamstveni zadržani iznos u uvjetima plaćanja ili ponovno otvorite puštanje kako bi se sav zadržani iznos isplatio sa završnim računom."
+    },
+    "posting_exceeds_held": {
+      "fail": "Na ugovoru {contract} vraćeno je više zadržanog iznosa nego što se drži: {amount} previše.",
+      "suggestion": "Stornirajte preveliko knjiženje zadržanog iznosa i proknjižite iznos koji se stvarno drži."
+    },
+    "posting_before_event": {
+      "fail": "Zadržani iznos od {amount} na ugovoru {contract} vraćen je {posted}, prije događaja otpuštanja koji je dospijevao {due}.",
+      "suggestion": "Provjerite datum događaja otpuštanja ili proknjižite otpuštanje nakon što se događaj dogodi."
+    },
+    "posting_without_event_date": {
+      "fail": "Zadržani iznos od {amount} na ugovoru {contract} vraćen je, ali datum događaja otpuštanja nije unesen.",
+      "suggestion": "Unesite datum kada je događaj otpuštanja nastupio kako bi se isplata mogla provjeriti prema njemu."
+    },
+    "retention_still_held": {
+      "fail": "Ugovor {contract} je dovršen i još drži zadržani iznos od {amount}.",
+      "suggestion": "Otpustite zadržani iznos na njegovom događaju u registru zadržanih iznosa ili ga zadržite za jamstveno razdoblje."
+    },
+    "discount_not_agreed": {
+      "fail": "Puštanje računa {number} na ugovoru {contract} koristi popust za rano plaćanje od {amount}, ali ugovor ne dopušta nikakav.",
+      "suggestion": "Uključite popust za rano plaćanje u uvjetima plaćanja ili ponovno otvorite puštanje bez njega."
+    },
+    "discount_after_deadline": {
+      "fail": "Na računu {number} zadržan je popust od {amount}, ali je plaćanje dana {paid_on} stiglo nakon datuma popusta {until}.",
+      "suggestion": "Platite i iznos popusta ili zabilježite zašto je izvođač prihvatio kasni popust."
+    },
+    "invoiced_over_measured": {
+      "fail": "Ugovor {contract} fakturiran je na {invoiced}, {difference} iznad izmjerenih {measured} (količina puta cijena).",
+      "suggestion": "Provjerite obračun količina prije puštanja još novca ili zadržite razliku kod sljedećeg puštanja."
+    },
+    "invoiced_over_contract": {
+      "fail": "Ugovor {contract} fakturiran je na {invoiced}, {difference} iznad svoje vrijednosti od {value}, a na njemu nije ništa izmjereno.",
+      "suggestion": "Unesite obračun količina ili izmjenu koja pokriva dodatni iznos prije puštanja još novca."
+    },
+    "reverse_charge_with_vat": {
+      "fail": "Račun {number} je u prijenosu porezne obveze, ali sadrži PDV od {vat}.",
+      "suggestion": "Račun u prijenosu porezne obveze ne sadrži PDV; ispravite iznos PDV-a ili kategoriju PDV-a na njegovim stavkama."
+    },
+    "line_without_vat_rate": {
+      "fail": "Račun {number} sadrži PDV, ali {count} njegovih stavki nema navedenu stopu PDV-a.",
+      "suggestion": "Unesite stopu PDV-a na svaku stavku kako bi odbici i izvozi uzeli ispravan porez."
+    },
+    "duplicate_number": {
+      "fail": "Broj računa {number} istog izvođača unesen je {count} puta.",
+      "suggestion": "Stornirajte kopiju ili ispravite broj računa ako je riječ o različitim računima."
+    },
+    "possible_duplicate": {
+      "fail": "Račun {number} ima istog izvođača, iznos ({amount}) i datum ({on}) kao račun {other}.",
+      "suggestion": "Provjerite da nije riječ o istom računu unesenom dvaput pod drugim brojem."
+    },
+    "certificate_missing": {
+      "fail": "Račun {number} uz ugovor {contract}: primatelj na dan {on} nema valjan dokument ({certificate}) koji {reference} traži prije isplate.",
+      "suggestion": "Evidentirajte dokument u zapisu podizvođača primatelja ili zadržite isplatu dok se ne predoči."
+    },
+    "split_payment_annotation_missing": {
+      "fail": "Račun {number} sadrži građevinske radove ili druge robe pod split paymentom i premašuje {threshold}, ali nema napomenu «{annotation}».",
+      "suggestion": "Zatražite od dobavljača ispravljen račun s napomenom i u svakom slučaju ga platite split paymentom: obveza plaćanja na taj način ne ovisi o napomeni."
+    },
+    "split_payment_not_used": {
+      "fail": "Račun {number} podliježe split paymentu, ali je njegovo plaćanje evidentirano drugom metodom. Kupac dodatno odgovara za {sanction}, 30 posto njegova PDV-a.",
+      "suggestion": "Takve račune plaćajte s PDV računa split paymentom, a metodu na plaćanju evidentirajte kao split_payment."
+    },
+    "split_payment_annex_unknown": {
+      "fail": "Račun {number} premašuje {threshold}, a nije evidentirano sadrži li robu ili usluge iz priloga split paymenta.",
+      "suggestion": "Evidentirajte na računu sadrži li robu ili usluge iz priloga (annex_15) ili njihove šifre (pkwiu_codes) kako bi se način plaćanja mogao provjeriti."
+    },
+    "reduced_rate_above_area_limit": {
+      "fail": "Račun {number} obračunava {rate} posto PDV-a na cijelu cijenu, ali stan ima {area_m2} m2 korisne površine, a snižena stopa vrijedi do {limit_m2} m2 ({reference}).",
+      "suggestion": "Obračunajte sniženu stopu na {reduced_share_percent} posto cijene, a opću stopu na ostatak."
+    },
+    "reduced_rate_object_unknown": {
+      "fail": "Račun {number} obračunava sniženu stambenu stopu od {rate} posto, ali projekt ne evidentira za koji je stan niti njegovu korisnu površinu ({reference}).",
+      "suggestion": "Evidentirajte na projektu vrstu stana i korisnu površinu (vat_housing) kako bi se stopa i njezino ograničenje površine mogli provjeriti."
+    },
+    "reduced_rate_not_eligible": {
+      "fail": "Račun {number} obračunava sniženu stambenu stopu od {rate} posto na {object}, što na nju nema pravo ({reference}).",
+      "suggestion": "Obračunajte opću stopu ili ispravite stan evidentiran na projektu."
+    },
+    "domestic_reverse_charge_ended": {
+      "fail": "Račun {number} primjenjuje prijenos porezne obveze na {count} stavki, ali je domaći prijenos porezne obveze za građevinske usluge u ovoj zemlji ukinut.",
+      "suggestion": "Osim ako je dobavljač sa sjedištem u inozemstvu, zatražite račun s PDV-om; takvi se računi plaćaju split paymentom."
+    },
+    "payment_term_over_cap": {
+      "fail": "Ugovor {contract} dogovara rok plaćanja od {days} dana, dulji od {cap} dana koje zakon o kašnjenju s plaćanjem dopušta među poduzetnicima.",
+      "suggestion": "Skratite rok na {cap} dana ili evidentirajte zašto je dulji rok izričito dogovoren i nije grubo nepravedan prema podizvođaču."
+    }
+  },
+  "cost_forecast": {
+    "below_commitment": {
+      "fail": "{code}: prognoza od {forecast} niža je od {owed} koji su već ugovoreni ili traženi u izmjenama na čekanju (za {difference}), a ništa to ne objašnjava.",
+      "suggestion": "Priložite dokument koji stoji iza nižeg iznosa (odobrenje, nagodba, zapisnik) ili na stavci navedite zašto njezina metoda daje manje."
+    },
+    "move_without_evidence": {
+      "fail": "{code}: prognoza se od zadnjeg zamrznutog snimka promijenila s {previous} na {current} ({delta}), iznad praga projekta, a još nema komentara ni dokaznog dokumenta.",
+      "suggestion": "Napišite zašto se iznos promijenio i povežite dokument ili zapisnik koji ga potvrđuje prije zamrzavanja snimka."
+    },
+    "method_override_without_comment": {
+      "fail": "{code} se prognozira metodom {method} umjesto metodom projekta ({project_method}), a nijedan komentar ne kaže zašto.",
+      "suggestion": "Dodajte kratak komentar uz metodu stavke ili vratite stavku na metodu projekta."
+    },
+    "method": {
+      "best_available": "najbolji dostupni izvor",
+      "maximum": "najveća vrijednost",
+      "evm_cpi": "učinkovitost troškova (CPI)",
+      "manual": "ručni iznos"
+    }
+  },
+  "payment_release_certificate_types": {
+    "social_security_clearance": "potvrda o podmirenim obvezama socijalnog osiguranja",
+    "construction_tax_exemption": "potvrda o oslobođenju od poreza na gradnju",
+    "employers_liability_clearance": "potvrda o ispunjenju odgovornosti poslodavaca",
+    "insurance": "potvrda o osiguranju",
+    "license": "licenca izvođača"
   }
 }

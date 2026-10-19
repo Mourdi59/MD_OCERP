@@ -1,4 +1,76 @@
 {
+  "cost_control": {
+    "unassigned_money": {
+      "fail": "已承诺的金额未分配到任何成本行。",
+      "suggestion": "请将合同或订单行关联到成本行,这样金额才会显示在正确的位置。"
+    },
+    "certified_over_committed": {
+      "fail": "已确认的工程量超出了合同授予额加已批准变更之和。",
+      "suggestion": "请批准涵盖额外工作的变更,或核查付款申请。"
+    },
+    "forecast_over_plan": {
+      "fail": "预测高于计划金额。",
+      "suggestion": "请核查预测的来源;如预计会有节省,请登记手动预测并注明原因。"
+    },
+    "partly_awarded": {
+      "fail": "计划金额中只有一部分已发包,预测可能遗漏了尚未发包的工作。",
+      "suggestion": "如果该成本行上还有未发包的工作,请录入手动预测。"
+    },
+    "pending_changes": {
+      "fail": "变更单正在等待决定。",
+      "suggestion": "请对待处理的变更单作出决定;预测目前尚未包含它们。"
+    },
+    "snapshot_stale": {
+      "fail": "已有一个多月没有保存预测。",
+      "suggestion": "请保存一份预测快照,以便成本历史保持可读。"
+    }
+  },
+  "cost_structure": {
+    "account_code_duplicate": {
+      "fail": "科目编码 {code} 在成本结构中出现了多次。",
+      "suggestion": "每个编码只保留一个科目,并把其成本行移到该科目下。"
+    },
+    "mixed_standard": {
+      "fail": "成本结构混用了多种编码体系:{standards}。",
+      "suggestion": "请只用一种编码体系搭建结构,并把其他编码映射过去。"
+    },
+    "account_parent_cycle": {
+      "fail": "科目 {code} 通过 {count} 个科目成为了自己的上级。",
+      "suggestion": "请为其中一个科目指定循环之外的上级科目。"
+    },
+    "account_too_deep": {
+      "fail": "科目 {code} 位于第 {level} 级,超过了其编码体系的 {max} 级。",
+      "suggestion": "请把该科目挂到不超过编码体系层级深度的上级科目下。"
+    },
+    "no_account": {
+      "fail": "{count} 个成本行(合计 {amount})不属于任何科目(第一个:{code})。",
+      "suggestion": "请给这些清单项赋予结构编码体系中的编码,或把成本行分配到某个科目。"
+    },
+    "invalid_account": {
+      "fail": "{count} 个成本行(合计 {amount})位于已关闭或不接受记账的科目上(第一个:{code})。",
+      "suggestion": "请把成本行移到可记账的开放科目。"
+    },
+    "own_amount_on_parent": {
+      "fail": "科目 {code} 既有下级科目,又有自身金额 {amount}。",
+      "suggestion": "请把自身金额移到某个下级科目,或将其作为有意设置的备用金保留。"
+    },
+    "rollup_mismatch": {
+      "fail": "结构合计 {reported} 与各部分之和 {expected} 相差 {difference}。",
+      "suggestion": "请重新加载结构;如果差额仍在,请检查缺少上级的科目。"
+    },
+    "allocation_incomplete": {
+      "fail": "清单项 {ordinal} 的各份额合计为 {total}{unit},而不是 {expected}{unit}。",
+      "suggestion": "请调整份额,使整个清单项恰好分配完,不多也不少。"
+    },
+    "allocation_mixed_modes": {
+      "fail": "清单项 {ordinal} 一部分按百分比拆分,一部分按数量拆分。",
+      "suggestion": "清单项只能用一种方式拆分。"
+    },
+    "vector_not_inherited": {
+      "fail": "合同行 {code} 所在的成本行并未分配其对应的工程量清单项。",
+      "suggestion": "请把该行放回清单项对应的成本行,或登记例外并注明原因。"
+    }
+  },
   "boq_markup": {
     "contingency_not_on_profit": {
       "fail": "风险预备费“{markup}”的计算基数已包含利润项“{profit}”，因此对预留的风险资金也计取了利润。",
@@ -59,6 +131,10 @@
     "offline_sync_delay": {
       "fail": "此记录对应 {date} 的作业，但在 {days} 天后才传至办公室。",
       "suggestion": "批准前，请核对实际作业当日的工时；对应计价期间可能已经结算。"
+    },
+    "outdoor_heat_ban": {
+      "fail": "第 {line} 行记录了 {date} 从 {start} 到 {end} 的工作，落在 {ban_from} 至 {ban_to} 的正午户外作业禁止时段内",
+      "suggestion": "如果该工作为烈日下的户外作业，请调整到禁止时段之外；室内作业和豁免行业不受影响"
     }
   },
   "ai_takeoff": {
@@ -521,6 +597,20 @@
       "suggestion": "请将调整幅度限制在 -50% 至 +200% 之间，避免地块价格失真。"
     }
   },
+  "schedule_5d": {
+    "boq_coverage": {
+      "fail": "清单项 {ordinal}“{description}”（{amount}）在工程量清单中已计价，但没有任何活动承载它，因此其费用不在进度计划中",
+      "suggestion": "为清单项填写工程量或将其关联到某个活动，然后重新生成进度计划。"
+    },
+    "cost_reconciliation": {
+      "fail": "进度计划承载了工程量清单 {bill} 中的 {planned}：已计价工程中有 {difference} 不在任何活动上",
+      "suggestion": "检查覆盖检查列出的清单项，然后重新生成进度计划。"
+    },
+    "duration_vs_norm": {
+      "fail": "活动“{activity}”持续 {duration} 个工作日，而人工和机械定额给出的是 {norm}",
+      "suggestion": "检查清单项的工程量、班组和定额工时，或手动修改过的工期。"
+    }
+  },
   "schedule_quality": {
     "open_ends": {
       "fail": "活动“{activity}”缺少{ends}逻辑关系，形成开口或悬空活动。",
@@ -656,6 +746,42 @@
     "requisition_line_cost_line": {
       "fail": "第 {line} 行未关联成本行,因此其订单不会显示为对预算的已占用金额",
       "suggestion": "请从 BOQ 生成该行,或在下单前将其关联到成本行"
+    },
+    "requisition_suggested_vendor_in_directory": {
+      "fail": "第 {line} 行建议的供应商 {vendor} 不在供应商名录中",
+      "suggestion": "请从供应商名录中选择建议的供应商,或清除该建议"
+    },
+    "requisition_suggested_vendor_active": {
+      "fail": "第 {line} 行建议的供应商 {vendor} 在供应商名录中未启用",
+      "suggestion": "请建议一个已启用的供应商,或把选择交给采购人员"
+    },
+    "requisition_suggestion_conflict": {
+      "fail": "第 {line} 行的 BOQ 来源建议了 {count} 个不同的供应商",
+      "suggestion": "请为该行选定一个供应商,或拆分该行,使每个供应商各有一行"
+    },
+    "requisition_suggested_vendor_differs": {
+      "fail": "第 {line} 行建议 {vendor},但该请购单要向另一家供应商下单",
+      "suggestion": "请确认所选供应商能供应该行,或将其单独下单"
+    },
+    "requisition_line_needed_by_not_past": {
+      "fail": "第 {line} 行要求在 {date} 前到货,该日期已经过去(今天是 {today})",
+      "suggestion": "请填写材料在现场实际需要的日期"
+    },
+    "requisition_line_schedule_moved": {
+      "fail": "第 {line} 行是按开始于 {anchor} 的工序计划的,但该工序现在开始于 {start}",
+      "suggestion": "请对照当前进度计划检查该行的需求日期,必要时修改"
+    },
+    "requisition_approver_not_requester": {
+      "fail": "请购单 {req} 的创建人同时也是其指定的第 {step} 级审批人",
+      "suggestion": "请为该步骤另指定审批人,使决定由请购人以外的人做出"
+    },
+    "requisition_line_over_ordered": {
+      "fail": "第 {line} 行已下单 {ordered} {unit},超过请购的 {requested} {unit}",
+      "suggestion": "请确认多出的数量是否有意为之,或减少订单行"
+    },
+    "requisition_order_unit_mismatch": {
+      "fail": "订单 {order} 中第 {line} 行的单位是 {unit},无法换算为该行的单位 {line_unit}",
+      "suggestion": "请更正订单行上的单位,使其数量计入已订购"
     },
     "receipt_certificate_present": {
       "fail": "第{line}行订购的是{required}，但送货内容为{delivered}",
@@ -973,5 +1099,184 @@
     "parent_not_found": "本次上传应作为其新版本的模型不在此项目中。请另选一个，或将其作为独立模型上传。",
     "parent_not_ready": "“{name}”尚未导入完成，暂时无法接收新版本。请等待其就绪，或将本文件作为独立模型上传。",
     "parent_superseded": "“{name}”已有更新的版本 {version}。请改为将本文件作为最新版本的新版本上传。"
+  },
+  "cost_chain": {
+    "contract_without_schedule": {
+      "fail": "合同{code}价值{amount},但没有明细行,所以它的金额不在任何成本行上。",
+      "suggestion": "请在成本控制中为该合同设置一个科目,或添加它的明细行。"
+    },
+    "contract_sum_differs": {
+      "fail": "合同{code}价值{total},但其明细行合计为{lines}(相差{difference})。",
+      "suggestion": "请修正合同金额或明细行,使两者一致。"
+    },
+    "change_without_agreed_amount": {
+      "fail": "变更{code}已批准,但没有商定金额。",
+      "suggestion": "批准变更之前,请先记录与承包商商定的金额。"
+    },
+    "change_without_approval_date": {
+      "fail": "变更{code}已批准,但没有批准日期。",
+      "suggestion": "请记录该变更的批准时间。"
+    },
+    "billed_before_approval": {
+      "fail": "合同{contract}已为变更{code}开票{amount},但该变更状态为{status},尚未批准。",
+      "suggestion": "请先批准该变更,或把这笔开票从付款申请中撤下。"
+    },
+    "contract_over_target": {
+      "fail": "合同{code}承诺{committed},比其发包所依据的工程量清单{target}高出{difference}(超过{tolerance} %)。",
+      "suggestion": "请对照工程量清单核对发包和变更,并记录工程造价偏高的原因。"
+    },
+    "account_over_plan": {
+      "fail": "科目{code}的承诺额为{committed},比计划{planned}高出{difference}(超过{tolerance} %)。",
+      "suggestion": "请检查该科目上的承诺,或附上原因更新计划。"
+    },
+    "quantity_overrun": {
+      "fail": "合同{contract}的第{code}行计量为{measured}{unit},合同量为{contracted}{unit},超出{over} %(允许{tolerance} %)。",
+      "suggestion": "请核对计量,或把多出的数量作为变更商定。"
+    },
+    "measurement_exceeds_commitment": {
+      "fail": "合同{code}的计量额为{measured},比含已批准变更的合同价{committed}高出{difference}。",
+      "suggestion": "请批准涵盖额外工作的变更,或核对计量。"
+    },
+    "invoice_without_contract": {
+      "fail": "供应商发票{number}({amount})不属于任何合同或订单。",
+      "suggestion": "请把它的明细行关联到某个合同,或作为直接成本记入一个科目。"
+    }
+  },
+  "payment_release": {
+    "cumulative_total_fell": {
+      "fail": "合同{contract}的发票{number}累计金额为{net},低于上一张发票{previous_number}的{previous},而该合同按累计方式开票。",
+      "suggestion": "如果发票只结算新增工程量,则合同按增量方式开票;如果发票使合计减少,请录入为贷项通知单。"
+    },
+    "invoice_after_final": {
+      "fail": "合同{contract}的发票{number}排在最终发票{final}之后。",
+      "suggestion": "请将之后的工作录入为计日工或贷项通知单,或把正确的发票标记为最终发票。"
+    },
+    "claim_invoice_in_cumulative": {
+      "fail": "合同{contract}的发票{number}由索赔生成且只结算一个期间,但该合同按累计方式开票。",
+      "suggestion": "每个合同只使用一种开票方式:把合同改为增量开票,或改为录入承包商的累计发票。"
+    },
+    "release_differs": {
+      "fail": "合同{contract}的发票{number}已确认的放款金额为{stored},但按合同条款今天算出的是{computed}。",
+      "suggestion": "请检查放款之后有什么变化(条款、发票金额、扣款),然后重新打开放款并再次确认。"
+    },
+    "rounding_out_of_range": {
+      "fail": "发票{number}的尾数调整为{rounding},超出了约定的取整步长{step}。",
+      "suggestion": "取整只会让放款金额减少不到一个步长;请在付款条款中启用取整,或重新打开放款。"
+    },
+    "final_retention_without_warranty": {
+      "fail": "合同{contract}的最终发票{number}扣留了{amount}质保金,但并未约定质保期保留金。",
+      "suggestion": "请在付款条款中约定质保期保留金,或重新打开放款,把全部保留金随最终发票一并支付。"
+    },
+    "posting_exceeds_held": {
+      "fail": "合同{contract}退还的保留金多于已扣留的金额,多退了{amount}。",
+      "suggestion": "请作废过高的保留金退还记账,按实际扣留的金额重新记账。"
+    },
+    "posting_before_event": {
+      "fail": "合同{contract}的{amount}保留金已于{posted}退还,早于其释放事件的到期日{due}。",
+      "suggestion": "请核对释放事件的日期,或在事件发生后再记账释放。"
+    },
+    "posting_without_event_date": {
+      "fail": "合同{contract}的{amount}保留金已退还,但未记录其释放事件的日期。",
+      "suggestion": "请记录释放事件达成的日期,以便将该笔付款与之核对。"
+    },
+    "retention_still_held": {
+      "fail": "合同{contract}已完工,但仍扣留着{amount}保留金。",
+      "suggestion": "请在保留金台账中按其事件释放保留金,或继续扣留至质保期结束。"
+    },
+    "discount_not_agreed": {
+      "fail": "合同{contract}的发票{number}放款时扣减了{amount}提前付款折扣,但合同不允许折扣。",
+      "suggestion": "请在付款条款中启用提前付款折扣,或在不含折扣的情况下重新打开放款。"
+    },
+    "discount_after_deadline": {
+      "fail": "发票{number}已扣留{amount}折扣,但{paid_on}的付款晚于折扣截止日{until}。",
+      "suggestion": "请连同折扣金额一并支付,或记录承包商接受逾期折扣的原因。"
+    },
+    "invoiced_over_measured": {
+      "fail": "合同{contract}已开票{invoiced},比已计量的{measured}(数量乘单价)多出{difference}。",
+      "suggestion": "在继续放款之前请核对计量,或在下次放款时扣留差额。"
+    },
+    "invoiced_over_contract": {
+      "fail": "合同{contract}已开票{invoiced},比合同价值{value}多出{difference},且没有任何计量。",
+      "suggestion": "在继续放款之前,请先录入能覆盖超出金额的计量或变更。"
+    },
+    "reverse_charge_with_vat": {
+      "fail": "发票{number}适用反向征税,却带有{vat}增值税。",
+      "suggestion": "反向征税的发票不含增值税;请更正增值税金额或其明细行的增值税类别。"
+    },
+    "line_without_vat_rate": {
+      "fail": "发票{number}含增值税,但有{count}个明细行没有填写税率。",
+      "suggestion": "请在每个明细行填写增值税税率,以便扣款和导出使用正确的税额。"
+    },
+    "duplicate_number": {
+      "fail": "同一承包商的发票号{number}被录入了{count}次。",
+      "suggestion": "请作废重复的那张,或者若是不同的发票,请更正发票号。"
+    },
+    "possible_duplicate": {
+      "fail": "发票{number}与发票{other}的承包商、金额({amount})和日期({on})相同。",
+      "suggestion": "请核对是不是同一张发票以另一个号码重复录入。"
+    },
+    "certificate_missing": {
+      "fail": "合同 {contract} 的发票 {number}：收款方在 {on} 没有有效的{certificate}，而 {reference} 要求在付款放行前具备。",
+      "suggestion": "请将证书登记到收款方的分包商记录中，或在出示证书前暂缓付款。"
+    },
+    "split_payment_annotation_missing": {
+      "fail": "发票{number}包含建筑工程或其他适用split payment的货物,且超过{threshold},但未带有注记“{annotation}”。",
+      "suggestion": "请供应商开具带注记的更正发票,并无论如何都通过split payment支付:以此方式付款的义务不取决于注记。"
+    },
+    "split_payment_not_used": {
+      "fail": "发票{number}适用split payment,但其付款以另一种方式记录。买方还需额外承担{sanction},即其增值税的30%。",
+      "suggestion": "此类发票应从增值税账户通过split payment支付,并在付款上将方式记录为split_payment。"
+    },
+    "split_payment_annex_unknown": {
+      "fail": "发票{number}超过{threshold},且未记录其是否包含split payment附件所列的货物或服务。",
+      "suggestion": "请在发票上记录其是否包含附件所列的货物或服务(annex_15)或其编码(pkwiu_codes),以便核查付款方式。"
+    },
+    "reduced_rate_above_area_limit": {
+      "fail": "发票{number}对全部价款按{rate}%计征增值税,但该住宅的使用面积为{area_m2} m2,优惠税率仅适用至{limit_m2} m2({reference})。",
+      "suggestion": "请对价款的{reduced_share_percent}%适用优惠税率,其余部分适用标准税率。"
+    },
+    "reduced_rate_object_unknown": {
+      "fail": "发票{number}按{rate}%的住房优惠税率计征,但项目中未记录其对应哪套住宅及其使用面积({reference})。",
+      "suggestion": "请在项目中记录住宅类型和使用面积(vat_housing),以便核查税率及其面积上限。"
+    },
+    "reduced_rate_not_eligible": {
+      "fail": "发票{number}对{object}按{rate}%的住房优惠税率计征,但其不符合适用条件({reference})。",
+      "suggestion": "请适用标准税率,或更正项目中记录的住宅。"
+    },
+    "domestic_reverse_charge_ended": {
+      "fail": "发票{number}对{count}个明细行适用反向征税,但建筑服务的国内反向征税在该国已经终止。",
+      "suggestion": "除非供应商设立于境外,否则请索取含增值税的发票;此类发票通过split payment支付。"
+    },
+    "payment_term_over_cap": {
+      "fail": "合同{contract}约定付款期限为{days}天,超过逾期付款法允许企业之间的{cap}天。",
+      "suggestion": "请将期限缩短至{cap}天,或记录为何明确约定较长期限且对分包商并非严重不公平。"
+    }
+  },
+  "cost_forecast": {
+    "below_commitment": {
+      "fail": "{code}：预测 {forecast} 低于已承诺或在待定变更中提出的 {owed}（低 {difference}），且没有任何说明。",
+      "suggestion": "请附上支撑较低数字的文件（贷项通知单、结算协议、会议纪要），或在该条目中说明其方法为何得出较少金额。"
+    },
+    "move_without_evidence": {
+      "fail": "{code}：自上一份冻结快照以来，预测从 {previous} 变为 {current}（{delta}），超过项目阈值，且尚无说明和依据。",
+      "suggestion": "冻结快照前，请写明数字变动的原因，并关联相应的文件或会议纪要。"
+    },
+    "method_override_without_comment": {
+      "fail": "{code} 采用{method}而非项目的{project_method}进行预测，且没有说明原因的备注。",
+      "suggestion": "请在该条目的方法上补一条简短备注，或将该条目改回项目的方法。"
+    },
+    "method": {
+      "best_available": "最佳可得来源",
+      "maximum": "最大值",
+      "evm_cpi": "成本绩效（CPI）",
+      "manual": "手动金额"
+    }
+  },
+  "payment_release_certificate_types": {
+    "social_security_clearance": "社会保险无欠费证明",
+    "construction_tax_exemption": "建筑税免税证明",
+    "employers_liability_clearance": "雇主责任无欠费证明",
+    "insurance": "保险证明",
+    "license": "承包商执照"
   }
 }

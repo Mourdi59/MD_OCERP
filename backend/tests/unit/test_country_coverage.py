@@ -432,14 +432,15 @@ def test_the_shared_row_census_is_taken_over_the_axis_and_not_over_the_cohort():
     are on the axis, they are on a shared row, and they are in no cohort here.
     """
     census = cc.shared_calendar_rows()
-    assert census.on_axis == 20, f"the axis moved: {census.on_axis}"
+    # 20 before Egypt and Poland each joined the axis on a calendar row of their own.
+    assert census.on_axis == 22, f"the axis moved: {census.on_axis}"
     assert len(census.on_shared_row) == 8, f"expected 8 on a shared row, got {census.on_shared_row}"
     assert set(census.shared) == {"DACH", "GULF"}, f"the shared rows moved: {sorted(census.shared)}"
     off_cohort = set(census.on_shared_row) - set(_COHORT)
     assert off_cohort == {"AT", "BH", "CH", "KW", "OM", "QA"}, (
         f"the census looks drawn from the cohort rather than from the registry: {off_cohort}"
     )
-    assert "8 of 20" in census.summary(), census.summary()
+    assert "8 of 22" in census.summary(), census.summary()
 
 
 def test_the_two_registry_figures_are_separate_measurements_of_the_same_axis():
@@ -455,10 +456,11 @@ def test_the_two_registry_figures_are_separate_measurements_of_the_same_axis():
     calendars, _resolve, axis, _method = cc._schedule_registry()
     not_a_key = {code for code in axis if code not in calendars}
     shared = set(cc.shared_calendar_rows().on_shared_row)
-    assert len(not_a_key) == 18, f"countries missing from the table keys moved: {sorted(not_a_key)}"
+    # EG and PL are spelled EGYPT and POLAND in the table, so both joined the 18.
+    assert len(not_a_key) == 20, f"countries missing from the table keys moved: {sorted(not_a_key)}"
     assert len(shared) == 8, f"countries on a shared row moved: {sorted(shared)}"
     assert shared < not_a_key, "a country on a shared row was also a table key; the decomposition changed"
-    assert len(not_a_key - shared) == 10, f"the 8 + 10 = 18 decomposition broke: {sorted(not_a_key - shared)}"
+    assert len(not_a_key - shared) == 12, f"the 8 + 12 = 20 decomposition broke: {sorted(not_a_key - shared)}"
 
 
 def test_a_shared_row_is_named_on_the_country_report_and_counted_in_its_summary():
@@ -1330,3 +1332,16 @@ def test_no_pack_demo_id_collides_with_a_seed_row():
     assert len(pack_ids) > 20, f"the pack directory came back nearly empty ({len(pack_ids)}); nothing was measured"
     assert not (seed_ids & set(pack_ids)), f"a pack now shares a seed's demo_id: {sorted(seed_ids & set(pack_ids))}"
     assert len(pack_ids) == len(set(pack_ids)), "two packs share a demo_id, so only the first would reach the catalogue"
+
+
+def test_the_payment_tax_and_vat_regime_data_files_are_probed():
+    """Both tables are one data file per country, which the tree walk cannot see.
+
+    A distinguishing pair each: Turkey has withholding rows and no VAT regimes,
+    Egypt has both, Germany has neither.
+    """
+    assert _one("EG", "tax.payment_withholding").verdict == cc.COVERED
+    assert _one("TR", "tax.payment_withholding").verdict == cc.COVERED
+    assert _one("DE", "tax.payment_withholding").verdict == cc.MISSING
+    assert _one("EG", "tax.vat_regimes").verdict == cc.COVERED
+    assert _one("TR", "tax.vat_regimes").verdict == cc.MISSING

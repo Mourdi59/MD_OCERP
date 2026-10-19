@@ -17,8 +17,8 @@ suite says so.
     returns a UUID for a CFDI, Brazil (BR) a chave de acesso for an NF-e,
     Italy (IT) a protocol number from SdI, Poland (PL) a KSeF number, Romania
     (RO) an upload index, Saudi Arabia (SA) a cryptographic stamp, India (IN)
-    an IRN. The document cannot be handed to the buyer until the authority has
-    answered.
+    an IRN, Egypt (EG) a document UUID. The document cannot be handed to the
+    buyer until the authority has answered.
 
 ``reporting``
     Post-issuance. The invoice is valid the moment it is issued and is reported
@@ -37,13 +37,11 @@ Countries that do more than one of them
 A country can do two of these acts at once, and calling such a country by one
 of the three names alone states something false about it. France (FR) routes
 the document to the buyer over a network of accredited platforms and
-separately reports transaction and payment data to the DGFiP, and it is the
-registry's one hybrid entry today. Other countries pair acts the same way -
-Saudi Arabia (SA) reports its simplified invoices after issue where standard
-ones are cleared - but a row is classed by what it declares, and the SA row
-models the standard-invoice clearance path alone, as its notes say. Closing
-that gap is a second act in ``additional_regimes`` on the row, not a sentence
-here; this paragraph names every row the registry classes hybrid.
+separately reports transaction and payment data to the DGFiP. Saudi Arabia
+(SA) clears its standard tax invoices before they reach the buyer and has its
+simplified invoices reported within 24 hours of issue, so its row names
+clearance as the deciding act and reporting beside it. A row is classed by what
+it declares, and this paragraph names every row the registry classes hybrid.
 
 ``regime`` therefore keeps naming the act that decides what a successful answer
 means, and ``additional_regimes`` names the other acts the same country also
@@ -83,7 +81,7 @@ terminal state rather than the adapter guessing it.
 Where it is set, the country's format is one the platform already builds - the
 EN 16931 engine in :mod:`app.modules.einvoice`, which ships CII and UBL and ten
 profiles. Where it is empty the national format is outside that engine (CFDI,
-NF-e, FatturaPA, KSeF FA(2), ZATCA, the Indian IRP schema, SII, RTIR), and the
+NF-e, FatturaPA, KSeF FA(3), ZATCA, the Indian IRP schema, SII, RTIR), and the
 caller supplies the payload. Nothing here reimplements a byte of EN 16931.
 
 Country names, platform names and national field names are data.
@@ -146,8 +144,17 @@ LEGAL_STATUSES: tuple[str, ...] = (
 # days is wrong by up to a year depending on the month the invoice was issued in.
 CANCELLATION_BASIS_DAYS = "days_from_clearance"
 CANCELLATION_BASIS_FISCAL_YEAR = "fiscal_year_of_issue"
+# The platform publishes its own window and it is read from the platform at the
+# moment of cancelling, not shipped here. A day count copied from a guide would go
+# stale the day the authority changes it, and the platform refuses late requests
+# itself, so the adapter reads the window when it cancels.
+CANCELLATION_BASIS_AUTHORITY = "read_from_authority"
 
-CANCELLATION_BASES: tuple[str, ...] = (CANCELLATION_BASIS_DAYS, CANCELLATION_BASIS_FISCAL_YEAR)
+CANCELLATION_BASES: tuple[str, ...] = (
+    CANCELLATION_BASIS_DAYS,
+    CANCELLATION_BASIS_FISCAL_YEAR,
+    CANCELLATION_BASIS_AUTHORITY,
+)
 
 
 @dataclass(frozen=True)
@@ -211,6 +218,13 @@ class CountryRegime:
     # National fields the EN 16931 semantic model has nowhere to put, carried on
     # the document in ``country_fields``.
     document_fields: tuple[str, ...] = ()
+    # Fields the user may fill in on a document that no submission requires, such
+    # as the dated invoice mentions the mentions catalogue checks. Kept apart from
+    # ``document_fields`` because those are mandatory for every document.
+    optional_document_fields: tuple[str, ...] = ()
+    # Keys of the registration's ``settings`` the country's rules read, such as
+    # the issuer's company size.
+    profile_setting_fields: tuple[str, ...] = ()
     # Days from clearance inside which a cancellation is still accepted. ``None``
     # means the platform has no cancellation flow at all and the only correction
     # is a further document - which is a different act with different accounting,
@@ -234,8 +248,12 @@ class CountryRegime:
 
     @property
     def is_cancellable(self) -> bool:
-        """Whether the platform accepts a cancellation of a cleared document."""
-        return self.cancellation_window_days is not None
+        """Whether the platform accepts a cancellation of a cleared document.
+
+        A window the platform publishes at runtime is a window, even though no
+        day count is stored for it here.
+        """
+        return self.cancellation_window_days is not None or self.cancellation_basis == CANCELLATION_BASIS_AUTHORITY
 
     @property
     def regimes(self) -> tuple[str, ...]:
@@ -262,6 +280,83 @@ class CountryRegime:
         wanted = (obligation or "").strip().lower()
         matching = [p for p in self.commencement if p.obligation == wanted]
         return tuple(sorted(matching, key=lambda p: (not p.is_dated, p.effective_date)))
+
+
+# Saudi Arabia's phase 2 integration waves. Each wave is keyed to VAT-subject
+# revenue in its reference years, and ZATCA notifies a taxpayer at least six
+# months before its window. The date of a phase is the END of the integration
+# window: the day by which every taxpayer in the wave must be integrated, which
+# is the date an operator plans to. Waves 1 to 24 are as EY reproduces ZATCA's
+# announcements (medium confidence, the wave 22 window especially); wave 25 is
+# read from EY and KPMG on ZATCA's announcement of 2026-07-24.
+# (wave, revenue threshold in SAR, reference years, window start, deadline)
+_SA_WAVES: tuple[tuple[int, str, str, str, str], ...] = (
+    (1, "3,000,000,000", "2021", "2023-01-01", "2023-06-30"),
+    (2, "500,000,000", "2021", "2023-07-01", "2023-12-31"),
+    (3, "250,000,000", "2021 or 2022", "2023-10-01", "2024-01-31"),
+    (4, "150,000,000", "2021 or 2022", "2023-11-01", "2024-02-29"),
+    (5, "100,000,000", "2021 or 2022", "2023-12-01", "2024-03-31"),
+    (6, "70,000,000", "2021 or 2022", "2024-01-01", "2024-04-30"),
+    (7, "50,000,000", "2021 or 2022", "2024-02-01", "2024-05-31"),
+    (8, "40,000,000", "2021 or 2022", "2024-03-01", "2024-06-30"),
+    (9, "30,000,000", "2021 or 2022", "2024-06-01", "2024-09-30"),
+    (10, "25,000,000", "2022 or 2023", "2024-10-01", "2024-12-31"),
+    (11, "15,000,000", "2022 or 2023", "2024-11-01", "2025-01-31"),
+    (12, "10,000,000", "2022 or 2023", "2024-12-01", "2025-02-28"),
+    (13, "7,000,000", "2022 or 2023", "2025-01-01", "2025-03-31"),
+    (14, "5,000,000", "2022 or 2023", "2025-02-01", "2025-04-30"),
+    (15, "4,000,000", "2022 or 2023", "2025-03-01", "2025-05-31"),
+    (16, "3,000,000", "2022 or 2023", "2025-04-01", "2025-06-30"),
+    (17, "2,500,000", "2022 or 2023", "2025-05-01", "2025-07-31"),
+    (18, "2,000,000", "2022 or 2023", "2025-06-01", "2025-08-31"),
+    (19, "1,750,000", "2022 or 2023", "2025-07-01", "2025-09-30"),
+    (20, "1,500,000", "2022 or 2023", "2025-08-01", "2025-10-31"),
+    (21, "1,250,000", "2022, 2023 or 2024", "2025-09-01", "2025-11-30"),
+    (22, "1,000,000", "2022, 2023 or 2024", "2025-10-01", "2025-12-31"),
+    (23, "750,000", "2022, 2023 or 2024", "2026-01-01", "2026-03-31"),
+    (24, "375,000", "2022, 2023 or 2024", "2026-04-01", "2026-06-30"),
+    (25, "187,500", "2022, 2023, 2024 or 2025", "", "2027-02-01"),
+)
+_SA_WAVE_SOURCE = (
+    "https://taxnews.ey.com/news/2026-1705-saudi-arabia-announces-25th-wave-of-phase-2-e-invoicing-integration"
+)
+_SA_PHASES: tuple[CommencementPhase, ...] = (
+    CommencementPhase(
+        obligation=OBLIGATION_ISSUE,
+        effective_date="2021-12-04",
+        scope="Phase 1 (generation): every resident VAT taxpayer issues invoices from a compliant e-invoicing solution",
+        legal_status=LEGAL_STATUS_IN_FORCE,
+        source_url="https://zatca.gov.sa/en/E-Invoicing/Introduction/LawsAndRegulations/Documents/E-invoicing-Regulations.pdf",
+        read_date="2026-10-19",
+        notes="QR code mandatory on simplified invoices from this date; integration with Fatoora came in waves.",
+    ),
+    *(
+        CommencementPhase(
+            obligation=OBLIGATION_ISSUE,
+            effective_date=deadline,
+            scope=(
+                f"Phase 2 (integration) wave {wave}: clearance of standard and reporting of simplified invoices "
+                f"through Fatoora, for VAT-subject revenue above SAR {threshold} in {years}"
+            ),
+            legal_status=LEGAL_STATUS_ENACTED if wave == 25 else LEGAL_STATUS_IN_FORCE,
+            source_url=_SA_WAVE_SOURCE,
+            read_date="2026-10-19",
+            threshold=f"SAR {threshold} VAT-subject revenue in {years}",
+            notes=(f"Integration window {start} to {deadline}." if start else f"Integration deadline {deadline}.")
+            + (
+                ""
+                if wave == 25
+                else " As reproduced by EY from ZATCA's announcements; needs expert review against ZATCA's own list."
+            )
+            + (
+                " Also reported by KPMG (2026-07). Whether further waves follow is not announced: needs expert review."
+                if wave == 25
+                else ""
+            ),
+        )
+        for wave, threshold, years, start, deadline in _SA_WAVES
+    ),
+)
 
 
 # The registry. One entry per country; adding a country is one entry and no code.
@@ -380,12 +475,103 @@ COUNTRY_REGIMES: dict[str, CountryRegime] = {
         platform="KSeF",
         label="Poland - KSeF national e-invoicing system",
         identifier_label="KSeF number",
-        document_format="ksef_fa_2",
+        # FA(3) since 2026-02-01. FA(2) is listed under ``extra`` as history only.
+        document_format="ksef_fa_3",
         profile_fields=("tax_registration_id",),
         document_fields=("nip_issuer", "nip_buyer"),
         # Nothing in KSeF can be withdrawn once it has a number.
         cancellation_window_days=None,
         correction_mechanism="faktura korygujaca (corrective invoice) issued through KSeF",
+        scope=(
+            "KSeF 2.0 with the FA(3) structure. Every taxpayer receives through KSeF from 2026-02-01; issuing "
+            "phases in by size. Penalties for invoices not issued in KSeF apply from 2027-01-01."
+        ),
+        commencement=(
+            CommencementPhase(
+                obligation=OBLIGATION_RECEIVE,
+                effective_date="2026-02-01",
+                scope="all taxpayers",
+                legal_status=LEGAL_STATUS_IN_FORCE,
+                source_url="https://www.ey.com/en_gl/technical/tax-alerts/poland-signs-into-law-mandatory-national-e-invoicing-system",
+                read_date="2026-10-19",
+            ),
+            CommencementPhase(
+                obligation=OBLIGATION_ISSUE,
+                effective_date="2026-02-01",
+                scope="taxpayers whose 2024 sales including VAT exceeded the threshold",
+                legal_status=LEGAL_STATUS_IN_FORCE,
+                source_url="https://www.ey.com/en_gl/technical/tax-alerts/poland-signs-into-law-mandatory-national-e-invoicing-system",
+                read_date="2026-10-19",
+                threshold="PLN 200000000 sales including VAT in 2024",
+            ),
+            CommencementPhase(
+                obligation=OBLIGATION_ISSUE,
+                effective_date="2026-04-01",
+                scope="all other taxpayers",
+                legal_status=LEGAL_STATUS_IN_FORCE,
+                source_url="https://www.ey.com/en_gl/technical/tax-alerts/poland-signs-into-law-mandatory-national-e-invoicing-system",
+                read_date="2026-10-19",
+            ),
+            CommencementPhase(
+                obligation=OBLIGATION_ISSUE,
+                effective_date="2027-01-01",
+                scope="micro taxpayers and cash-register invoices",
+                legal_status=LEGAL_STATUS_ENACTED,
+                source_url="https://www.mddp.pl/ksef-2-0-takes-shape-what-changes-in-the-legislation/",
+                read_date="2026-10-19",
+                threshold="PLN 10000 invoiced sales per month",
+                notes="A per-invoice cap reported by one source is not modelled and needs expert review.",
+            ),
+        ),
+        extra={
+            "schema": {
+                "key": "ksef_fa_3",
+                "system_code": "FA (3)",
+                "schema_version": "1-0E",
+                "namespace": "http://crd.gov.pl/wzor/2025/06/25/13775/",
+                "valid_from": "2026-02-01",
+                "source_url": "https://crd.gov.pl/wzor/2025/06/25/13775/schemat.xsd",
+            },
+            "historical_schemas": [
+                {
+                    "key": "ksef_fa_2",
+                    "system_code": "FA (2)",
+                    "namespace": "http://crd.gov.pl/wzor/2023/06/29/12648/",
+                    "valid_from": "2023-09-01",
+                    "valid_to": "2026-01-31",
+                },
+            ],
+            # Maximums, not fixed amounts: the tax office sets the figure up to the cap.
+            "penalties": [
+                {
+                    "key": "invoice_outside_ksef_vat",
+                    "description": "An invoice that should have been issued in KSeF was issued outside it.",
+                    "amount": None,
+                    "currency": "PLN",
+                    "cap": "100% of the VAT shown on the invoice",
+                    "basis": "percent_of_invoice_vat",
+                    "legal_basis": "VAT Act art. 106ni",
+                    "effective_date": "2027-01-01",
+                    "source_url": "https://api.sejm.gov.pl/sejm/term10/interpellations/attachment/ATTDPLJWP/z02943-o1.pdf",
+                    "read_date": "2026-10-19",
+                },
+                {
+                    "key": "invoice_outside_ksef_no_vat",
+                    "description": "The same, on an invoice that shows no VAT.",
+                    "amount": None,
+                    "currency": "PLN",
+                    "cap": "18.7% of the invoice gross amount",
+                    "basis": "percent_of_invoice_gross",
+                    "legal_basis": "VAT Act art. 106ni",
+                    "effective_date": "2027-01-01",
+                    "source_url": "https://api.sejm.gov.pl/sejm/term10/interpellations/attachment/ATTDPLJWP/z02943-o1.pdf",
+                    "read_date": "2026-10-19",
+                },
+            ],
+            "token_auth_last_day": "2026-12-31",
+            "ksef_number_in_payment_title_from": "2027-01-01",
+            "read_date": "2026-10-19",
+        },
     ),
     "RO": CountryRegime(
         country="RO",
@@ -411,13 +597,27 @@ COUNTRY_REGIMES: dict[str, CountryRegime] = {
         label="Saudi Arabia - ZATCA phase 2 integration",
         identifier_label="cryptographic stamp and QR",
         document_format="zatca_phase2",
+        # ``certificate_reference`` names the EGS unit that stamps the
+        # registration's documents.
         profile_fields=("tax_registration_id", "certificate_reference"),
-        document_fields=("vat_number_issuer", "invoice_hash", "qr_code"),
+        # None. The seller's VAT number, the invoice hash and the QR are inside
+        # the signed document, written by the package that builds it; asking
+        # the operator to type them into the document's fields as well would
+        # block every submission on values nobody can know before the stamp.
+        document_fields=(),
         cancellation_window_days=None,
-        correction_mechanism="credit note reported through the same integration",
+        correction_mechanism="credit note (381) or debit note (383) through the same integration",
+        additional_regimes=(REGIME_REPORTING,),
+        scope=(
+            "Phase 1 applies to every resident VAT taxpayer. Phase 2 has reached taxpayers through wave 24 "
+            "(revenue above SAR 375,000); wave 25 (above SAR 187,500 in any of 2022 to 2025) integrates by "
+            "2027-02-01."
+        ),
+        commencement=_SA_PHASES,
         notes=(
-            "Standard invoices are cleared before issue; simplified invoices are reported within 24 hours. "
-            "This registry models the standard-invoice clearance path."
+            "Standard tax invoices (KSA-2 01xxxxx, B2B and B2G) are cleared before they reach the buyer; "
+            "simplified invoices (02xxxxx, B2C) are stamped by the seller and reported within 24 hours. "
+            "Which act a document goes through is read from its own subtype."
         ),
     ),
     "IN": CountryRegime(
@@ -433,6 +633,82 @@ COUNTRY_REGIMES: dict[str, CountryRegime] = {
         # e-way bill has been generated against it.
         cancellation_window_days=1,
         correction_mechanism="credit note (an IRN older than the window cannot be cancelled)",
+    ),
+    "EG": CountryRegime(
+        country="EG",
+        regime=REGIME_CLEARANCE,
+        platform="ETA e-Invoicing",
+        label="Egypt - Egyptian Tax Authority e-invoicing",
+        # 26 Latin alphanumeric symbols, assigned by the authority on submission.
+        # The 42 character long id that goes on printouts is kept in the trail.
+        identifier_label="ETA document UUID",
+        # The ETA v1.0 JSON document. Built by the ``einvoice_eta`` module, which
+        # registers a payload builder for this format; nothing in the EN 16931
+        # engine produces it.
+        document_format="eta_json_1_0",
+        en16931_profile="",
+        # The issuer's tax registration number (RIN). Everything else ETA needs
+        # lives in the profile settings and on the document itself, and the
+        # ``eta_*`` validation rules name what is missing.
+        profile_fields=("tax_registration_id",),
+        document_fields=(),
+        # ETA publishes the cancellation window per document type through Get
+        # Document Type (workflow parameters), and says it follows the law. The
+        # figures quoted in guides are not confirmed by an ETA page, so no day
+        # count is shipped: the adapter reads the window when it cancels.
+        cancellation_window_days=None,
+        cancellation_basis=CANCELLATION_BASIS_AUTHORITY,
+        correction_mechanism=(
+            "credit note (document type c) referencing the original invoice UUID; debit note (d) for an increase"
+        ),
+        scope=(
+            "Taxpayers ETA has notified, in waves since 2020. A taxpayer checks its own obligation in ETA's "
+            "obligated-taxpayer inquiry. B2C sales go through the separate e-receipt system, which this row "
+            "does not model."
+        ),
+        commencement=(
+            CommencementPhase(
+                obligation=OBLIGATION_ISSUE,
+                effective_date="",
+                scope="Taxpayers named in ETA notification lists, phased from 2020 (ETA Decision 188/2020)",
+                legal_status=LEGAL_STATUS_IN_FORCE,
+                source_url="https://eg.andersen.com/vat-in-egypt/",
+                read_date="2026-10-19",
+                notes=(
+                    "Legal basis Unified Tax Procedures Law 206/2020, Art. 35. The wave dates come from secondary "
+                    "sources only and are not stated here. The same-day submission deadline widely reported from "
+                    "2023-01-01 is not enforced by this platform."
+                ),
+            ),
+        ),
+        notes=(
+            "Submission is asynchronous: ETA answers 202 with a UUID, then validates; the document stays submitted "
+            "until a refresh reads valid or invalid. Every document carries a CAdES-BES signature made with an eSeal "
+            "certificate on a USB token or HSM. An identical request body within 10 minutes is refused as a "
+            "duplicate. Source: https://sdk.invoicing.eta.gov.eg/ read 2026-10-19."
+        ),
+        extra={
+            "sdk_url": "https://sdk.invoicing.eta.gov.eg/",
+            # The hosts of both environments, as the SDK FAQ lists them. They are
+            # the default base URLs of a registration; a registration may still
+            # name its own (a proxy, or hosts ETA changes later).
+            "environments": {
+                "source_url": "https://sdk.invoicing.eta.gov.eg/faq/",
+                "read_date": "2026-10-19",
+                "preprod": {
+                    "identity_base_url": "https://id.preprod.eta.gov.eg",
+                    "api_base_url": "https://api.preprod.invoicing.eta.gov.eg",
+                    "portal_url": "https://preprod.invoicing.eta.gov.eg",
+                    "profile_url": "https://profile.preprod.eta.gov.eg",
+                },
+                "prod": {
+                    "identity_base_url": "https://id.eta.gov.eg",
+                    "api_base_url": "https://api.invoicing.eta.gov.eg",
+                    "portal_url": "https://invoicing.eta.gov.eg",
+                    "profile_url": "https://profile.eta.gov.eg",
+                },
+            },
+        },
     ),
     # ── Reporting ────────────────────────────────────────────────────────────
     "ES": CountryRegime(
@@ -569,6 +845,16 @@ COUNTRY_REGIMES: dict[str, CountryRegime] = {
         en16931_profile="facturx",
         profile_fields=("network_participant_id",),
         document_fields=("service_code",),
+        optional_document_fields=(
+            "customer_siren",
+            "transaction_scope",
+            "operation_category",
+            "delivery_differs",
+            "delivery_address",
+            "vat_on_debits_mention",
+            "insurance_mention",
+        ),
+        profile_setting_fields=("company_size", "vat_on_debits_option"),
         # France does two acts, not one. The document is routed to the buyer
         # over a network, which is what decides the terminal state and is why
         # the deciding act is still network exchange; separately, transaction
@@ -926,6 +1212,14 @@ def phase_as_dict(phase: CommencementPhase) -> dict[str, Any]:
     }
 
 
+def _company_sizes(country: str) -> tuple[str, ...]:
+    """The company sizes the mentions catalogue dates a country's waves by, in catalogue order."""
+    from app.modules.einvoice_clearance.mentions import load_catalogue
+
+    sizes = load_catalogue().get("phase_by_size", {}).get(country, {}).get("sizes") or {}
+    return tuple(sizes)
+
+
 def regime_as_dict(entry: CountryRegime) -> dict[str, Any]:
     """Flatten a regime for the validation context and the meta endpoint.
 
@@ -943,6 +1237,9 @@ def regime_as_dict(entry: CountryRegime) -> dict[str, Any]:
         "en16931_profile": entry.en16931_profile,
         "profile_fields": list(entry.profile_fields),
         "document_fields": list(entry.document_fields),
+        "optional_document_fields": list(entry.optional_document_fields),
+        "profile_setting_fields": list(entry.profile_setting_fields),
+        "company_sizes": list(_company_sizes(entry.country)),
         "cancellation_window_days": entry.cancellation_window_days,
         "is_cancellable": entry.is_cancellable,
         "correction_mechanism": entry.correction_mechanism,
@@ -955,11 +1252,15 @@ def regime_as_dict(entry: CountryRegime) -> dict[str, Any]:
         "cancellation_basis": entry.cancellation_basis,
         "scope": entry.scope,
         "commencement": [phase_as_dict(p) for p in entry.commencement],
+        # Country-specific facts that fit no shared column, such as the platform
+        # model, the accepted syntaxes or the fines. Empty for most countries.
+        "extra": dict(entry.extra),
     }
 
 
 __all__ = [
     "CANCELLATION_BASES",
+    "CANCELLATION_BASIS_AUTHORITY",
     "CANCELLATION_BASIS_DAYS",
     "CANCELLATION_BASIS_FISCAL_YEAR",
     "COUNTRY_REGIMES",

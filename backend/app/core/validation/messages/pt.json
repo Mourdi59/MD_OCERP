@@ -1,4 +1,76 @@
 {
+  "cost_control": {
+    "unassigned_money": {
+      "fail": "Valores comprometidos não estão atribuídos a nenhuma linha de custo.",
+      "suggestion": "Associe as linhas do contrato ou do pedido a linhas de custo para que o valor apareça no lugar certo."
+    },
+    "certified_over_committed": {
+      "fail": "Os trabalhos certificados excedem a adjudicação mais as alterações aprovadas.",
+      "suggestion": "Aprove a alteração que cobre os trabalhos adicionais ou verifique o auto de medição."
+    },
+    "forecast_over_plan": {
+      "fail": "A previsão está acima do valor planeado.",
+      "suggestion": "Verifique a origem da previsão; registe uma previsão manual com justificação se espera poupanças."
+    },
+    "partly_awarded": {
+      "fail": "Apenas parte do valor planeado foi adjudicada; a previsão pode não incluir trabalhos ainda por adjudicar.",
+      "suggestion": "Se ainda houver trabalhos por adjudicar nesta linha, introduza uma previsão manual."
+    },
+    "pending_changes": {
+      "fail": "Há ordens de alteração a aguardar decisão.",
+      "suggestion": "Decida sobre as ordens de alteração pendentes; a previsão ainda não as inclui."
+    },
+    "snapshot_stale": {
+      "fail": "Há mais de um mês que não é guardada nenhuma previsão.",
+      "suggestion": "Guarde um instantâneo da previsão para que o histórico de custos continue legível."
+    }
+  },
+  "cost_structure": {
+    "account_code_duplicate": {
+      "fail": "O código de conta {code} aparece mais de uma vez na estrutura de custos.",
+      "suggestion": "Mantenha uma conta por código e mova para ela as respetivas linhas de custo."
+    },
+    "mixed_standard": {
+      "fail": "A estrutura de custos mistura listas de códigos: {standards}.",
+      "suggestion": "Construa a estrutura a partir de uma única lista de códigos; mapeie os restantes códigos para ela."
+    },
+    "account_parent_cycle": {
+      "fail": "A conta {code} é o seu próprio ascendente através de {count} contas.",
+      "suggestion": "Atribua a uma destas contas um pai fora do ciclo."
+    },
+    "account_too_deep": {
+      "fail": "A conta {code} está no nível {level}, mais fundo do que os {max} níveis da sua lista de códigos.",
+      "suggestion": "Associe a conta a um pai dentro da profundidade da lista de códigos."
+    },
+    "no_account": {
+      "fail": "{count} linhas de custo no valor de {amount} não estão em nenhuma conta (primeira: {code}).",
+      "suggestion": "Atribua a estes artigos um código da lista de códigos da estrutura, ou atribua as linhas de custo a uma conta."
+    },
+    "invalid_account": {
+      "fail": "{count} linhas de custo no valor de {amount} estão numa conta fechada ou que não aceita lançamentos (primeira: {code}).",
+      "suggestion": "Mova as linhas de custo para uma conta aberta que aceite lançamentos."
+    },
+    "own_amount_on_parent": {
+      "fail": "A conta {code} tem subcontas e também um valor próprio de {amount}.",
+      "suggestion": "Mova o valor próprio para uma subconta ou mantenha-o como provisão deliberada."
+    },
+    "rollup_mismatch": {
+      "fail": "O total da estrutura {reported} difere da soma das suas partes {expected} em {difference}.",
+      "suggestion": "Recarregue a estrutura; se a diferença persistir, verifique as contas sem pai."
+    },
+    "allocation_incomplete": {
+      "fail": "As parcelas do artigo {ordinal} somam {total}{unit} em vez de {expected}{unit}.",
+      "suggestion": "Ajuste as parcelas para que o artigo fique todo repartido, nem mais nem menos."
+    },
+    "allocation_mixed_modes": {
+      "fail": "O artigo {ordinal} está dividido em parte por percentagem e em parte por quantidade.",
+      "suggestion": "Divida o artigo de uma única forma."
+    },
+    "vector_not_inherited": {
+      "fail": "A linha de contrato {code} está numa linha de custo a que o respetivo artigo do mapa de quantidades não está atribuído.",
+      "suggestion": "Volte a colocar a linha nas linhas de custo do artigo ou registe a exceção com justificação."
+    }
+  },
   "boq_markup": {
     "contingency_not_on_profit": {
       "fail": "A contingência «{markup}» é calculada sobre uma base que já inclui o lucro «{profit}», aplicando uma margem aos valores reservados para riscos",
@@ -59,6 +131,10 @@
     "offline_sync_delay": {
       "fail": "Este trabalho foi executado em {date} e só chegou ao escritório {days} dias depois",
       "suggestion": "Confira as horas desse dia antes de aprovar; a medição correspondente pode já estar encerrada"
+    },
+    "outdoor_heat_ban": {
+      "fail": "A linha {line} regista trabalho das {start} às {end} em {date}, dentro da proibição de trabalho ao ar livre do meio-dia, das {ban_from} às {ban_to}",
+      "suggestion": "Se o trabalho foi feito ao ar livre sob sol direto, mude-o para fora do horário de proibição; o trabalho em ambientes fechados e os setores isentos não são afetados"
     }
   },
   "ai_takeoff": {
@@ -521,6 +597,20 @@
       "suggestion": "Limite os modificadores a valores entre -50% e +200% para evitar preços de terrenos irrealistas"
     }
   },
+  "schedule_5d": {
+    "boq_coverage": {
+      "fail": "A composição {ordinal} «{description}» ({amount}) está orçada na planilha, mas nenhuma atividade a carrega, então o custo dela não está no cronograma",
+      "suggestion": "Informe uma quantidade para a composição ou vincule-a a uma atividade e gere o cronograma novamente."
+    },
+    "cost_reconciliation": {
+      "fail": "O cronograma contém {planned} dos {bill} da planilha: {difference} dos serviços orçados não estão em nenhuma atividade",
+      "suggestion": "Confira as composições listadas pela verificação de cobertura e gere o cronograma novamente."
+    },
+    "duration_vs_norm": {
+      "fail": "A atividade «{activity}» dura {duration} dias úteis, enquanto os índices de mão de obra e equipamentos resultam em {norm}",
+      "suggestion": "Confira a quantidade, a equipe e as horas de índice da composição, ou uma duração alterada manualmente."
+    }
+  },
   "schedule_quality": {
     "open_ends": {
       "fail": "A atividade «{activity}» não tem ligação lógica de {ends} (extremidade aberta / atividade desconectada)",
@@ -656,6 +746,42 @@
     "requisition_line_cost_line": {
       "fail": "A linha {line} não está vinculada a uma linha de custo, então o pedido dela não aparecerá como comprometido contra o orçamento",
       "suggestion": "Gere a linha a partir do BOQ ou vincule-a a uma linha de custo antes de pedir"
+    },
+    "requisition_suggested_vendor_in_directory": {
+      "fail": "A linha {line} sugere o fornecedor {vendor}, que não está no cadastro de fornecedores",
+      "suggestion": "Escolha o fornecedor sugerido no cadastro de fornecedores ou apague a sugestão"
+    },
+    "requisition_suggested_vendor_active": {
+      "fail": "A linha {line} sugere {vendor}, um fornecedor que não está ativo no cadastro de fornecedores",
+      "suggestion": "Sugira um fornecedor ativo ou deixe a escolha para o comprador"
+    },
+    "requisition_suggestion_conflict": {
+      "fail": "As fontes de BOQ da linha {line} sugerem {count} fornecedores diferentes",
+      "suggestion": "Escolha um fornecedor para a linha ou divida-a para que cada fornecedor tenha a sua própria linha"
+    },
+    "requisition_suggested_vendor_differs": {
+      "fail": "A linha {line} sugere {vendor}, mas a requisição será pedida a outro fornecedor",
+      "suggestion": "Confirme se o fornecedor escolhido consegue fornecer esta linha ou peça-a separadamente"
+    },
+    "requisition_line_needed_by_not_past": {
+      "fail": "A linha {line} é necessária até {date}, data que já passou (hoje é {today})",
+      "suggestion": "Informe a data em que o material é realmente necessário na obra"
+    },
+    "requisition_line_schedule_moved": {
+      "fail": "A linha {line} foi planejada para uma atividade que começava em {anchor}, mas a atividade agora começa em {start}",
+      "suggestion": "Compare a data de necessidade da linha com o cronograma atual e altere-a se preciso"
+    },
+    "requisition_approver_not_requester": {
+      "fail": "Quem criou a requisição {req} é também o aprovador designado número {step}",
+      "suggestion": "Indique outro aprovador para essa etapa, para que decida alguém diferente do solicitante"
+    },
+    "requisition_line_over_ordered": {
+      "fail": "A linha {line} tem {ordered} {unit} em pedidos, mais do que as {requested} {unit} solicitadas",
+      "suggestion": "Verifique se a quantidade extra é intencional ou reduza a linha do pedido"
+    },
+    "requisition_order_unit_mismatch": {
+      "fail": "O pedido {order} traz a linha {line} em {unit}, que não pode ser convertida para a unidade da linha {line_unit}",
+      "suggestion": "Corrija a unidade na linha do pedido para que sua quantidade conte como pedida"
     },
     "receipt_certificate_present": {
       "fail": "A linha {line} foi pedida com {required}, mas a entrega traz {delivered}",
@@ -973,5 +1099,184 @@
     "parent_not_found": "O modelo do qual este envio deveria ser uma nova versão não está neste projeto. Escolha outro ou envie como modelo separado.",
     "parent_not_ready": "A importação de \"{name}\" ainda não terminou, então ele ainda não pode receber uma nova versão. Aguarde até ficar pronto ou envie este arquivo como modelo separado.",
     "parent_superseded": "\"{name}\" já tem uma versão mais recente, {version}. Envie este arquivo como nova versão da mais recente."
+  },
+  "cost_chain": {
+    "contract_without_schedule": {
+      "fail": "O contrato {code} vale {amount} mas não tem itens de cronograma, por isso o seu valor não está em nenhuma linha de custo.",
+      "suggestion": "Dê ao contrato uma conta no controlo de custos ou adicione os seus itens."
+    },
+    "contract_sum_differs": {
+      "fail": "O contrato {code} vale {total}, mas os seus itens somam {lines} (diferença de {difference}).",
+      "suggestion": "Corrija o valor do contrato ou os itens para que coincidam."
+    },
+    "change_without_agreed_amount": {
+      "fail": "O aditivo {code} está aprovado sem valor acordado.",
+      "suggestion": "Registe o valor acordado com o empreiteiro antes de aprovar o aditivo."
+    },
+    "change_without_approval_date": {
+      "fail": "O aditivo {code} está aprovado sem data de aprovação.",
+      "suggestion": "Registe quando o aditivo foi aprovado."
+    },
+    "billed_before_approval": {
+      "fail": "Foram faturados {amount} no contrato {contract} pelo aditivo {code}, que está em estado {status} e não aprovado.",
+      "suggestion": "Aprove primeiro o aditivo ou retire a faturação da medição."
+    },
+    "contract_over_target": {
+      "fail": "O contrato {code} compromete {committed}, {difference} acima dos {target} do orçamento a partir do qual foi adjudicado (mais de {tolerance} %).",
+      "suggestion": "Confira a adjudicação e os seus aditivos com o orçamento e registe por que a obra custa mais."
+    },
+    "account_over_plan": {
+      "fail": "A conta {code} tem {committed} em compromissos, {difference} acima do planeado de {planned} (mais de {tolerance} %).",
+      "suggestion": "Confira os compromissos desta conta ou atualize o plano com um motivo."
+    },
+    "quantity_overrun": {
+      "fail": "O item {code} do contrato {contract} está medido em {measured} {unit} contra {contracted} {unit} contratadas, {over} % acima (permitido {tolerance} %).",
+      "suggestion": "Confira a medição ou acorde a quantidade extra como aditivo."
+    },
+    "measurement_exceeds_commitment": {
+      "fail": "O contrato {code} está medido em {measured}, {difference} acima do seu valor com aditivos aprovados de {committed}.",
+      "suggestion": "Aprove o aditivo que cobre o trabalho extra ou confira a medição."
+    },
+    "invoice_without_contract": {
+      "fail": "A fatura de fornecedor {number} de {amount} não pertence a nenhum contrato nem encomenda.",
+      "suggestion": "Associe as suas linhas a um contrato ou registe-a como custo direto numa conta."
+    }
+  },
+  "payment_release": {
+    "cumulative_total_fell": {
+      "fail": "A fatura {number} do contrato {contract} indica {net} acumulados, menos do que os {previous} da fatura anterior {previous_number}, embora o contrato seja faturado de forma acumulada.",
+      "suggestion": "Se a fatura cobra apenas o trabalho novo, o contrato é faturado de forma incremental; se reduz o total, lance-a como nota de crédito."
+    },
+    "invoice_after_final": {
+      "fail": "A fatura {number} do contrato {contract} vem depois da fatura final {final}.",
+      "suggestion": "Lance os trabalhos posteriores como trabalhos a custo ou nota de crédito, ou marque a fatura correta como final."
+    },
+    "claim_invoice_in_cumulative": {
+      "fail": "A fatura {number} do contrato {contract} foi criada a partir de uma reclamação e cobra um período, mas o contrato é faturado de forma acumulada.",
+      "suggestion": "Use uma só forma de faturação por contrato: passe o contrato para faturação incremental ou lance, em vez disso, as faturas acumuladas do empreiteiro."
+    },
+    "release_differs": {
+      "fail": "A liberação confirmada para a fatura {number} do contrato {contract} é {stored}, mas as condições do contrato dão hoje {computed}.",
+      "suggestion": "Verifique o que mudou desde a liberação (condições, valores da fatura, deduções), reabra a liberação e confirme-a de novo."
+    },
+    "rounding_out_of_range": {
+      "fail": "A fatura {number} está arredondada em {rounding}, fora do passo de arredondamento acordado de {step}.",
+      "suggestion": "O arredondamento só reduz uma liberação em menos de um passo; ative o arredondamento nas condições de pagamento ou reabra a liberação."
+    },
+    "final_retention_without_warranty": {
+      "fail": "A fatura final {number} do contrato {contract} retém {amount} de caução, mas não há caução de garantia acordada.",
+      "suggestion": "Acorde a caução de garantia nas condições de pagamento ou reabra a liberação para pagar toda a caução com a fatura final."
+    },
+    "posting_exceeds_held": {
+      "fail": "No contrato {contract} foi devolvida mais caução do que a retida: {amount} a mais.",
+      "suggestion": "Anule o lançamento de caução que está alto demais e lance o valor realmente retido."
+    },
+    "posting_before_event": {
+      "fail": "A caução de {amount} do contrato {contract} foi devolvida em {posted}, antes do evento de liberação, previsto para {due}.",
+      "suggestion": "Verifique a data do evento de liberação ou lance a liberação depois de o evento ter ocorrido."
+    },
+    "posting_without_event_date": {
+      "fail": "A caução de {amount} do contrato {contract} foi devolvida, mas a data do evento de liberação não está registada.",
+      "suggestion": "Registe a data em que o evento de liberação foi atingido, para que o pagamento possa ser conferido com ela."
+    },
+    "retention_still_held": {
+      "fail": "O contrato {contract} está concluído e ainda retém {amount} de caução.",
+      "suggestion": "Libere a caução no seu evento no registo de cauções ou mantenha-a retida durante o período de garantia."
+    },
+    "discount_not_agreed": {
+      "fail": "A liberação da fatura {number} do contrato {contract} aplica um desconto por pagamento antecipado de {amount}, mas o contrato não o permite.",
+      "suggestion": "Ative o desconto por pagamento antecipado nas condições de pagamento ou reabra a liberação sem ele."
+    },
+    "discount_after_deadline": {
+      "fail": "Foi retido um desconto de {amount} na fatura {number}, mas o pagamento de {paid_on} foi posterior à data do desconto {until}.",
+      "suggestion": "Pague também o valor do desconto ou registe por que o empreiteiro aceitou o desconto tardio."
+    },
+    "invoiced_over_measured": {
+      "fail": "O contrato {contract} está faturado em {invoiced}, {difference} acima dos {measured} medidos (quantidade vezes preço).",
+      "suggestion": "Verifique a medição antes de liberar mais dinheiro ou retenha a diferença na próxima liberação."
+    },
+    "invoiced_over_contract": {
+      "fail": "O contrato {contract} está faturado em {invoiced}, {difference} acima do seu valor de {value}, e nada está medido.",
+      "suggestion": "Registe a medição ou o aditivo que cobre o valor extra antes de liberar mais."
+    },
+    "reverse_charge_with_vat": {
+      "fail": "A fatura {number} tem inversão do sujeito passivo, mas traz {vat} de IVA.",
+      "suggestion": "Uma fatura com inversão do sujeito passivo não leva IVA; corrija o valor do IVA ou a categoria de IVA das suas linhas."
+    },
+    "line_without_vat_rate": {
+      "fail": "A fatura {number} tem IVA, mas {count} das suas linhas não indicam taxa de IVA.",
+      "suggestion": "Indique a taxa de IVA em todas as linhas para que deduções e exportações usem o imposto correto."
+    },
+    "duplicate_number": {
+      "fail": "O número de fatura {number} do mesmo empreiteiro foi lançado {count} vezes.",
+      "suggestion": "Anule a cópia ou corrija o número da fatura se forem faturas diferentes."
+    },
+    "possible_duplicate": {
+      "fail": "A fatura {number} tem o mesmo empreiteiro, valor ({amount}) e data ({on}) da fatura {other}.",
+      "suggestion": "Verifique que não é a mesma fatura lançada duas vezes com outro número."
+    },
+    "certificate_missing": {
+      "fail": "Fatura {number} do contrato {contract}: o beneficiário não possui documento válido em {on} ({certificate}), exigido por {reference} antes da liberação do pagamento.",
+      "suggestion": "Registre o documento no cadastro de subempreiteiro do beneficiário ou retenha o pagamento até que seja apresentado."
+    },
+    "split_payment_annotation_missing": {
+      "fail": "A fatura {number} inclui obras de construção ou outros bens sujeitos a split payment e excede {threshold}, mas não traz a anotação «{annotation}».",
+      "suggestion": "Peça ao fornecedor uma fatura corrigida com a anotação e pague-a em todo o caso por split payment: a obrigação de pagar assim não depende da anotação."
+    },
+    "split_payment_not_used": {
+      "fail": "A fatura {number} está sujeita a split payment, mas foi registado um pagamento seu com outro método. O comprador passa a responder ainda por {sanction}, 30 por cento do respetivo IVA.",
+      "suggestion": "Pague essas faturas a partir da conta de IVA por split payment e registe o método no pagamento como split_payment."
+    },
+    "split_payment_annex_unknown": {
+      "fail": "A fatura {number} excede {threshold} e não está registado se inclui bens ou serviços do anexo de split payment.",
+      "suggestion": "Registe na fatura se inclui bens ou serviços do anexo (annex_15), ou os respetivos códigos (pkwiu_codes), para que o método de pagamento possa ser verificado."
+    },
+    "reduced_rate_above_area_limit": {
+      "fail": "A fatura {number} aplica {rate} por cento de IVA sobre todo o preço, mas a habitação tem {area_m2} m2 de área útil e a taxa reduzida vale até {limit_m2} m2 ({reference}).",
+      "suggestion": "Aplique a taxa reduzida a {reduced_share_percent} por cento do preço e a taxa normal ao restante."
+    },
+    "reduced_rate_object_unknown": {
+      "fail": "A fatura {number} aplica a taxa reduzida de habitação de {rate} por cento, mas o projeto não regista a que habitação se refere nem a sua área útil ({reference}).",
+      "suggestion": "Registe o tipo de habitação e a área útil no projeto (vat_housing) para que a taxa e o seu limite de área possam ser verificados."
+    },
+    "reduced_rate_not_eligible": {
+      "fail": "A fatura {number} aplica a taxa reduzida de habitação de {rate} por cento a {object}, que não tem direito a ela ({reference}).",
+      "suggestion": "Aplique a taxa normal ou corrija a habitação registada no projeto."
+    },
+    "domestic_reverse_charge_ended": {
+      "fail": "A fatura {number} aplica inversão do sujeito passivo a {count} linha(s), mas a inversão do sujeito passivo interna em serviços de construção terminou neste país.",
+      "suggestion": "Salvo se o fornecedor estiver estabelecido no estrangeiro, peça uma fatura com IVA; essas faturas pagam-se por split payment."
+    },
+    "payment_term_over_cap": {
+      "fail": "O contrato {contract} acorda um prazo de pagamento de {days} dias, superior aos {cap} dias que a lei dos atrasos de pagamento permite entre empresas.",
+      "suggestion": "Reduza o prazo para {cap} dias ou registe por que o prazo mais longo foi expressamente acordado e não é gravemente abusivo para o subempreiteiro."
+    }
+  },
+  "cost_forecast": {
+    "below_commitment": {
+      "fail": "{code}: a previsão de {forecast} está abaixo dos {owed} já contratados ou pedidos em alterações pendentes ({difference} a menos), e nada o explica.",
+      "suggestion": "Anexe o documento que sustenta o valor mais baixo (nota de crédito, acordo, ata), ou indique na linha porque o seu método dá menos."
+    },
+    "move_without_evidence": {
+      "fail": "{code}: a previsão passou de {previous} para {current} ({delta}) desde o último snapshot congelado, acima do limite do projeto, e ainda não tem comentário nem comprovativo.",
+      "suggestion": "Explique porque o valor mudou e associe o documento ou a ata que o sustenta antes de congelar o snapshot."
+    },
+    "method_override_without_comment": {
+      "fail": "{code} é previsto por {method} em vez do método do projeto ({project_method}), e nenhum comentário explica porquê.",
+      "suggestion": "Acrescente um breve comentário ao método da linha, ou volte a pôr a linha no método do projeto."
+    },
+    "method": {
+      "best_available": "melhor fonte disponível",
+      "maximum": "valor máximo",
+      "evm_cpi": "desempenho de custos (CPI)",
+      "manual": "valor manual"
+    }
+  },
+  "payment_release_certificate_types": {
+    "social_security_clearance": "certidão negativa de débitos da previdência social",
+    "construction_tax_exemption": "certidão de isenção do imposto sobre construção",
+    "employers_liability_clearance": "certidão negativa de responsabilidade dos empregadores",
+    "insurance": "certificado de seguro",
+    "license": "licença do empreiteiro"
   }
 }

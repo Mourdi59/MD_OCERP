@@ -22,12 +22,21 @@ from sqlalchemy.orm.attributes import set_committed_value
 from sqlalchemy.orm.util import identity_key
 from sqlalchemy.sql.elements import ClauseElement
 
+from app.core.code_lists import code_sort_key
+from app.modules.costmodel.inheritance import (
+    SOURCE_CONTRACT_LINE,
+    SOURCE_PO_ITEM,
+    add_expanded,
+    expand,
+    row_vectors,
+)
 from app.modules.costmodel.models import (
     BudgetLine,
     CashFlow,
     ControlAccount,
     CostLine,
     CostSnapshot,
+    PositionAllocation,
 )
 
 # ── Currency conversion helper (R5 audit, May 2026) ─────────────────────
@@ -800,7 +809,7 @@ class ControlAccountRepository:
         for acct in accounts:
             children.setdefault(acct.parent_id, []).append(acct)
         for bucket in children.values():
-            bucket.sort(key=lambda a: (a.sort_order, a.code))
+            bucket.sort(key=lambda a: (a.sort_order, code_sort_key(a.code)))
 
         ordered: list[ControlAccount] = []
 
@@ -815,7 +824,7 @@ class ControlAccountRepository:
         _walk(None)
         if len(ordered) != len(accounts):
             seen = {a.id for a in ordered}
-            for acct in sorted(accounts, key=lambda a: (a.sort_order, a.code)):
+            for acct in sorted(accounts, key=lambda a: (a.sort_order, code_sort_key(a.code))):
                 if acct.id not in seen:
                     ordered.append(acct)
         return ordered
@@ -1097,6 +1106,7 @@ class CostSpineRepository:
                 PurchaseOrderItem.cost_line_id,
                 PurchaseOrderItem.amount,
                 PurchaseOrder.currency_code,
+                PurchaseOrderItem.id,
             )
             .join(PurchaseOrder, PurchaseOrder.id == PurchaseOrderItem.po_id)
             .where(
@@ -1105,13 +1115,13 @@ class CostSpineRepository:
                 PurchaseOrderItem.cost_line_id.is_not(None),
             )
         )
-        result = await self.session.execute(stmt)
+        rows = (await self.session.execute(stmt)).all()
+        vectors = await row_vectors(self.session, SOURCE_PO_ITEM, {r[3]: r[0] for r in rows})
 
         out: dict[str, Decimal] = {}
-        for cost_line_id, amount, po_currency in result.all():
-            key = str(cost_line_id)
+        for _cost_line_id, amount, po_currency, item_id in rows:
             po_ccy = (po_currency or "").strip().upper()
-            out[key] = out.get(key, Decimal("0")) + _amount_in_base(amount, po_ccy, base, fx)
+            add_expanded(out, _amount_in_base(amount, po_ccy, base, fx), vectors[str(item_id)])
         return out
 
     async def contract_value_by_cost_line(self, project_id: uuid.UUID) -> dict[str, Decimal]:
@@ -1130,6 +1140,7 @@ class CostSpineRepository:
                 ContractLine.cost_line_id,
                 ContractLine.total_value,
                 Contract.currency,
+                ContractLine.id,
             )
             .join(Contract, Contract.id == ContractLine.contract_id)
             .where(
@@ -1137,14 +1148,14 @@ class CostSpineRepository:
                 ContractLine.cost_line_id.is_not(None),
             )
         )
-        result = await self.session.execute(stmt)
+        rows = (await self.session.execute(stmt)).all()
+        vectors = await row_vectors(self.session, SOURCE_CONTRACT_LINE, {r[3]: r[0] for r in rows})
 
         out: dict[str, Decimal] = {}
-        for cost_line_id, total_value, contract_currency in result.all():
-            key = str(cost_line_id)
+        for _cost_line_id, total_value, contract_currency, line_id in rows:
             ccy = (contract_currency or "").strip().upper()
             raw = str(total_value) if total_value is not None else "0"
-            out[key] = out.get(key, Decimal("0")) + _amount_in_base(raw, ccy, base, fx)
+            add_expanded(out, _amount_in_base(raw, ccy, base, fx), vectors[str(line_id)])
         return out
 
     async def claimed_to_date_by_cost_line(self, project_id: uuid.UUID) -> dict[str, Decimal]:
@@ -1197,9 +1208,13 @@ class CostSpineRepository:
             if existing is None or value > existing[0]:
                 per_line_max[(cost_key, cl_key)] = (value, ccy)
 
+        # A split schedule line divides what was claimed on it the way it divides its value.
+        vectors = await row_vectors(
+            self.session, SOURCE_CONTRACT_LINE, {cl_key: cost_key for (cost_key, cl_key) in per_line_max}
+        )
         out: dict[str, Decimal] = {}
-        for (cost_key, _cl_key), (value, _ccy) in per_line_max.items():
-            out[cost_key] = out.get(cost_key, Decimal("0")) + value
+        for (_cost_key, cl_key), (value, _ccy) in per_line_max.items():
+            add_expanded(out, value, vectors[cl_key])
         return out
 
     async def committed_by_cost_line(self, project_id: uuid.UUID) -> dict[str, Decimal]:
@@ -1233,6 +1248,7 @@ class CostSpineRepository:
                 PurchaseOrderItem.amount,
                 PurchaseOrder.currency_code,
                 PurchaseOrder.metadata_,
+                PurchaseOrderItem.id,
             )
             .join(PurchaseOrder, PurchaseOrder.id == PurchaseOrderItem.po_id)
             .where(
@@ -1241,10 +1257,14 @@ class CostSpineRepository:
                 PurchaseOrderItem.cost_line_id.is_not(None),
             )
         )
+        po_result = (await self.session.execute(po_stmt)).all()
+        po_vectors = await row_vectors(self.session, SOURCE_PO_ITEM, {r[4]: r[0] for r in po_result})
         po_rows: dict[str, list[tuple[Decimal, frozenset[str]]]] = {}
-        for cost_line_id, amount, ccy, meta in (await self.session.execute(po_stmt)).all():
+        for _cost_line_id, amount, ccy, meta, item_id in po_result:
             value = _amount_in_base(amount, (ccy or "").strip().upper(), base, fx)
-            po_rows.setdefault(str(cost_line_id), []).append((value, _award_tokens(meta)))
+            # A split item is one commitment on each of its lines, its award tokens with every part.
+            for line_key, part in expand(value, po_vectors[str(item_id)]):
+                po_rows.setdefault(str(line_key), []).append((part, _award_tokens(meta)))
 
         contract_stmt = (
             select(
@@ -1280,14 +1300,16 @@ class CostSpineRepository:
             for contract_line_id, cumulative in (await self.session.execute(claim_stmt)).all():
                 certified[contract_line_id] = Decimal(str(cumulative)) if cumulative is not None else Decimal("0")
 
+        line_vectors = await row_vectors(self.session, SOURCE_CONTRACT_LINE, {r[1]: r[0] for r in contract_result})
         contract_rows: dict[str, list[tuple[Decimal, frozenset[str]]]] = {}
-        for cost_line_id, contract_line_id, total_value, ccy, status_, meta in contract_result:
+        for _cost_line_id, contract_line_id, total_value, ccy, status_, meta in contract_result:
             if (status_ or "").strip().lower() == "terminated":
                 raw = str(certified.get(contract_line_id, Decimal("0")))
             else:
                 raw = str(total_value) if total_value is not None else "0"
             value = _amount_in_base(raw, (ccy or "").strip().upper(), base, fx)
-            contract_rows.setdefault(str(cost_line_id), []).append((value, _award_tokens(meta)))
+            for line_key, part in expand(value, line_vectors[str(contract_line_id)]):
+                contract_rows.setdefault(str(line_key), []).append((part, _award_tokens(meta)))
 
         out: dict[str, Decimal] = {}
         for key in po_rows.keys() | contract_rows.keys():
@@ -1479,3 +1501,37 @@ def _combine_po_and_contracts(
     for (group_value, _tokens), po_value in zip(groups, matched_po, strict=True):
         total += max(group_value, po_value)
     return total
+
+
+class PositionAllocationRepository:
+    """Data access for the split shares of bill positions (two or more rows per split position)."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def list_for_positions(self, position_ids: list[uuid.UUID]) -> list[PositionAllocation]:
+        """Every share of the given positions."""
+        if not position_ids:
+            return []
+        stmt = select(PositionAllocation).where(PositionAllocation.position_id.in_(position_ids))
+        return list((await self.session.execute(stmt)).scalars().all())
+
+    async def retarget(self, allocation_id: uuid.UUID, cost_line_id: uuid.UUID, share: object = None) -> None:
+        """Point one share at another cost line, optionally with a new share value."""
+        values: dict[str, object] = {"cost_line_id": cost_line_id}
+        if share is not None:
+            values["share"] = share
+        await self.session.execute(
+            update(PositionAllocation).where(PositionAllocation.id == allocation_id).values(**values)
+        )
+
+    async def delete(self, allocation_id: uuid.UUID) -> None:
+        """Remove one share."""
+        await self.session.execute(delete(PositionAllocation).where(PositionAllocation.id == allocation_id))
+
+    async def count_for_line(self, cost_line_id: uuid.UUID) -> int:
+        """How many shares point at a cost line (for the delete guard)."""
+        stmt = (
+            select(func.count()).select_from(PositionAllocation).where(PositionAllocation.cost_line_id == cost_line_id)
+        )
+        return int((await self.session.execute(stmt)).scalar_one())

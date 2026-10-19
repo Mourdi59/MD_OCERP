@@ -68,10 +68,10 @@ const UNRELEASED: ChangelogEntry | null = null;
 const CHANGELOG: ChangelogEntry[] = [
   {
     version: '18.7.0',
-    date: '2026-10-17',
+    date: '2026-10-19',
     tag: 'NEW',
     summary:
-      'Cost control per project: planned, awarded, changes, expected final cost, certified and paid on one page, by cost line or by contract, with each forecast saying where its figure comes from. Money on no cost line can be put on one in a step, forecasts can be overruled with a reason, saved monthly with their stage and compared over time, tables sit on a solid background, and the plan room explains itself and offers to upload drawings when there are none.',
+      'Cost control per project: planned, awarded, changes, expected final cost, certified and paid on one page, by cost line or by contract, with each forecast saying where its figure comes from. Money on no cost line can be put on one in a step, forecasts can be overruled with a reason, saved monthly with their stage and compared over time, the validation report groups problems by rule and names bill positions by number, tables sit on a solid background, the dashboard shows cases and videos in one row each, and the plan room explains itself and offers to upload drawings when there are none. Requisitions get approver chains and partial ordering, and estimates can be checked against historical benchmarks from finished projects. New country packs for Egypt, Saudi Arabia, Poland and France bring calendars, contract rules, tax and late payment rules, with e-invoicing through the Egyptian ETA, Saudi ZATCA and Polish KSeF. Schedules generated from an estimate carry cost, resources and a confidence score, and historical cost can be restated with a price index.',
   },
   {
     version: '18.6.4',

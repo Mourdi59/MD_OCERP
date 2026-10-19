@@ -1,4 +1,76 @@
 {
+  "cost_control": {
+    "unassigned_money": {
+      "fail": "Majburiyat qilingan mablag' hech bir xarajat qatoriga biriktirilmagan.",
+      "suggestion": "Mablag' to'g'ri joyda ko'rinishi uchun shartnoma yoki buyurtma qatorlarini xarajat qatorlariga bog'lang."
+    },
+    "certified_over_committed": {
+      "fail": "Tasdiqlangan ishlar berilgan summa va tasdiqlangan o'zgarishlardan oshib ketdi.",
+      "suggestion": "Qo'shimcha ishni qoplaydigan o'zgarishni tasdiqlang yoki to'lov talabini tekshiring."
+    },
+    "forecast_over_plan": {
+      "fail": "Prognoz rejalashtirilgan summadan yuqori.",
+      "suggestion": "Prognoz manbasini tekshiring; tejash kutsangiz, sababi bilan qo'lda prognoz kiriting."
+    },
+    "partly_awarded": {
+      "fail": "Rejalashtirilgan summaning faqat bir qismi berilgan; prognozda hali berilmagan ishlar yetishmasligi mumkin.",
+      "suggestion": "Bu qatorda hali beriladigan ish qolgan bo'lsa, qo'lda prognoz kiriting."
+    },
+    "pending_changes": {
+      "fail": "O'zgartirish buyurtmalari qarorni kutmoqda.",
+      "suggestion": "Kutilayotgan o'zgartirish buyurtmalari bo'yicha qaror qabul qiling; prognoz ularni hali o'z ichiga olmaydi."
+    },
+    "snapshot_stale": {
+      "fail": "Bir oydan ortiq vaqtdan beri prognoz saqlanmadi.",
+      "suggestion": "Xarajatlar tarixi o'qiladigan bo'lib qolishi uchun prognoz snapshotini saqlang."
+    }
+  },
+  "cost_structure": {
+    "account_code_duplicate": {
+      "fail": "{code} hisob kodi xarajat tuzilmasida bir necha marta uchraydi.",
+      "suggestion": "Har bir kod uchun bitta hisob qoldiring va uning xarajat qatorlarini shunga ko'chiring."
+    },
+    "mixed_standard": {
+      "fail": "Xarajat tuzilmasi kod ro'yxatlarini aralashtiradi: {standards}.",
+      "suggestion": "Tuzilmani bitta kod ro'yxatidan quring; qolgan kodlarni unga moslashtiring."
+    },
+    "account_parent_cycle": {
+      "fail": "{code} hisobi {count} ta hisob orqali o'zining ajdodi bo'lib turibdi.",
+      "suggestion": "Bu hisoblardan biriga sikldan tashqaridagi ota hisob bering."
+    },
+    "account_too_deep": {
+      "fail": "{code} hisobi {level}-darajada, kod ro'yxatining {max} darajasidan chuqurroq.",
+      "suggestion": "Hisobni kod ro'yxati chuqurligi doirasida ota hisobga biriktiring."
+    },
+    "no_account": {
+      "fail": "Qiymati {amount} bo'lgan {count} ta xarajat qatori hech bir hisobda emas (birinchisi: {code}).",
+      "suggestion": "Bu pozitsiyalarga tuzilmaning kod ro'yxatidan kod bering yoki xarajat qatorlarini hisobga biriktiring."
+    },
+    "invalid_account": {
+      "fail": "Qiymati {amount} bo'lgan {count} ta xarajat qatori yopiq hisobda yoki o'tkazma qabul qilmaydigan hisobda (birinchisi: {code}).",
+      "suggestion": "Xarajat qatorlarini o'tkazma qabul qiladigan ochiq hisobga ko'chiring."
+    },
+    "own_amount_on_parent": {
+      "fail": "{code} hisobida quyi hisoblar bor va bundan tashqari o'z summasi ham bor: {amount}.",
+      "suggestion": "O'z summasini quyi hisobga ko'chiring yoki ongli zaxira sifatida qoldiring."
+    },
+    "rollup_mismatch": {
+      "fail": "Tuzilma jami {reported} qismlari yig'indisi {expected} dan {difference} ga farq qiladi.",
+      "suggestion": "Tuzilmani qayta yuklang; farq qolsa, ota hisobi yo'q hisoblarni tekshiring."
+    },
+    "allocation_incomplete": {
+      "fail": "{ordinal} pozitsiyasining ulushlari {expected}{unit} o'rniga {total}{unit} bo'lmoqda.",
+      "suggestion": "Ulushlarni butun pozitsiya taqsimlanadigan, ortiq ham kam ham bo'lmaydigan qilib to'g'rilang."
+    },
+    "allocation_mixed_modes": {
+      "fail": "{ordinal} pozitsiyasi qisman foiz bilan, qisman miqdor bo'yicha bo'lingan.",
+      "suggestion": "Pozitsiyani faqat bitta usulda bo'ling."
+    },
+    "vector_not_inherited": {
+      "fail": "{code} shartnoma qatori o'zining smeta pozitsiyasi taqsimlanmagan xarajat qatorida turibdi.",
+      "suggestion": "Qatorni pozitsiyaning xarajat qatorlariga qaytaring yoki chetga chiqishni sababi bilan yozing."
+    }
+  },
   "boq_markup": {
     "contingency_not_on_profit": {
       "fail": "\"{markup}\" tavakkal zaxirasi \"{profit}\" foyda satri allaqachon kiritilgan baza asosida hisoblanadi, shu sababli xavf uchun ajratilgan mablagʻga foyda marjasi qoʻshiladi",
@@ -59,6 +131,10 @@
     "offline_sync_delay": {
       "fail": "Ish {date} kuni bajarilgan, lekin ofisga faqat {days} kundan keyin yetib kelgan",
       "suggestion": "Tasdiqlashdan oldin soatlarni shu kunning yozuvlari bilan tekshiring; toʻlovni baholash davri allaqachon yopilgan boʻlishi mumkin"
+    },
+    "outdoor_heat_ban": {
+      "fail": "{line}-qatorda {date} kuni {start} dan {end} gacha bajarilgan ish qayd etilgan, bu {ban_from} dan {ban_to} gacha tushki paytda ochiq havoda ishlashni taqiqlash vaqtiga to'g'ri keladi",
+      "suggestion": "Agar bu ish ochiq havoda to'g'ri quyosh ostida bajarilgan bo'lsa, uni taqiqlangan soatlardan tashqariga ko'chiring; bino ichidagi ishlar va istisno qilingan sohalarga bu taalluqli emas"
     }
   },
   "ai_takeoff": {
@@ -521,6 +597,20 @@
       "suggestion": "Yer uchastkalarining noreal narxlarini oldini olish uchun tuzatishlarni -50% dan +200% gacha cheklang"
     }
   },
+  "schedule_5d": {
+    "boq_coverage": {
+      "fail": "{ordinal}-pozitsiya '{description}' ({amount}) xarajatlar smetasida narxlangan, lekin uni hech bir faoliyat olib yurmaydi, shuning uchun uning narxi jadvalda yoʻq",
+      "suggestion": "Pozitsiyaga hajm bering yoki uni faoliyatga bogʻlang, soʻng jadvalni qayta yarating."
+    },
+    "cost_reconciliation": {
+      "fail": "Jadvalda smetaning {bill} summasidan {planned} bor: narxlangan ishning {difference} qismi hech bir faoliyatda yoʻq",
+      "suggestion": "Qamrovni tekshirish koʻrsatgan pozitsiyalarni tekshiring, soʻng jadvalni qayta yarating."
+    },
+    "duration_vs_norm": {
+      "fail": "'{activity}' faoliyati {duration} ish kuni davom etadi, mehnat va mashina me'yorlari esa {norm} beradi",
+      "suggestion": "Pozitsiyaning hajmini, brigadasini va me'yor soatlarini yoki qoʻlda oʻzgartirilgan davomiylikni tekshiring."
+    }
+  },
   "schedule_quality": {
     "open_ends": {
       "fail": "'{activity}' faoliyatida {ends} bogʻlanishi yoʻq (ochiq uch / uzilgan faoliyat)",
@@ -656,6 +746,42 @@
     "requisition_line_cost_line": {
       "fail": "{line}-qator xarajat qatori bilan bogʻlanmagan, shuning uchun uning buyurtmasi byudjetga nisbatan majburiyat sifatida koʻrinmaydi",
       "suggestion": "Qatorni BOQ dan yarating yoki buyurtma berishdan oldin xarajat qatoriga bogʻlang"
+    },
+    "requisition_suggested_vendor_in_directory": {
+      "fail": "{line}-qator {vendor} yetkazib beruvchisini taklif qiladi, u yetkazib beruvchilar reyestrida yoʻq",
+      "suggestion": "Taklif qilingan yetkazib beruvchini yetkazib beruvchilar reyestridan tanlang yoki taklifni oʻchiring"
+    },
+    "requisition_suggested_vendor_active": {
+      "fail": "{line}-qator {vendor} yetkazib beruvchisini taklif qiladi, u yetkazib beruvchilar reyestrida faol emas",
+      "suggestion": "Faol yetkazib beruvchini taklif qiling yoki tanlovni xaridorga qoldiring"
+    },
+    "requisition_suggestion_conflict": {
+      "fail": "{line}-qatorning BOQ manbalari {count} xil yetkazib beruvchini taklif qiladi",
+      "suggestion": "Qator uchun bitta yetkazib beruvchini tanlang yoki qatorni boʻling, shunda har bir yetkazib beruvchining oʻz qatori boʻladi"
+    },
+    "requisition_suggested_vendor_differs": {
+      "fail": "{line}-qator {vendor} yetkazib beruvchisini taklif qiladi, lekin talabnoma boshqa yetkazib beruvchidan buyurtma qilinishi kerak",
+      "suggestion": "Tanlangan yetkazib beruvchi bu qatorni yetkaza olishini tekshiring yoki uni alohida buyurtma qiling"
+    },
+    "requisition_line_needed_by_not_past": {
+      "fail": "{line}-qator {date} sanasigacha kerak, lekin bu sana allaqachon oʻtib ketgan (bugun {today})",
+      "suggestion": "Material obyektda haqiqatan kerak boʻladigan sanani kiriting"
+    },
+    "requisition_line_schedule_moved": {
+      "fail": "{line}-qator {anchor} sanasida boshlanadigan ishga moʻljallangan edi, lekin ish endi {start} sanasida boshlanadi",
+      "suggestion": "Qatorning kerak boʻlish sanasini joriy jadval bilan solishtiring va kerak boʻlsa oʻzgartiring"
+    },
+    "requisition_approver_not_requester": {
+      "fail": "{req} material soʻrovini yaratgan shaxs bir vaqtning oʻzida uning tayinlangan {step}-tasdiqlovchisi hamdir",
+      "suggestion": "Shu bosqich uchun boshqa tasdiqlovchini tayinlang, shunda soʻrov beruvchidan boshqa kishi qaror qiladi"
+    },
+    "requisition_line_over_ordered": {
+      "fail": "{line}-qatorda buyurtmalarda {ordered} {unit} bor, bu soʻralgan {requested} {unit} dan koʻp",
+      "suggestion": "Ortiqcha miqdor ataylab qoʻyilganini tekshiring yoki buyurtma qatorini kamaytiring"
+    },
+    "requisition_order_unit_mismatch": {
+      "fail": "{order} buyurtmasida {line}-qator {unit} birligida, uni qatorning {line_unit} birligiga aylantirib boʻlmaydi",
+      "suggestion": "Buyurtma qatoridagi birlikni tuzating, shunda uning miqdori buyurtma qilingan deb hisoblanadi"
     },
     "receipt_certificate_present": {
       "fail": "{line} pozitsiyasi {required} bilan buyurtma qilingan, ammo yetkazib berishda {delivered} bor",
@@ -973,5 +1099,184 @@
     "parent_not_found": "Ushbu yuklama yangi versiyasi boʻlishi kerak boʻlgan model bu loyihada yoʻq. Boshqasini tanlang yoki alohida model sifatida yuklang.",
     "parent_not_ready": "\"{name}\" importi hali tugamagan, shuning uchun u hozircha yangi versiyani qabul qila olmaydi. Tayyor boʻlguncha kuting yoki bu faylni alohida model sifatida yuklang.",
     "parent_superseded": "\"{name}\" uchun yangiroq versiya bor: {version}. Buning oʻrniga bu faylni eng oxirgi modelning yangi versiyasi sifatida yuklang."
+  },
+  "cost_chain": {
+    "contract_without_schedule": {
+      "fail": "{code} shartnomasi {amount} turadi, lekin uning jadval qatorlari yo'q, shuning uchun uning puli birorta xarajat qatorida emas.",
+      "suggestion": "Shartnomaga xarajatlar nazoratida hisob bering yoki uning jadval qatorlarini qo'shing."
+    },
+    "contract_sum_differs": {
+      "fail": "{code} shartnomasi {total} turadi, lekin qatorlari yig'indisi {lines} (farqi {difference}).",
+      "suggestion": "Shartnoma qiymatini yoki qatorlarni bir-biriga mos qilib to'g'rilang."
+    },
+    "change_without_agreed_amount": {
+      "fail": "{code} o'zgartirishi kelishilgan summasiz tasdiqlangan.",
+      "suggestion": "O'zgartirishni tasdiqlashdan oldin pudratchi bilan kelishilgan summani yozib qo'ying."
+    },
+    "change_without_approval_date": {
+      "fail": "{code} o'zgartirishi tasdiqlash sanasisiz tasdiqlangan.",
+      "suggestion": "O'zgartirish qachon tasdiqlanganini yozib qo'ying."
+    },
+    "billed_before_approval": {
+      "fail": "{contract} shartnomasi bo'yicha {code} o'zgartirishi uchun {amount} hisoblangan, lekin u {status} holatida va tasdiqlanmagan.",
+      "suggestion": "Avval o'zgartirishni tasdiqlang yoki hisoblashni dalolatnomadan olib tashlang."
+    },
+    "contract_over_target": {
+      "fail": "{code} shartnomasi {committed} majburiyat oladi, bu u berilgan hajmlar ro'yxatidagi {target} summadan {difference} ko'p ({tolerance} % dan ortiq).",
+      "suggestion": "Berilgan ishni va uning o'zgartirishlarini hajmlar ro'yxati bilan solishtiring va ish nega qimmat ekanini yozib qo'ying."
+    },
+    "account_over_plan": {
+      "fail": "{code} hisobida {committed} majburiyat bor, bu {planned} rejadan {difference} ko'p ({tolerance} % dan ortiq).",
+      "suggestion": "Ushbu hisobdagi majburiyatlarni tekshiring yoki rejani sababi bilan yangilang."
+    },
+    "quantity_overrun": {
+      "fail": "{contract} shartnomasining {code} qatori {measured} {unit} o'lchangan, shartnomada {contracted} {unit}, bu {over} % ko'p (ruxsat {tolerance} %).",
+      "suggestion": "O'lchovni tekshiring yoki qo'shimcha hajmni o'zgartirish sifatida kelishing."
+    },
+    "measurement_exceeds_commitment": {
+      "fail": "{code} shartnomasi {measured} o'lchangan, bu tasdiqlangan o'zgartirishlar bilan uning {committed} qiymatidan {difference} ko'p.",
+      "suggestion": "Qo'shimcha ishni qoplaydigan o'zgartirishni tasdiqlang yoki o'lchovni tekshiring."
+    },
+    "invoice_without_contract": {
+      "fail": "Yetkazib beruvchining {number} hisob-fakturasi ({amount}) hech bir shartnoma yoki buyurtmaga tegishli emas.",
+      "suggestion": "Uning qatorlarini shartnomaga bog'lang yoki bitta hisobga to'g'ridan-to'g'ri xarajat sifatida yozing."
+    }
+  },
+  "payment_release": {
+    "cumulative_total_fell": {
+      "fail": "{contract} shartnomasi bo'yicha {number} hisob-fakturasi hozirgacha {net} ko'rsatadi, bu oldingi {previous_number} hisob-fakturasidagi {previous} dan kam, holbuki shartnoma jamlanma tarzda hisob-faktura qilinadi.",
+      "suggestion": "Agar hisob-faktura faqat yangi ishni ko'rsatsa, shartnoma o'sib boruvchi tarzda hisob-faktura qilinadi; agar u jamini kamaytirsa, uni kredit-nota sifatida kiriting."
+    },
+    "invoice_after_final": {
+      "fail": "{contract} shartnomasi bo'yicha {number} hisob-fakturasi {final} yakuniy hisob-fakturasidan keyin keladi.",
+      "suggestion": "Keyingi ishni kunlik ish yoki kredit-nota sifatida kiriting, yoki to'g'ri hisob-fakturani yakuniy deb belgilang."
+    },
+    "claim_invoice_in_cumulative": {
+      "fail": "{contract} shartnomasi bo'yicha {number} hisob-fakturasi da'vodan yaratilgan va bitta davrni ko'rsatadi, lekin shartnoma jamlanma tarzda hisob-faktura qilinadi.",
+      "suggestion": "Bitta shartnomaga hisob-faktura qilishning bitta usulini qo'llang: shartnomani o'sib boruvchi hisob-fakturaga o'tkazing yoki o'rniga pudratchining jamlanma hisob-fakturalarini kiriting."
+    },
+    "release_differs": {
+      "fail": "{contract} shartnomasi bo'yicha {number} hisob-fakturasi uchun tasdiqlangan to'lovga ruxsat {stored}, lekin shartnoma shartlari bugun {computed} beradi.",
+      "suggestion": "Ruxsatdan keyin nima o'zgarganini (shartlar, hisob-faktura summalari, ushlab qolishlar) tekshiring, so'ng ruxsatni qayta oching va yana tasdiqlang."
+    },
+    "rounding_out_of_range": {
+      "fail": "{number} hisob-fakturasi {rounding} ga yaxlitlangan, bu kelishilgan {step} yaxlitlash qadamidan tashqarida.",
+      "suggestion": "Yaxlitlash to'lovga ruxsatni bir qadamdan kam kamaytiradi; to'lov shartlarida yaxlitlashni yoqing yoki ruxsatni qayta oching."
+    },
+    "final_retention_without_warranty": {
+      "fail": "{contract} shartnomasi bo'yicha {number} yakuniy hisob-fakturasi {amount} ushlab qolingan summani saqlaydi, lekin kafolat ushlab qolish kelishilmagan.",
+      "suggestion": "To'lov shartlarida kafolat ushlab qolishni kelishing yoki barcha ushlab qolingan summa yakuniy hisob-faktura bilan to'lanishi uchun ruxsatni qayta oching."
+    },
+    "posting_exceeds_held": {
+      "fail": "{contract} shartnomasi bo'yicha ushlab turilganidan ko'p ushlab qolingan summa qaytarilgan: {amount} ortiqcha.",
+      "suggestion": "Juda yuqori qaytarish provodkasini bekor qiling va haqiqatda ushlab turilgan summani o'tkazing."
+    },
+    "posting_before_event": {
+      "fail": "{contract} shartnomasi bo'yicha {amount} ushlab qolingan summa {posted} kuni qaytarilgan, holbuki uni bo'shatish hodisasining muddati {due} edi.",
+      "suggestion": "Bo'shatish hodisasi sanasini tekshiring yoki hodisa sodir bo'lgandan keyin bo'shatishni o'tkazing."
+    },
+    "posting_without_event_date": {
+      "fail": "{contract} shartnomasi bo'yicha {amount} ushlab qolingan summa qaytarilgan, lekin bo'shatish hodisasi sanasi yozilmagan.",
+      "suggestion": "Bo'shatish hodisasi sodir bo'lgan sanani yozing, shunda to'lovni shunga solishtirib tekshirish mumkin."
+    },
+    "retention_still_held": {
+      "fail": "{contract} shartnomasi yakunlangan va hali ham {amount} ushlab qolingan summani ushlab turibdi.",
+      "suggestion": "Ushlab qolish reestrida summani hodisasi bo'yicha bo'shating yoki kafolat muddatiga ushlab turing."
+    },
+    "discount_not_agreed": {
+      "fail": "{contract} shartnomasi bo'yicha {number} hisob-fakturasini to'lashga ruxsatda {amount} muddatidan oldin to'lash chegirmasi qo'llangan, lekin shartnoma buni ruxsat etmaydi.",
+      "suggestion": "To'lov shartlarida muddatidan oldin to'lash chegirmasini yoqing yoki ruxsatni chegirmasiz qayta oching."
+    },
+    "discount_after_deadline": {
+      "fail": "{number} hisob-fakturasidan {amount} chegirma ushlab qolingan, lekin {paid_on} dagi to'lov chegirma sanasi {until} dan keyin bo'lgan.",
+      "suggestion": "Chegirma summasini ham to'lang yoki pudratchi kechikkan chegirmani nega qabul qilganini yozib qo'ying."
+    },
+    "invoiced_over_measured": {
+      "fail": "{contract} shartnomasi bo'yicha {invoiced} hisob-faktura qilingan, bu o'lchangan {measured} dan (hajm ko'paytirilgan narx) {difference} ortiq.",
+      "suggestion": "Ko'proq to'lashga ruxsat berishdan oldin o'lchovni tekshiring yoki farqni keyingi ruxsatda ushlab qoling."
+    },
+    "invoiced_over_contract": {
+      "fail": "{contract} shartnomasi bo'yicha {invoiced} hisob-faktura qilingan, bu uning {value} qiymatidan {difference} ortiq, va unda hech narsa o'lchanmagan.",
+      "suggestion": "Ko'proq to'lashga ruxsat berishdan oldin ortiqcha summani qoplaydigan o'lchovni yoki o'zgartirish buyrug'ini yozing."
+    },
+    "reverse_charge_with_vat": {
+      "fail": "{number} hisob-fakturasi teskari hisoblash (reverse charge) bilan, lekin {vat} QQS bor.",
+      "suggestion": "Teskari hisoblashli hisob-fakturada QQS bo'lmaydi; QQS summasini yoki qatorlarining QQS toifasini to'g'rilang."
+    },
+    "line_without_vat_rate": {
+      "fail": "{number} hisob-fakturasida QQS bor, lekin uning {count} qatorida QQS stavkasi ko'rsatilmagan.",
+      "suggestion": "Ushlab qolishlar va eksport to'g'ri soliq olishi uchun har bir qatorga QQS stavkasini kiriting."
+    },
+    "duplicate_number": {
+      "fail": "Bir pudratchining {number} hisob-faktura raqami {count} marta kiritilgan.",
+      "suggestion": "Nusxani bekor qiling yoki bular turli hisob-fakturalar bo'lsa, raqamini to'g'rilang."
+    },
+    "possible_duplicate": {
+      "fail": "{number} hisob-fakturasining pudratchisi, summasi ({amount}) va sanasi ({on}) {other} hisob-fakturasi bilan bir xil.",
+      "suggestion": "Bu boshqa raqam bilan ikki marta kiritilgan bitta hisob-faktura emasligini tekshiring."
+    },
+    "certificate_missing": {
+      "fail": "{contract} shartnomasi bo'yicha {number}-hisob-faktura: oluvchida {on} sanasida amal qiladigan {certificate} yo'q, uni to'lovni bo'shatishdan oldin {reference} talab qiladi.",
+      "suggestion": "Guvohnomani oluvchining subpudratchi yozuviga kiriting yoki u ko'rsatilguncha to'lovni ushlab turing."
+    },
+    "split_payment_annotation_missing": {
+      "fail": "{number} hisob-fakturasida qurilish ishlari yoki split payment'ga tegishli boshqa tovarlar bor va u {threshold} dan oshadi, lekin «{annotation}» izohi yo'q.",
+      "suggestion": "Yetkazib beruvchidan izohli tuzatilgan hisob-fakturani so'rang va uni har holda split payment orqali to'lang: shunday to'lash majburiyati izohga bog'liq emas."
+    },
+    "split_payment_not_used": {
+      "fail": "{number} hisob-fakturasi split payment'ga tegishli, lekin uning to'lovi boshqa usulda qayd etilgan. Xaridor qo'shimcha ravishda {sanction} uchun javob beradi, bu uning QQS ning 30 foizi.",
+      "suggestion": "Bunday hisob-fakturalarni QQS hisobidan split payment orqali to'lang va to'lovda usulni split_payment deb qayd eting."
+    },
+    "split_payment_annex_unknown": {
+      "fail": "{number} hisob-fakturasi {threshold} dan oshadi va unda split payment ilovasidagi tovar yoki xizmatlar bor-yo'qligi qayd etilmagan.",
+      "suggestion": "To'lov usulini tekshirish uchun hisob-fakturada unda ilovadagi tovar yoki xizmatlar (annex_15) yoki ularning kodlari (pkwiu_codes) bor-yo'qligini qayd eting."
+    },
+    "reduced_rate_above_area_limit": {
+      "fail": "{number} hisob-fakturasi butun narxga {rate} foiz QQS hisoblaydi, lekin turar joyning foydali maydoni {area_m2} m2, kamaytirilgan stavka esa faqat {limit_m2} m2 gacha amal qiladi ({reference}).",
+      "suggestion": "Kamaytirilgan stavkani narxning {reduced_share_percent} foiziga, umumiy stavkani qolganiga hisoblang."
+    },
+    "reduced_rate_object_unknown": {
+      "fail": "{number} hisob-fakturasi {rate} foizlik kamaytirilgan turar joy stavkasini hisoblaydi, lekin loyihada bu qaysi turar joyga tegishli ekani va uning foydali maydoni qayd etilmagan ({reference}).",
+      "suggestion": "Stavka va maydon chegarasini tekshirish uchun loyihada turar joy turi va foydali maydonni qayd eting (vat_housing)."
+    },
+    "reduced_rate_not_eligible": {
+      "fail": "{number} hisob-fakturasi {rate} foizlik kamaytirilgan turar joy stavkasini {object} uchun hisoblaydi, u bunga mos kelmaydi ({reference}).",
+      "suggestion": "Umumiy stavkani hisoblang yoki loyihada qayd etilgan turar joyni to'g'rilang."
+    },
+    "domestic_reverse_charge_ended": {
+      "fail": "{number} hisob-fakturasi {count} qatorga teskari hisoblashni qo'llaydi, lekin qurilish xizmatlari bo'yicha ichki teskari hisoblash bu mamlakatda tugagan.",
+      "suggestion": "Yetkazib beruvchi chet elda joylashmagan bo'lsa, QQS bilan hisob-faktura so'rang; bunday hisob-fakturalar split payment orqali to'lanadi."
+    },
+    "payment_term_over_cap": {
+      "fail": "{contract} shartnomasi {days} kunlik to'lov muddatini kelishadi, bu korxonalar o'rtasida to'lovni kechiktirish to'g'risidagi qonun ruxsat bergan {cap} kundan uzoq.",
+      "suggestion": "Muddatni {cap} kungacha qisqartiring yoki uzoqroq muddat nima uchun aniq kelishilgani va subpudratchiga nisbatan o'ta adolatsiz emasligini qayd eting."
+    }
+  },
+  "cost_forecast": {
+    "below_commitment": {
+      "fail": "{code}: {forecast} prognozi majburiyatga olingan yoki kutilayotgan o'zgarishlarda so'ralgan {owed} dan past ({difference} kam) va buni hech narsa tushuntirmaydi.",
+      "suggestion": "Past ko'rsatkich asosidagi hujjatni biriktiring (kredit-nota, kelishuv, bayonnoma) yoki qator usuli nega kamroq natija berishini qatorga yozing."
+    },
+    "move_without_evidence": {
+      "fail": "{code}: prognoz oxirgi muzlatilgan lahzaki nusxadan beri {previous} dan {current} ga ({delta}) o'zgardi, loyiha chegarasidan oshadi va hali izohi hamda tasdiqlovchi hujjati yo'q.",
+      "suggestion": "Lahzaki nusxani muzlatishdan oldin ko'rsatkich nega o'zgarganini yozing va uning asosidagi hujjat yoki bayonnomani bog'lang."
+    },
+    "method_override_without_comment": {
+      "fail": "{code} loyihaning {project_method} usuli o'rniga {method} usuli bilan prognoz qilinadi va sababini tushuntiruvchi izoh yo'q.",
+      "suggestion": "Qator usuliga qisqa izoh qo'shing yoki qatorni loyiha usuliga qaytaring."
+    },
+    "method": {
+      "best_available": "eng yaxshi mavjud manba",
+      "maximum": "eng yuqori qiymat",
+      "evm_cpi": "xarajat samaradorligi (CPI)",
+      "manual": "qo'lda kiritilgan summa"
+    }
+  },
+  "payment_release_certificate_types": {
+    "social_security_clearance": "ijtimoiy sug'urta bo'yicha qarzi yo'qligi haqidagi ma'lumotnoma",
+    "construction_tax_exemption": "qurilish solig'idan ozod etilganlik guvohnomasi",
+    "employers_liability_clearance": "ish beruvchilar javobgarligi bo'yicha qarzi yo'qligi haqidagi ma'lumotnoma",
+    "insurance": "sug'urta guvohnomasi",
+    "license": "pudratchi litsenziyasi"
   }
 }

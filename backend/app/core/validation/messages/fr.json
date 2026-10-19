@@ -1,4 +1,76 @@
 {
+  "cost_control": {
+    "unassigned_money": {
+      "fail": "Des montants engagés ne sont affectés à aucune ligne de coût.",
+      "suggestion": "Rattachez les lignes du contrat ou de la commande à des lignes de coût pour que les montants apparaissent au bon endroit."
+    },
+    "certified_over_committed": {
+      "fail": "Les travaux certifiés dépassent le marché attribué augmenté des modifications approuvées.",
+      "suggestion": "Approuvez la modification qui couvre les travaux supplémentaires ou vérifiez la demande de paiement."
+    },
+    "forecast_over_plan": {
+      "fail": "La prévision dépasse le montant prévu.",
+      "suggestion": "Vérifiez l'origine de la prévision ; saisissez une prévision manuelle avec un motif si vous attendez des économies."
+    },
+    "partly_awarded": {
+      "fail": "Seule une partie du montant prévu est attribuée ; la prévision peut omettre des travaux restant à attribuer.",
+      "suggestion": "S'il reste des travaux à attribuer sur cette ligne, saisissez une prévision manuelle."
+    },
+    "pending_changes": {
+      "fail": "Des avenants attendent une décision.",
+      "suggestion": "Statuez sur les avenants en attente ; la prévision ne les inclut pas encore."
+    },
+    "snapshot_stale": {
+      "fail": "Aucune prévision n'a été enregistrée depuis plus d'un mois.",
+      "suggestion": "Enregistrez un instantané de la prévision pour que l'historique des coûts reste lisible."
+    }
+  },
+  "cost_structure": {
+    "account_code_duplicate": {
+      "fail": "Le code de compte {code} apparaît plusieurs fois dans la structure de coûts.",
+      "suggestion": "Conservez un seul compte par code et reportez-y ses lignes de coût."
+    },
+    "mixed_standard": {
+      "fail": "La structure de coûts mélange plusieurs nomenclatures : {standards}.",
+      "suggestion": "Construisez la structure à partir d'une seule nomenclature ; faites correspondre les autres codes à celle-ci."
+    },
+    "account_parent_cycle": {
+      "fail": "Le compte {code} est son propre ascendant via {count} comptes.",
+      "suggestion": "Donnez à l'un de ces comptes un parent situé en dehors de la boucle."
+    },
+    "account_too_deep": {
+      "fail": "Le compte {code} se trouve au niveau {level}, plus profond que les {max} niveaux de sa nomenclature.",
+      "suggestion": "Rattachez le compte à un parent dans la limite de profondeur de la nomenclature."
+    },
+    "no_account": {
+      "fail": "{count} lignes de coût d'un montant de {amount} ne sont sur aucun compte (première : {code}).",
+      "suggestion": "Donnez à ces postes un code de la nomenclature de la structure, ou affectez les lignes de coût à un compte."
+    },
+    "invalid_account": {
+      "fail": "{count} lignes de coût d'un montant de {amount} sont sur un compte clos ou n'acceptant pas d'imputations (première : {code}).",
+      "suggestion": "Reportez les lignes de coût sur un compte ouvert acceptant les imputations."
+    },
+    "own_amount_on_parent": {
+      "fail": "Le compte {code} a des sous-comptes et également un montant propre de {amount}.",
+      "suggestion": "Reportez le montant propre sur un sous-compte, ou conservez-le comme provision volontaire."
+    },
+    "rollup_mismatch": {
+      "fail": "Le total de la structure {reported} diffère de la somme de ses parties {expected} de {difference}.",
+      "suggestion": "Rechargez la structure ; si l'écart persiste, vérifiez les comptes sans parent."
+    },
+    "allocation_incomplete": {
+      "fail": "Les parts du poste {ordinal} totalisent {total}{unit} au lieu de {expected}{unit}.",
+      "suggestion": "Ajustez les parts pour que tout le poste soit réparti, ni plus ni moins."
+    },
+    "allocation_mixed_modes": {
+      "fail": "Le poste {ordinal} est réparti en partie en pourcentage et en partie en quantité.",
+      "suggestion": "Répartissez le poste d'une seule manière."
+    },
+    "vector_not_inherited": {
+      "fail": "La ligne de contrat {code} est sur une ligne de coût à laquelle son poste du bordereau n'est pas affecté.",
+      "suggestion": "Remettez la ligne sur les lignes de coût du poste, ou enregistrez la dérogation avec un motif."
+    }
+  },
   "boq_markup": {
     "contingency_not_on_profit": {
       "fail": "La provision pour risques « {markup} » est calculée sur une base qui comprend déjà le bénéfice « {profit} » ; une marge est donc appliquée aux fonds réservés aux risques",
@@ -59,6 +131,10 @@
     "offline_sync_delay": {
       "fail": "Cette journée a été travaillée le {date} et n'est parvenue au bureau que {days} jours plus tard",
       "suggestion": "Vérifiez les heures de cette journée avant de les approuver ; la situation correspondante peut déjà être clôturée"
+    },
+    "outdoor_heat_ban": {
+      "fail": "La ligne {line} enregistre du travail de {start} à {end} le {date}, pendant l'interdiction de travail en extérieur du midi, de {ban_from} à {ban_to}",
+      "suggestion": "Si ce travail s'est fait en extérieur en plein soleil, déplacez-le hors des heures d'interdiction ; les travaux en intérieur et les secteurs exemptés ne sont pas concernés"
     }
   },
   "ai_takeoff": {
@@ -521,6 +597,20 @@
       "suggestion": "Limitez les modificateurs entre -50% et +200% pour éviter des prix de parcelles irréalistes"
     }
   },
+  "schedule_5d": {
+    "boq_coverage": {
+      "fail": "Le poste {ordinal} « {description} » ({amount}) est chiffré dans le bordereau, mais aucune activité ne le porte, son coût n'est donc pas dans le planning",
+      "suggestion": "Donnez une quantité au poste ou rattachez-le à une activité, puis régénérez le planning."
+    },
+    "cost_reconciliation": {
+      "fail": "Le planning porte {planned} sur {bill} du bordereau : {difference} des travaux chiffrés ne figurent dans aucune activité",
+      "suggestion": "Vérifiez les postes listés par le contrôle de couverture, puis régénérez le planning."
+    },
+    "duration_vs_norm": {
+      "fail": "L'activité « {activity} » dure {duration} jours ouvrés, alors que les normes de main-d'œuvre et de matériel donnent {norm}",
+      "suggestion": "Vérifiez la quantité, l'équipe et les heures normées du poste, ou une durée modifiée à la main."
+    }
+  },
   "schedule_quality": {
     "open_ends": {
       "fail": "L'activité « {activity} » n'a pas de liaison logique de type {ends} (extrémité ouverte / activité non rattachée)",
@@ -656,6 +746,42 @@
     "requisition_line_cost_line": {
       "fail": "La ligne {line} n'est pas liée à une ligne de coût, sa commande n'apparaîtra donc pas comme engagée sur le budget",
       "suggestion": "Créez la ligne depuis le BOQ, ou liez-la à une ligne de coût avant de commander"
+    },
+    "requisition_suggested_vendor_in_directory": {
+      "fail": "La ligne {line} suggère le fournisseur {vendor}, qui n'est pas dans l'annuaire des fournisseurs",
+      "suggestion": "Choisissez le fournisseur suggéré dans l'annuaire des fournisseurs, ou supprimez la suggestion"
+    },
+    "requisition_suggested_vendor_active": {
+      "fail": "La ligne {line} suggère {vendor}, un fournisseur qui n'est pas actif dans l'annuaire des fournisseurs",
+      "suggestion": "Suggérez un fournisseur actif, ou laissez le choix à l'acheteur"
+    },
+    "requisition_suggestion_conflict": {
+      "fail": "Les sources BOQ de la ligne {line} suggèrent {count} fournisseurs différents",
+      "suggestion": "Choisissez un seul fournisseur pour la ligne, ou scindez-la pour que chaque fournisseur ait sa propre ligne"
+    },
+    "requisition_suggested_vendor_differs": {
+      "fail": "La ligne {line} suggère {vendor}, mais la demande d'achat doit être commandée chez un autre fournisseur",
+      "suggestion": "Vérifiez que le fournisseur choisi peut livrer cette ligne, ou commandez-la séparément"
+    },
+    "requisition_line_needed_by_not_past": {
+      "fail": "La ligne {line} est nécessaire pour le {date}, date déjà dépassée (aujourd'hui : {today})",
+      "suggestion": "Indiquez la date à laquelle le matériau est réellement nécessaire sur le chantier"
+    },
+    "requisition_line_schedule_moved": {
+      "fail": "La ligne {line} était prévue pour une tâche débutant le {anchor}, mais la tâche débute maintenant le {start}",
+      "suggestion": "Comparez la date de besoin de la ligne au planning actuel et modifiez-la si nécessaire"
+    },
+    "requisition_approver_not_requester": {
+      "fail": "La personne qui a créé la demande d'achat {req} est aussi son approbateur désigné numéro {step}",
+      "suggestion": "Désignez un autre approbateur pour cette étape, afin que la décision revienne à quelqu'un d'autre que le demandeur"
+    },
+    "requisition_line_over_ordered": {
+      "fail": "La ligne {line} compte {ordered} {unit} en commandes, soit plus que les {requested} {unit} demandées",
+      "suggestion": "Vérifiez si la quantité excédentaire est voulue, ou réduisez la ligne de commande"
+    },
+    "requisition_order_unit_mismatch": {
+      "fail": "La commande {order} reprend la ligne {line} en {unit}, ce qui ne peut pas être converti dans l'unité de la ligne {line_unit}",
+      "suggestion": "Corrigez l'unité sur la ligne de commande pour que sa quantité compte comme commandée"
     },
     "receipt_certificate_present": {
       "fail": "La ligne {line} a été commandée avec {required}, mais la livraison comporte {delivered}",
@@ -973,5 +1099,184 @@
     "parent_not_found": "Le modèle dont cet import devrait être une nouvelle version n'existe pas dans ce projet. Choisissez-en un autre ou importez ce fichier comme modèle distinct.",
     "parent_not_ready": "L'import de « {name} » n'est pas terminé, il ne peut donc pas encore recevoir de nouvelle version. Attendez qu'il soit prêt ou importez ce fichier comme modèle distinct.",
     "parent_superseded": "« {name} » possède déjà une version plus récente, {version}. Importez plutôt ce fichier comme nouvelle version de la plus récente."
+  },
+  "cost_chain": {
+    "contract_without_schedule": {
+      "fail": "Le contrat {code} vaut {amount} mais n'a aucune ligne d'échéancier, son montant n'est donc sur aucune ligne de coût.",
+      "suggestion": "Donnez au contrat un compte dans le contrôle des coûts, ou ajoutez ses lignes d'échéancier."
+    },
+    "contract_sum_differs": {
+      "fail": "Le contrat {code} vaut {total}, mais ses lignes d'échéancier totalisent {lines} (écart de {difference}).",
+      "suggestion": "Corrigez la valeur du contrat ou les lignes d'échéancier pour qu'elles concordent."
+    },
+    "change_without_agreed_amount": {
+      "fail": "L'avenant {code} est approuvé sans montant convenu.",
+      "suggestion": "Saisissez le montant convenu avec l'entreprise avant d'approuver l'avenant."
+    },
+    "change_without_approval_date": {
+      "fail": "L'avenant {code} est approuvé sans date d'approbation.",
+      "suggestion": "Saisissez la date d'approbation de l'avenant."
+    },
+    "billed_before_approval": {
+      "fail": "{amount} sont facturés sur le contrat {contract} pour l'avenant {code}, qui est au statut {status} et non approuvé.",
+      "suggestion": "Approuvez d'abord l'avenant, ou retirez la facturation de la situation de travaux."
+    },
+    "contract_over_target": {
+      "fail": "Le contrat {code} engage {committed}, soit {difference} de plus que les {target} du bordereau dont il est issu (plus de {tolerance} %).",
+      "suggestion": "Vérifiez l'attribution et ses avenants par rapport au bordereau, et notez pourquoi les travaux coûtent plus cher."
+    },
+    "account_over_plan": {
+      "fail": "Le compte {code} porte {committed} d'engagements, soit {difference} de plus que son budget de {planned} (plus de {tolerance} %).",
+      "suggestion": "Vérifiez les engagements de ce compte, ou mettez à jour le budget en indiquant la raison."
+    },
+    "quantity_overrun": {
+      "fail": "La ligne {code} du contrat {contract} est métrée à {measured} {unit} pour {contracted} {unit} au marché, soit {over} % de plus (toléré {tolerance} %).",
+      "suggestion": "Vérifiez le métré, ou convenez de la quantité supplémentaire par avenant."
+    },
+    "measurement_exceeds_commitment": {
+      "fail": "Le contrat {code} est métré à {measured}, soit {difference} de plus que sa valeur avec avenants approuvés de {committed}.",
+      "suggestion": "Approuvez l'avenant qui couvre les travaux en plus, ou vérifiez le métré."
+    },
+    "invoice_without_contract": {
+      "fail": "La facture fournisseur {number} de {amount} n'est rattachée à aucun contrat ni commande.",
+      "suggestion": "Rattachez ses lignes à un contrat, ou enregistrez-la en coût direct sur un compte."
+    }
+  },
+  "payment_release": {
+    "cumulative_total_fell": {
+      "fail": "La facture {number} du contrat {contract} indique {net} à ce jour, soit moins que les {previous} de la facture précédente {previous_number}, alors que le contrat est facturé en cumulé.",
+      "suggestion": "Si la facture ne facture que les travaux nouveaux, le contrat est facturé en incrémental ; si elle réduit le total, saisissez-la comme avoir."
+    },
+    "invoice_after_final": {
+      "fail": "La facture {number} du contrat {contract} est postérieure à la facture finale {final}.",
+      "suggestion": "Saisissez les travaux ultérieurs en régie ou en avoir, ou marquez la bonne facture comme finale."
+    },
+    "claim_invoice_in_cumulative": {
+      "fail": "La facture {number} du contrat {contract} est issue d'une réclamation et facture une seule période, mais le contrat est facturé en cumulé.",
+      "suggestion": "Utilisez un seul mode de facturation par contrat : passez le contrat en facturation incrémentale, ou saisissez à la place les factures cumulées de l'entreprise."
+    },
+    "release_differs": {
+      "fail": "La libération confirmée pour la facture {number} du contrat {contract} est de {stored}, mais les conditions du contrat donnent aujourd'hui {computed}.",
+      "suggestion": "Vérifiez ce qui a changé depuis la libération (conditions, montants de la facture, déductions), puis rouvrez la libération et confirmez-la de nouveau."
+    },
+    "rounding_out_of_range": {
+      "fail": "La facture {number} est arrondie de {rounding}, hors du pas d'arrondi convenu de {step}.",
+      "suggestion": "L'arrondi ne réduit une libération que de moins d'un pas ; activez l'arrondi dans les conditions de paiement ou rouvrez la libération."
+    },
+    "final_retention_without_warranty": {
+      "fail": "La facture finale {number} du contrat {contract} retient {amount} de retenue, mais aucune retenue de garantie n'est convenue.",
+      "suggestion": "Convenez d'une retenue de garantie dans les conditions de paiement, ou rouvrez la libération pour que toute la retenue soit payée avec la facture finale."
+    },
+    "posting_exceeds_held": {
+      "fail": "Sur le contrat {contract}, plus de retenue a été restituée que retenue : {amount} en trop.",
+      "suggestion": "Annulez l'écriture de retenue trop élevée et comptabilisez le montant réellement retenu."
+    },
+    "posting_before_event": {
+      "fail": "{amount} de retenue du contrat {contract} ont été restitués le {posted}, avant l'événement de libération prévu le {due}.",
+      "suggestion": "Vérifiez la date de l'événement de libération, ou comptabilisez la libération une fois l'événement survenu."
+    },
+    "posting_without_event_date": {
+      "fail": "{amount} de retenue du contrat {contract} ont été restitués, mais la date de l'événement de libération n'est pas saisie.",
+      "suggestion": "Saisissez la date à laquelle l'événement de libération a été atteint, pour pouvoir y comparer le paiement."
+    },
+    "retention_still_held": {
+      "fail": "Le contrat {contract} est terminé et retient encore {amount} de retenue.",
+      "suggestion": "Libérez la retenue à son événement dans le registre des retenues, ou conservez-la pendant la période de garantie."
+    },
+    "discount_not_agreed": {
+      "fail": "La libération de la facture {number} du contrat {contract} déduit un escompte de {amount}, mais le contrat n'en prévoit aucun.",
+      "suggestion": "Activez l'escompte pour paiement anticipé dans les conditions de paiement, ou rouvrez la libération sans lui."
+    },
+    "discount_after_deadline": {
+      "fail": "Un escompte de {amount} a été retenu sur la facture {number}, mais le paiement du {paid_on} est postérieur à la date d'escompte {until}.",
+      "suggestion": "Payez aussi le montant de l'escompte, ou consignez pourquoi l'entreprise a accepté l'escompte tardif."
+    },
+    "invoiced_over_measured": {
+      "fail": "Le contrat {contract} est facturé à {invoiced}, soit {difference} au-dessus des {measured} métrés (quantité fois prix).",
+      "suggestion": "Vérifiez le métré avant de libérer davantage d'argent, ou retenez l'écart à la prochaine libération."
+    },
+    "invoiced_over_contract": {
+      "fail": "Le contrat {contract} est facturé à {invoiced}, soit {difference} au-dessus de sa valeur de {value}, et rien n'est métré dessus.",
+      "suggestion": "Saisissez le métré ou l'avenant qui couvre le surplus avant de libérer davantage."
+    },
+    "reverse_charge_with_vat": {
+      "fail": "La facture {number} est en autoliquidation mais porte {vat} de TVA.",
+      "suggestion": "Une facture en autoliquidation ne porte pas de TVA ; corrigez le montant de TVA ou la catégorie de TVA de ses lignes."
+    },
+    "line_without_vat_rate": {
+      "fail": "La facture {number} porte de la TVA, mais {count} de ses lignes n'indiquent pas de taux de TVA.",
+      "suggestion": "Saisissez le taux de TVA sur chaque ligne pour que les déductions et les exports appliquent la bonne taxe."
+    },
+    "duplicate_number": {
+      "fail": "Le numéro de facture {number} de la même entreprise est saisi {count} fois.",
+      "suggestion": "Annulez la copie, ou corrigez le numéro de facture s'il s'agit de factures différentes."
+    },
+    "possible_duplicate": {
+      "fail": "La facture {number} a la même entreprise, le même montant ({amount}) et la même date ({on}) que la facture {other}.",
+      "suggestion": "Vérifiez qu'il ne s'agit pas de la même facture saisie deux fois sous un autre numéro."
+    },
+    "certificate_missing": {
+      "fail": "Facture {number} du contrat {contract} : le bénéficiaire ne détient aucun justificatif valide au {on} ({certificate}), que {reference} exige avant la libération du paiement.",
+      "suggestion": "Enregistrez le justificatif sur la fiche sous-traitant du bénéficiaire, ou retenez le paiement jusqu'à sa présentation."
+    },
+    "split_payment_annotation_missing": {
+      "fail": "La facture {number} porte sur des travaux de construction ou d'autres biens soumis au split payment et dépasse {threshold}, mais elle ne comporte pas la mention «{annotation}».",
+      "suggestion": "Demandez au fournisseur une facture corrigée avec la mention, et payez-la dans tous les cas par split payment : l'obligation de payer ainsi ne dépend pas de la mention."
+    },
+    "split_payment_not_used": {
+      "fail": "La facture {number} relève du split payment, mais un paiement a été enregistré avec un autre mode. L'acheteur devient redevable en plus de {sanction}, soit 30 pour cent de sa TVA.",
+      "suggestion": "Payez ces factures depuis le compte TVA par split payment et enregistrez le mode sur le paiement : split_payment."
+    },
+    "split_payment_annex_unknown": {
+      "fail": "La facture {number} dépasse {threshold}, et il n'est pas indiqué si elle porte sur des biens ou services de l'annexe du split payment.",
+      "suggestion": "Indiquez sur la facture si elle porte sur des biens ou services de l'annexe (annex_15), ou leurs codes (pkwiu_codes), afin de pouvoir vérifier le mode de paiement."
+    },
+    "reduced_rate_above_area_limit": {
+      "fail": "La facture {number} applique {rate} pour cent de TVA sur la totalité du prix, mais le logement a {area_m2} m2 de surface utile et le taux réduit vaut jusqu'à {limit_m2} m2 ({reference}).",
+      "suggestion": "Appliquez le taux réduit à {reduced_share_percent} pour cent du prix et le taux normal au reste."
+    },
+    "reduced_rate_object_unknown": {
+      "fail": "La facture {number} applique le taux réduit de {rate} pour cent pour le logement, mais le projet n'indique ni de quel logement il s'agit ni sa surface utile ({reference}).",
+      "suggestion": "Renseignez le type de logement et la surface utile sur le projet (vat_housing) afin de pouvoir vérifier le taux et sa limite de surface."
+    },
+    "reduced_rate_not_eligible": {
+      "fail": "La facture {number} applique le taux réduit de {rate} pour cent pour le logement à {object}, qui n'y est pas éligible ({reference}).",
+      "suggestion": "Appliquez le taux normal, ou corrigez le logement enregistré sur le projet."
+    },
+    "domestic_reverse_charge_ended": {
+      "fail": "La facture {number} applique l'autoliquidation à {count} ligne(s), alors que l'autoliquidation nationale pour les travaux de construction a pris fin dans ce pays.",
+      "suggestion": "Sauf si le fournisseur est établi à l'étranger, demandez une facture avec TVA ; ces factures se paient par split payment."
+    },
+    "payment_term_over_cap": {
+      "fail": "Le contrat {contract} convient d'un délai de paiement de {days} jours, plus long que les {cap} jours autorisés entre entreprises par la loi sur les retards de paiement.",
+      "suggestion": "Ramenez le délai à {cap} jours, ou consignez pourquoi le délai plus long est expressément convenu et non manifestement abusif envers le sous-traitant."
+    }
+  },
+  "cost_forecast": {
+    "below_commitment": {
+      "fail": "{code} : la prévision de {forecast} est inférieure aux {owed} déjà engagés ou demandés dans des avenants en attente (soit {difference} de moins), et rien ne l'explique.",
+      "suggestion": "Joignez le document à l'origine du chiffre plus bas (avoir, protocole d'accord, compte rendu), ou indiquez sur la ligne pourquoi sa méthode donne moins."
+    },
+    "move_without_evidence": {
+      "fail": "{code} : la prévision est passée de {previous} à {current} ({delta}) depuis le dernier instantané figé, au-delà du seuil du projet, et n'a encore ni commentaire ni justificatif.",
+      "suggestion": "Expliquez la variation et joignez le document ou le compte rendu correspondant avant de figer l'instantané."
+    },
+    "method_override_without_comment": {
+      "fail": "{code} est prévu avec la méthode {method} au lieu de la méthode du projet ({project_method}), sans commentaire qui explique pourquoi.",
+      "suggestion": "Ajoutez un bref commentaire sur la méthode de la ligne, ou remettez la ligne sur la méthode du projet."
+    },
+    "method": {
+      "best_available": "meilleure source disponible",
+      "maximum": "valeur maximale",
+      "evm_cpi": "performance des coûts (CPI)",
+      "manual": "montant manuel"
+    }
+  },
+  "payment_release_certificate_types": {
+    "social_security_clearance": "attestation de régularité auprès de l'assurance sociale",
+    "construction_tax_exemption": "attestation d'exonération de la taxe de construction",
+    "employers_liability_clearance": "attestation de régularité de la responsabilité des employeurs",
+    "insurance": "attestation d'assurance",
+    "license": "licence d'entrepreneur"
   }
 }

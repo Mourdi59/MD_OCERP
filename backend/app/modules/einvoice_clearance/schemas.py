@@ -334,6 +334,9 @@ class SubmissionResponse(BaseModel):
     rejection_message: str = ""
     message: str = ""
     findings: list[ClearanceFinding] = Field(default_factory=list)
+    # The platform took the document in and has not decided yet; the document
+    # stays submitted until a refresh reads the verdict. Added later.
+    pending: bool = False
 
 
 class EventResponse(BaseModel):
@@ -390,6 +393,9 @@ class CountryRegimeResponse(BaseModel):
     en16931_profile: str
     profile_fields: list[str]
     document_fields: list[str]
+    optional_document_fields: list[str] = Field(default_factory=list)
+    profile_setting_fields: list[str] = Field(default_factory=list)
+    company_sizes: list[str] = Field(default_factory=list)
     cancellation_window_days: int | None
     is_cancellable: bool
     correction_mechanism: str
@@ -403,6 +409,9 @@ class CountryRegimeResponse(BaseModel):
     cancellation_basis: str = ""
     scope: str = ""
     commencement: list[CommencementPhaseResponse] = Field(default_factory=list)
+    # Country-specific facts carried as data (penalties with their source and
+    # effective date, accepted formats, platform model). Empty for most countries.
+    extra: dict[str, Any] = Field(default_factory=dict)
 
 
 class AdapterResponse(BaseModel):
@@ -411,6 +420,9 @@ class AdapterResponse(BaseModel):
     key: str
     label: str
     countries: list[str]
+    # Whether the adapter can read the platform's verdict after the submission
+    # returned. Added later; absent means it cannot.
+    can_poll: bool = False
 
 
 class MetaResponse(BaseModel):

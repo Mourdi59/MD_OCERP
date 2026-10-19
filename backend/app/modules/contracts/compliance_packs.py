@@ -299,6 +299,38 @@ RULE_PACKS: dict[str, dict[str, Any]] = {
         "enforced_workflows": [WORKFLOW_CONTRACT_SIGNATURE],
         "rule_sets": ["boq_quality", "din276", "ukraine"],
     },
+    "eg_compliance": {
+        "id": "eg_compliance",
+        "name": "Egypt Compliance",
+        "description": "MasterFormat classification checks plus the universal quality baseline. "
+        "The limits of the Public Contracts Law 182/2018 (retention, advance payment, delay "
+        "damages, performance security and the mandatory price adjustment) are checked on "
+        "every public works contract by the contract rules, not by this pack.",
+        "jurisdiction": "EG",
+        "enforced_workflows": [WORKFLOW_CONTRACT_SIGNATURE],
+        # MasterFormat, as for Canada, because it is the classification Egypt
+        # tenders in English measure to and the classification registry's
+        # answer for EG; Egypt has no national bill-of-quantities standard. The
+        # Egyptian contract law the pack cannot carry (it is fed the schedule
+        # of values only) runs in the ``contracts`` rule set, which the
+        # signature gate runs on every contract.
+        "rule_sets": ["boq_quality", "masterformat"],
+    },
+    "sa_compliance": {
+        "id": "sa_compliance",
+        "name": "Saudi Arabia Compliance",
+        "description": "MasterFormat classification checks plus the universal quality baseline. "
+        "The limits of the Government Tenders and Procurement Law (retention, advance payment, "
+        "delay penalties and the final guarantee) are checked on every public works contract "
+        "by the contract rules, by the law in force when the tender was floated.",
+        "jurisdiction": "SA",
+        "enforced_workflows": [WORKFLOW_CONTRACT_SIGNATURE],
+        # MasterFormat, as for Egypt and Canada: it is what the classification
+        # registry answers for SA and what the Vision 2030 partner pack and
+        # both Saudi demos declare. Saudi Arabia publishes no national
+        # bill-of-quantities standard the engine could check against.
+        "rule_sets": ["boq_quality", "masterformat"],
+    },
     # Italy reads its bill against the prezzario regionale it is priced from.
     # Every rule in the set is a warning, so the gate reports and never blocks.
     "it_compliance": {

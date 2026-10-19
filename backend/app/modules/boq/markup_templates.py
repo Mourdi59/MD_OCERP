@@ -35,6 +35,8 @@ __all__ = [
     "REGION_BY_COUNTRY",
     "REGION_VARIANTS",
     "NON_SINGLE_TAX_REGIONS",
+    "PL_KOSZTORYS_NARZUTY",
+    "PL_KOSZTORYS_REVIEW_STATUS",
     "CONSTRUCTION_TIER_COUNTRIES",
     "CONSTRUCTION_TIER_TAX_CODE",
     "resolve_region_lines",
@@ -48,7 +50,7 @@ __all__ = [
 #
 # Based on industry standards for medium commercial building projects.
 # Percentages applied to direct cost unless noted; tax items are cumulative.
-# Sources: VOB/HOAI, NRM1/RICS, US cost index/AIA, BATIPRIX, FIDIC, CPWD, AIQS,
+# Sources: VOB/HOAI, NRM1/RICS, US cost index/AIA, French déboursé sec, FIDIC, CPWD, AIQS,
 # MLIT, TCU/SINAPI, Byggakademin, ГЭСН/МДС, 建标[2013]44号, 조달청.
 #
 # ``apply_to`` is NOT a stylistic choice and these templates deliberately do not
@@ -67,6 +69,64 @@ __all__ = [
 # note. ``tests/unit/test_boq_service_pure_helpers.py`` pins the intent of every
 # region, so a new template that compounds contingency onto profit fails until
 # its entry there is updated deliberately.
+
+# ── Poland: kosztorys szczegółowy narzuty ────────────────────────────────────
+#
+# The Polish detailed unit-price calculation (kalkulacja szczegółowa, the method
+# of a kosztorys ofertowy and of any price built from KNR norms) does not put
+# its markups on the direct cost as one sum. Each narzut has its own base, by
+# cost component: R (robocizna, labour), M (materiały, materials) and S (praca
+# sprzętu, equipment):
+#
+#   * Kz, koszty zakupu, on M only;
+#   * Kp, koszty pośrednie, on R + S, never on materials;
+#   * Z, zysk, on R + S + Kp;
+#   * then VAT on the whole.
+#
+# A bill markup line can only say ``direct_cost`` or ``cumulative``, so this
+# shape cannot be stated in the PL stack below; the methodology catalogue
+# states it in the ``poland_kosztorys`` template, built from this block. This
+# block is the one place the Polish narzuty live. Nothing else may restate the
+# rates.
+#
+# Sources for the method: Rozporządzenie Ministra Rozwoju i Technologii z dnia
+# 20 grudnia 2021 r. (Dz.U. 2021 poz. 2458) on the methods and bases of the
+# investor estimate, and the gov.pl guidance on it,
+# https://www.gov.pl/attachment/b4097c7f-4294-41e1-80cb-93398602f1fb (read via
+# the programme research, 2026-10-19).
+#
+# The RATES are not regulated and were not read from a source. They are the
+# middle of the ranges practitioners quote for the quarterly Sekocenbud averages
+# (Kp about 60 to 70 percent of R + S, Z about 10 to 12 percent of R + S + Kp,
+# Kz about 5 to 8 percent of M), which the research marks UNCONFIRMED. They
+# ship as editable starting points flagged for expert review, and every
+# installed methodology lets a user replace them with the current quarter's
+# published values.
+PL_KOSZTORYS_REVIEW_STATUS = "needs_expert_review"
+PL_KOSZTORYS_NARZUTY: tuple[dict[str, object], ...] = (
+    {
+        "key": "kz",
+        "name": "Koszty zakupu (Kz)",
+        "category": "overhead",
+        "percentage": "6.0",
+        "base": ("M",),
+    },
+    {
+        "key": "kp",
+        "name": "Koszty pośrednie (Kp)",
+        "category": "overhead",
+        "percentage": "65.0",
+        "base": ("R", "S"),
+    },
+    {
+        "key": "z",
+        "name": "Zysk (Z)",
+        "category": "profit",
+        "percentage": "11.0",
+        "base": ("R", "S", "kp"),
+    },
+)
+
 
 DEFAULT_MARKUP_TEMPLATES: dict[str, list[dict[str, object]]] = {
     # ── Germany / Austria / Switzerland ─────────────────────────────────
@@ -222,7 +282,16 @@ DEFAULT_MARKUP_TEMPLATES: dict[str, list[dict[str, object]]] = {
         },
     ],
     # ── France ──────────────────────────────────────────────────────────
-    # Méthode du Déboursé Sec, BATIPRIX, Code des marchés publics
+    # Méthode du déboursé sec: frais de chantier, frais généraux, bénéfice et
+    # aléas on the direct cost. This is the ONE French stack: the methodology
+    # catalogue derives its France template from it and the Lyon hospital demo
+    # reads its lines from it, so the three cannot disagree again. None of the
+    # figures is regulated; they are typical starting points for a medium
+    # building contractor. French practice often states FG and B&A on the
+    # selling price (coefficient de vente K); this engine states them on the
+    # direct cost, which gives a slightly lower K for the same percentages.
+    # Bénéfice et aléas already carries the contractor's risk allowance, so a
+    # French bill adds no separate contingency line on top of it.
     "FR": [
         {
             "name": "Frais de chantier (FC)",
@@ -907,7 +976,20 @@ DEFAULT_MARKUP_TEMPLATES: dict[str, list[dict[str, object]]] = {
     # header. It is recorded that way because a Polish reserve for unforeseen
     # works is taken on the net contract value rather than on bare cost, and
     # ``CONTINGENCY_ON_PROFIT_BY_DESIGN`` in the pure-helpers test carries the
-    # same statement so the shape cannot drift back without a decision.
+    # same statement so the shape cannot drift back without a decision. The
+    # reserve belongs to the investor estimate (kosztorys inwestorski), where a
+    # client budgets for unforeseen works; a contractor pricing a tender removes
+    # it. No regulation fixing its rate was read.
+    #
+    # This is the BILL-LEVEL approximation, and it is not the Polish method.
+    # Kp here sits on the whole direct cost because a bill line has no other
+    # base it can name; the real Kp sits on labour and equipment only, Z on
+    # those plus Kp, and Kz on materials, which is what the ``poland_kosztorys``
+    # methodology computes from ``PL_KOSZTORYS_NARZUTY`` above. On a bill the
+    # 18 percent therefore stands for Kz and Kp together expressed as a share
+    # of all direct cost, and it is a starting point to edit, not a converted
+    # figure: the share depends on how much of the cost is materials. Use the
+    # methodology where the estimate has its R, M and S split.
     "PL": [
         {
             "name": "Koszty pośrednie (Kp)",
@@ -2679,6 +2761,18 @@ DEFAULT_MARKUP_TEMPLATES: dict[str, list[dict[str, object]]] = {
     ],
 }
 
+# Saudi Arabia reads the Gulf preliminaries-and-general convention, but not the
+# Gulf VAT line. That line is 5, the UAE rate, and Saudi Arabia's rate only
+# until 2020-06-30; it has been 15 since 2020-07-01 (VAT Law, Royal Decree
+# M/113, as amended). A bill takes its VAT from the dated tax seed when it can,
+# so the 5 reached a Saudi bill exactly where the seed answered nothing. The
+# stack is derived from GULF rather than written out again, so the convention
+# stays written once and only the number that differs is stated here.
+DEFAULT_MARKUP_TEMPLATES["SA"] = [
+    {**line, "percentage": "15.0"} if line.get("category") == "tax" else dict(line)
+    for line in DEFAULT_MARKUP_TEMPLATES["GULF"]
+]
+
 # ── Which country reads which stack ──────────────────────────────────────────
 #
 # A region key above is a convention, not a border. DACH is the German
@@ -2714,7 +2808,9 @@ REGION_BY_COUNTRY: dict[str, str] = {
     "AE": "GULF",
     "KW": "GULF",
     "QA": "GULF",
-    "SA": "GULF",
+    # Saudi Arabia has a stack of its own, the Gulf lines at Saudi VAT; see
+    # the note under the table.
+    "SA": "SA",
     "IN": "IN",
     "AU": "AU",
     "JP": "JP",
@@ -2853,6 +2949,13 @@ CONSTRUCTION_TIER_COUNTRIES: dict[str, str] = {
         "charged at the 13.5 reduced rate the seed carries as VAT_RED, per Revenue's VAT rates "
         "database. 13.5 is the one a bill of quantities asks"
     ),
+    "EG": (
+        "Egypt's standard VAT rate is 14, which is what the seed's is_default row carries, and "
+        "construction and contracting works were charged a 5 percent schedule tax without input "
+        "credit until 2025-07-17 and the standard 14 with input credit from 2025-07-18 (Law No. 157 "
+        "of 2025). The seed carries both windows as VAT_CONSTR, so a bill dated before the change "
+        "is charged 5 and one dated after it 14, which the standard row alone cannot say"
+    ),
 }
 
 #: Which seed row carries each construction tier, by ``tax_code``. Kept beside
@@ -2862,6 +2965,7 @@ CONSTRUCTION_TIER_COUNTRIES: dict[str, str] = {
 CONSTRUCTION_TIER_TAX_CODE: dict[str, str] = {
     "CN": "VAT_RED",
     "IE": "VAT_RED",
+    "EG": "VAT_CONSTR",
 }
 
 NON_SINGLE_TAX_REGIONS: dict[str, str] = {

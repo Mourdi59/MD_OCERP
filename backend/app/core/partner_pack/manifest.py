@@ -141,16 +141,16 @@ class PartnerPackManifest(BaseModel):
     default_tax_template: str | None = Field(
         default=None,
         description=(
-            "Documentation only: a label for the tax regime the pack's market "
-            "applies, e.g. 'ca_gst_pst'. Nothing resolves it. There is no "
-            "registry of tax-template slugs anywhere in the platform, so the "
-            "string travels to the pack preview panel and stops there, and "
-            "applying the pack says as much in its warnings. It used to be "
-            "described as a slug 'to set as default', which reads as a setting "
-            "that will be applied and is why this note is long. The rate that "
-            "actually reaches money is the tax line in the market's markup "
-            "stack (app.modules.boq.markup_templates), overridable per project; "
-            "changing this field changes no number anywhere."
+            "Ignored. Leave it unset. Nothing resolves it: there is no "
+            "registry of tax templates anywhere in the platform. It is still "
+            "accepted so an older third-party manifest that sets it keeps "
+            "loading, but no shipped pack sets it any more (forty-five used "
+            "to, and the cards printed the id as if it were a tax setting). "
+            "VAT, public holidays, e-invoicing and statutory payment terms "
+            "come from the core registries by the project's country, and the "
+            "activation preview shows them as 'built_in_for_country'. The rate "
+            "that reaches money is the tax line in the market's markup stack "
+            "(app.modules.boq.markup_templates), overridable per project."
         ),
     )
     default_methodology: str | None = Field(
@@ -193,6 +193,17 @@ class PartnerPackManifest(BaseModel):
             "than here: this object is built at import time, before any rule "
             "has been registered, so a check at construction would read an "
             "empty registry and wave everything through."
+        ),
+    )
+    code_lists: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Paths inside the pack package to code-list JSON files "
+            "(``{key, name, standard, entries: [{code, title, parent}]}``). While "
+            "the pack is active they are offered next to the shipped lists as "
+            "dictionaries a project cost structure can be built from. A key that "
+            "names a shipped list is ignored, so a pack adds lists and never "
+            "replaces one. Read by :mod:`app.core.code_lists`."
         ),
     )
 
@@ -436,10 +447,20 @@ class PartnerPackManifest(BaseModel):
     # ------------------------------------------------------------------
     @property
     def effective_powered_by(self) -> str:
-        """Co-branding string. Default preserves AGPL attribution."""
+        """Co-branding string. Default preserves AGPL attribution.
+
+        The "in partnership with" half is only synthesized for a ``partner``
+        pack. A country or industry pack we author carries a ``partner_name``
+        too ("Germany Construction Pack"), and the old default turned that into
+        "In partnership with Germany Construction Pack", a partnership that
+        does not exist. Packs under a real partnership agreement (see the
+        License section of their README) state their line explicitly.
+        """
         if self.branding.powered_by_text:
             return self.branding.powered_by_text
-        return f"Powered by OpenConstructionERP · In partnership with {self.partner_name}"
+        if self.type == "partner":
+            return f"Powered by OpenConstructionERP · In partnership with {self.partner_name}"
+        return "Powered by OpenConstructionERP"
 
     def _carries(self, relpath: str | None) -> bool:
         """Whether the pack actually ships the file it names at ``relpath``.
@@ -500,6 +521,7 @@ class PartnerPackManifest(BaseModel):
             "default_methodology": self.default_methodology,
             "validation_rule_packs": self.validation_rule_packs,
             "validation_rule_sets": self.validation_rule_sets,
+            "code_lists": self.code_lists,
             "demo_template_ids": self.demo_template_ids,
             "default_modules": self.default_modules,
             "hidden_modules": self.hidden_modules,

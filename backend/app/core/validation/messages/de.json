@@ -1,4 +1,76 @@
 {
+  "cost_control": {
+    "unassigned_money": {
+      "fail": "Gebundene Mittel sind keiner Kostenstelle zugeordnet.",
+      "suggestion": "Verknüpfen Sie die Vertrags- oder Bestellpositionen mit Kostenstellen, damit die Mittel an der richtigen Stelle erscheinen."
+    },
+    "certified_over_committed": {
+      "fail": "Die bescheinigten Leistungen übersteigen die Vergabe zuzüglich genehmigter Änderungen.",
+      "suggestion": "Genehmigen Sie die Änderung, die die Mehrleistung abdeckt, oder prüfen Sie die Forderung."
+    },
+    "forecast_over_plan": {
+      "fail": "Die Prognose liegt über dem Planwert.",
+      "suggestion": "Prüfen Sie die Quelle der Prognose; erfassen Sie bei erwarteten Einsparungen eine manuelle Prognose mit Begründung."
+    },
+    "partly_awarded": {
+      "fail": "Nur ein Teil des Planwerts ist vergeben; in der Prognose könnten noch zu vergebende Leistungen fehlen.",
+      "suggestion": "Wenn auf dieser Kostenstelle noch Leistungen zu vergeben sind, erfassen Sie eine manuelle Prognose."
+    },
+    "pending_changes": {
+      "fail": "Nachträge warten auf eine Entscheidung.",
+      "suggestion": "Entscheiden Sie über die offenen Nachträge; die Prognose enthält sie noch nicht."
+    },
+    "snapshot_stale": {
+      "fail": "Seit über einem Monat wurde keine Prognose gespeichert.",
+      "suggestion": "Speichern Sie einen Prognosestand, damit der Kostenverlauf nachvollziehbar bleibt."
+    }
+  },
+  "cost_structure": {
+    "account_code_duplicate": {
+      "fail": "Das Konto {code} kommt in der Kostengliederung mehrfach vor.",
+      "suggestion": "Behalten Sie ein Konto je Code und verschieben Sie dessen Kostenstellen darauf."
+    },
+    "mixed_standard": {
+      "fail": "Die Kostengliederung mischt Klassifikationen: {standards}.",
+      "suggestion": "Bauen Sie die Gliederung aus einer Klassifikation auf; ordnen Sie die übrigen Codes dieser zu."
+    },
+    "account_parent_cycle": {
+      "fail": "Das Konto {code} ist über {count} Konten sein eigener Vorgänger.",
+      "suggestion": "Weisen Sie einem dieser Konten ein übergeordnetes Konto außerhalb der Schleife zu."
+    },
+    "account_too_deep": {
+      "fail": "Das Konto {code} liegt auf Ebene {level}, tiefer als die {max} Ebenen seiner Klassifikation.",
+      "suggestion": "Hängen Sie das Konto unter ein übergeordnetes Konto innerhalb der Gliederungstiefe der Klassifikation."
+    },
+    "no_account": {
+      "fail": "{count} Kostenstellen im Wert von {amount} liegen auf keinem Konto (zuerst: {code}).",
+      "suggestion": "Geben Sie diesen LV-Positionen einen Code der Klassifikation der Gliederung oder weisen Sie die Kostenstellen einem Konto zu."
+    },
+    "invalid_account": {
+      "fail": "{count} Kostenstellen im Wert von {amount} liegen auf einem geschlossenen oder nicht bebuchbaren Konto (zuerst: {code}).",
+      "suggestion": "Verschieben Sie die Kostenstellen auf ein offenes, bebuchbares Konto."
+    },
+    "own_amount_on_parent": {
+      "fail": "Das Konto {code} hat Unterkonten und zusätzlich einen eigenen Betrag von {amount}.",
+      "suggestion": "Verschieben Sie den eigenen Betrag auf ein Unterkonto oder behalten Sie ihn bewusst als Pauschalansatz."
+    },
+    "rollup_mismatch": {
+      "fail": "Die Summe der Gliederung {reported} weicht von der Summe ihrer Teile {expected} um {difference} ab.",
+      "suggestion": "Laden Sie die Gliederung neu; bleibt die Abweichung, prüfen Sie Konten ohne übergeordnetes Konto."
+    },
+    "allocation_incomplete": {
+      "fail": "Die Anteile der Position {ordinal} ergeben {total}{unit} statt {expected}{unit}.",
+      "suggestion": "Passen Sie die Anteile so an, dass die ganze Position verteilt ist, nicht mehr und nicht weniger."
+    },
+    "allocation_mixed_modes": {
+      "fail": "Position {ordinal} ist teils nach Prozent und teils nach Menge aufgeteilt.",
+      "suggestion": "Teilen Sie die Position nur auf eine Weise auf."
+    },
+    "vector_not_inherited": {
+      "fail": "Die Vertragsposition {code} liegt auf einer Kostenstelle, der ihre LV-Position nicht zugeordnet ist.",
+      "suggestion": "Legen Sie die Position wieder auf die Kostenstellen der LV-Position oder erfassen Sie die Abweichung mit Begründung."
+    }
+  },
   "boq_markup": {
     "contingency_not_on_profit": {
       "fail": "Der Risikozuschlag \"{markup}\" wird auf eine Basis berechnet, die bereits die Gewinnposition \"{profit}\" enthält, sodass Gewinn auf zurückgestellte Risikomittel anfällt",
@@ -59,6 +131,10 @@
     "offline_sync_delay": {
       "fail": "Dieser Tag wurde am {date} gearbeitet und erreichte das Büro erst {days} Tage später",
       "suggestion": "Die Stunden vor der Genehmigung gegen den Tag selbst prüfen, die Abrechnung kann bereits geschlossen sein"
+    },
+    "outdoor_heat_ban": {
+      "fail": "Zeile {line} erfasst Arbeit von {start} bis {end} am {date}, innerhalb des mittäglichen Verbots für Arbeiten im Freien von {ban_from} bis {ban_to}",
+      "suggestion": "Fand die Arbeit im Freien in direkter Sonne statt, außerhalb der Verbotszeiten verlegen; Arbeiten in Innenräumen und ausgenommene Branchen sind nicht betroffen"
     }
   },
   "ai_takeoff": {
@@ -521,6 +597,20 @@
       "suggestion": "Modifikatoren auf -50% bis +200% begrenzen, um unrealistische Preise zu vermeiden"
     }
   },
+  "schedule_5d": {
+    "boq_coverage": {
+      "fail": "Position {ordinal} '{description}' ({amount}) ist im Leistungsverzeichnis bepreist, aber kein Vorgang trägt sie, daher fehlen ihre Kosten im Terminplan",
+      "suggestion": "Geben Sie der Position eine Menge oder verknüpfen Sie sie mit einem Vorgang und erzeugen Sie den Terminplan dann erneut."
+    },
+    "cost_reconciliation": {
+      "fail": "Der Terminplan trägt {planned} von {bill} des Leistungsverzeichnisses: {difference} der bepreisten Leistung liegen auf keinem Vorgang",
+      "suggestion": "Prüfen Sie die Positionen, die die Abdeckungsprüfung auflistet, und erzeugen Sie den Terminplan dann erneut."
+    },
+    "duration_vs_norm": {
+      "fail": "Vorgang '{activity}' dauert {duration} Arbeitstage, während die Aufwandswerte für Lohn und Gerät {norm} ergeben",
+      "suggestion": "Prüfen Sie Menge, Kolonne und Aufwandsstunden der Position oder eine von Hand geänderte Dauer."
+    }
+  },
   "schedule_quality": {
     "open_ends": {
       "fail": "Vorgang '{activity}' hat keine {ends}-Verknüpfung (offenes Ende / hängender Vorgang)",
@@ -656,6 +746,42 @@
     "requisition_line_cost_line": {
       "fail": "Zeile {line} ist mit keiner Kostenzeile verknüpft, ihre Bestellung erscheint daher nicht als Obligo im Budget",
       "suggestion": "Erzeugen Sie die Zeile aus dem LV oder verknüpfen Sie sie vor der Bestellung mit einer Kostenzeile"
+    },
+    "requisition_suggested_vendor_in_directory": {
+      "fail": "Position {line} schlägt den Lieferanten {vendor} vor, der nicht im Lieferantenverzeichnis steht",
+      "suggestion": "Wählen Sie den vorgeschlagenen Lieferanten aus dem Lieferantenverzeichnis oder entfernen Sie den Vorschlag"
+    },
+    "requisition_suggested_vendor_active": {
+      "fail": "Position {line} schlägt {vendor} vor, einen Lieferanten, der im Lieferantenverzeichnis nicht aktiv ist",
+      "suggestion": "Schlagen Sie einen aktiven Lieferanten vor oder überlassen Sie die Wahl dem Einkauf"
+    },
+    "requisition_suggestion_conflict": {
+      "fail": "Die LV-Quellen von Position {line} schlagen {count} verschiedene Lieferanten vor",
+      "suggestion": "Wählen Sie einen Lieferanten für die Position oder teilen Sie sie, damit jeder Lieferant eine eigene Position erhält"
+    },
+    "requisition_suggested_vendor_differs": {
+      "fail": "Position {line} schlägt {vendor} vor, die Anforderung soll aber bei einem anderen Lieferanten bestellt werden",
+      "suggestion": "Prüfen Sie, ob der gewählte Lieferant diese Position liefern kann, oder bestellen Sie sie separat"
+    },
+    "requisition_line_needed_by_not_past": {
+      "fail": "Position {line} wird zum {date} benötigt, dieses Datum ist bereits vorbei (heute ist {today})",
+      "suggestion": "Geben Sie das Datum an, zu dem das Material tatsächlich auf der Baustelle benötigt wird"
+    },
+    "requisition_line_schedule_moved": {
+      "fail": "Position {line} wurde für einen Vorgang mit Beginn am {anchor} geplant, der Vorgang beginnt jetzt am {start}",
+      "suggestion": "Prüfen Sie den Bedarfstermin der Position gegen den aktuellen Terminplan und ändern Sie ihn bei Bedarf"
+    },
+    "requisition_approver_not_requester": {
+      "fail": "Die Person, die Bedarfsanforderung {req} erstellt hat, ist zugleich ihr festgelegter Genehmiger Nummer {step}",
+      "suggestion": "Benennen Sie für diesen Schritt einen anderen Genehmiger, damit nicht der Anforderer selbst entscheidet"
+    },
+    "requisition_line_over_ordered": {
+      "fail": "Position {line} hat {ordered} {unit} in Bestellungen, mehr als die angeforderten {requested} {unit}",
+      "suggestion": "Prüfen Sie, ob die Mehrmenge gewollt ist, oder verringern Sie die Bestellposition"
+    },
+    "requisition_order_unit_mismatch": {
+      "fail": "Bestellung {order} führt Position {line} in {unit}, was sich nicht in die Einheit {line_unit} der Position umrechnen lässt",
+      "suggestion": "Korrigieren Sie die Einheit der Bestellposition, damit ihre Menge als bestellt zählt"
     },
     "receipt_certificate_present": {
       "fail": "Position {line} wurde mit {required} bestellt, die Lieferung enthält aber {delivered}",
@@ -895,51 +1021,51 @@
       "suggestion": "Hinterlegen Sie die Behandlung: Regelsatz, ermäßigter oder Nullsatz, soweit die Leistung dafür qualifiziert, oder das Reverse-Charge-Verfahren, soweit die Leistung darunter fällt. Das Reverse-Charge-Verfahren verlagert die Steuer auf den Leistungsempfänger und ändert, was der Unternehmer abrechnen darf"
     }
   },
-    "project_completeness": {
-      "country_set": {
-        "fail": "Das Projekt nennt kein Land, daher lassen sich weder Preisbasis noch Steuersatz noch Arbeitskalender bestimmen",
-        "suggestion": "Legen Sie das Land des Projekts in den Einstellungen fest. Es entscheidet, gegen welches Regionalpaket, welche Steuer und welchen Kalender jede Zahl gelesen wird"
-      },
-      "currency_set": {
-        "fail": "Das Projekt nennt keine Währung, daher lassen sich Leistungsverzeichnisse, Zuschläge und Verträge nicht summieren",
-        "suggestion": "Wählen Sie die Projektwährung in den Einstellungen. Jedes Leistungsverzeichnis und jeder Vertrag wird in ihr bepreist und jede Summe in ihr gelesen"
-      },
-      "currency_matches_bill": {
-        "fail": "Das Projekt ist in {project_currency} bepreist, Positionen dieses Leistungsverzeichnisses aber in {bill_currencies}",
-        "suggestion": "Rechnen Sie die Positionen zu einem angegebenen Kurs in die Projektwährung um oder hinterlegen Sie den Wechselkurs am Projekt, damit die Summe des Leistungsverzeichnisses eine Zahl ist"
-      },
-      "priced_bill_present": {
-        "fail": "Das Projekt hat kein Leistungsverzeichnis mit Positionen, es gibt also nichts zu kalkulieren",
-        "suggestion": "Legen Sie ein Leistungsverzeichnis an und erfassen Sie Positionen, oder importieren Sie eines aus einem CAD-Modell, einer Tabelle oder einer Austauschdatei"
-      },
-      "bill_base_date_set": {
-        "fail": "Das Leistungsverzeichnis \"{bill}\" nennt kein Preisbasisdatum für seine Ansätze",
-        "suggestion": "Hinterlegen Sie das Preisbasisdatum am Leistungsverzeichnis. Ohne dieses lassen sich die Ansätze weder indexieren noch zu ihrem eigenen Datum versteuern noch mit einer anderen Kalkulation vergleichen"
-      },
-      "classification_standard_set": {
-        "fail": "Das Projekt hat keinen Klassifikationsstandard, seine Positionen tragen also Codes, die niemand prüfen kann",
-        "suggestion": "Wählen Sie den Klassifikationsstandard, nach dem das Projekt codiert ist. Er entscheidet auch, welche Länderregelsätze die Validierung ausführt"
-      },
-      "planned_dates_set": {
-        "both_missing": "Das Projekt hat weder einen geplanten Beginn noch ein geplantes Ende",
-        "start_missing": "Das Projekt hat ein geplantes Ende, aber keinen geplanten Beginn",
-        "end_missing": "Das Projekt hat einen geplanten Beginn, aber kein geplantes Ende",
-        "unreadable": "Das geplante Datum \"{value}\" lässt sich nicht als Datum lesen",
-        "suggestion": "Tragen Sie geplanten Beginn und geplantes Ende am Projekt als Datum ein. Zeitabhängige Kosten, Preissteigerung und Terminplan werden zwischen ihnen bepreist"
-      },
-      "planned_dates_ordered": {
-        "fail": "Das Projekt soll am {start} beginnen und am {end} enden, also vor seinem Beginn",
-        "suggestion": "Vertauschen oder korrigieren Sie die geplanten Daten, damit der Beginn vor dem Ende liegt"
-      },
-      "client_recorded": {
-        "fail": "Das Projekt nennt keinen Auftraggeber, und kein Vertrag führt einen Auftraggeber als Partei",
-        "suggestion": "Hinterlegen Sie den Auftraggeber am Projekt oder nehmen Sie ihn als Vertragspartei auf, damit die Kalkulation einen Adressaten hat"
-      },
-      "procurement_started": {
-        "fail": "Das Projekt befindet sich in der Phase {phase}, hat aber weder einen Vertrag noch ein Vergabepaket",
-        "suggestion": "Erstellen Sie ein Vergabepaket aus dem Leistungsverzeichnis oder erfassen Sie den Vertrag, oder setzen Sie die Phase auf den Kalkulationsstand zurück, in dem sich das Projekt tatsächlich befindet"
-      }
+  "project_completeness": {
+    "country_set": {
+      "fail": "Das Projekt nennt kein Land, daher lassen sich weder Preisbasis noch Steuersatz noch Arbeitskalender bestimmen",
+      "suggestion": "Legen Sie das Land des Projekts in den Einstellungen fest. Es entscheidet, gegen welches Regionalpaket, welche Steuer und welchen Kalender jede Zahl gelesen wird"
     },
+    "currency_set": {
+      "fail": "Das Projekt nennt keine Währung, daher lassen sich Leistungsverzeichnisse, Zuschläge und Verträge nicht summieren",
+      "suggestion": "Wählen Sie die Projektwährung in den Einstellungen. Jedes Leistungsverzeichnis und jeder Vertrag wird in ihr bepreist und jede Summe in ihr gelesen"
+    },
+    "currency_matches_bill": {
+      "fail": "Das Projekt ist in {project_currency} bepreist, Positionen dieses Leistungsverzeichnisses aber in {bill_currencies}",
+      "suggestion": "Rechnen Sie die Positionen zu einem angegebenen Kurs in die Projektwährung um oder hinterlegen Sie den Wechselkurs am Projekt, damit die Summe des Leistungsverzeichnisses eine Zahl ist"
+    },
+    "priced_bill_present": {
+      "fail": "Das Projekt hat kein Leistungsverzeichnis mit Positionen, es gibt also nichts zu kalkulieren",
+      "suggestion": "Legen Sie ein Leistungsverzeichnis an und erfassen Sie Positionen, oder importieren Sie eines aus einem CAD-Modell, einer Tabelle oder einer Austauschdatei"
+    },
+    "bill_base_date_set": {
+      "fail": "Das Leistungsverzeichnis \"{bill}\" nennt kein Preisbasisdatum für seine Ansätze",
+      "suggestion": "Hinterlegen Sie das Preisbasisdatum am Leistungsverzeichnis. Ohne dieses lassen sich die Ansätze weder indexieren noch zu ihrem eigenen Datum versteuern noch mit einer anderen Kalkulation vergleichen"
+    },
+    "classification_standard_set": {
+      "fail": "Das Projekt hat keinen Klassifikationsstandard, seine Positionen tragen also Codes, die niemand prüfen kann",
+      "suggestion": "Wählen Sie den Klassifikationsstandard, nach dem das Projekt codiert ist. Er entscheidet auch, welche Länderregelsätze die Validierung ausführt"
+    },
+    "planned_dates_set": {
+      "both_missing": "Das Projekt hat weder einen geplanten Beginn noch ein geplantes Ende",
+      "start_missing": "Das Projekt hat ein geplantes Ende, aber keinen geplanten Beginn",
+      "end_missing": "Das Projekt hat einen geplanten Beginn, aber kein geplantes Ende",
+      "unreadable": "Das geplante Datum \"{value}\" lässt sich nicht als Datum lesen",
+      "suggestion": "Tragen Sie geplanten Beginn und geplantes Ende am Projekt als Datum ein. Zeitabhängige Kosten, Preissteigerung und Terminplan werden zwischen ihnen bepreist"
+    },
+    "planned_dates_ordered": {
+      "fail": "Das Projekt soll am {start} beginnen und am {end} enden, also vor seinem Beginn",
+      "suggestion": "Vertauschen oder korrigieren Sie die geplanten Daten, damit der Beginn vor dem Ende liegt"
+    },
+    "client_recorded": {
+      "fail": "Das Projekt nennt keinen Auftraggeber, und kein Vertrag führt einen Auftraggeber als Partei",
+      "suggestion": "Hinterlegen Sie den Auftraggeber am Projekt oder nehmen Sie ihn als Vertragspartei auf, damit die Kalkulation einen Adressaten hat"
+    },
+    "procurement_started": {
+      "fail": "Das Projekt befindet sich in der Phase {phase}, hat aber weder einen Vertrag noch ein Vergabepaket",
+      "suggestion": "Erstellen Sie ein Vergabepaket aus dem Leistungsverzeichnis oder erfassen Sie den Vertrag, oder setzen Sie die Phase auf den Kalkulationsstand zurück, in dem sich das Projekt tatsächlich befindet"
+    }
+  },
   "boq_resources": {
     "unit_rate_not_rederived": {
       "fail": "Position {ordinal}: die Ressourcenzeilen können die Position nicht bepreisen, daher wurde der Einheitspreis nicht aus ihnen neu abgeleitet",
@@ -973,5 +1099,184 @@
     "parent_not_found": "Das Modell, von dem dieser Upload eine neue Version sein soll, gehört nicht zu diesem Projekt. Wählen Sie ein anderes oder laden Sie die Datei als eigenständiges Modell hoch.",
     "parent_not_ready": "Der Import von \"{name}\" ist noch nicht abgeschlossen, daher kann noch keine neue Version angelegt werden. Warten Sie, bis das Modell bereit ist, oder laden Sie diese Datei als eigenständiges Modell hoch.",
     "parent_superseded": "Von \"{name}\" gibt es bereits eine neuere Version, {version}. Laden Sie diese Datei stattdessen als neue Version der neuesten hoch."
+  },
+  "cost_chain": {
+    "contract_without_schedule": {
+      "fail": "Der Vertrag {code} ist {amount} wert, hat aber keine Leistungsverzeichnis-Positionen, deshalb liegt sein Geld auf keiner Kostenposition.",
+      "suggestion": "Legen Sie für den Vertrag ein Konto in der Kostenkontrolle an oder erfassen Sie seine Positionen."
+    },
+    "contract_sum_differs": {
+      "fail": "Der Vertrag {code} ist {total} wert, seine Positionen ergeben aber {lines} (Abweichung {difference}).",
+      "suggestion": "Korrigieren Sie den Vertragswert oder die Positionen, damit beide übereinstimmen."
+    },
+    "change_without_agreed_amount": {
+      "fail": "Der Nachtrag {code} ist freigegeben, aber ohne vereinbarten Betrag.",
+      "suggestion": "Erfassen Sie den mit dem Auftragnehmer vereinbarten Betrag, bevor der Nachtrag freigegeben wird."
+    },
+    "change_without_approval_date": {
+      "fail": "Der Nachtrag {code} ist freigegeben, aber ohne Freigabedatum.",
+      "suggestion": "Erfassen Sie, wann der Nachtrag freigegeben wurde."
+    },
+    "billed_before_approval": {
+      "fail": "Im Vertrag {contract} sind {amount} für den Nachtrag {code} abgerechnet, der den Status {status} hat und nicht freigegeben ist.",
+      "suggestion": "Geben Sie den Nachtrag zuerst frei oder nehmen Sie die Abrechnung aus der Forderung zurück."
+    },
+    "contract_over_target": {
+      "fail": "Der Vertrag {code} bindet {committed}, das sind {difference} mehr als die {target} des Leistungsverzeichnisses, aus dem er vergeben wurde (mehr als {tolerance} %).",
+      "suggestion": "Prüfen Sie Vergabe und Nachträge gegen das Leistungsverzeichnis und halten Sie fest, warum die Leistung mehr kostet."
+    },
+    "account_over_plan": {
+      "fail": "Das Konto {code} trägt {committed} an Bindungen, das sind {difference} über dem Plan von {planned} (mehr als {tolerance} %).",
+      "suggestion": "Prüfen Sie die Bindungen auf diesem Konto oder aktualisieren Sie den Plan mit Begründung."
+    },
+    "quantity_overrun": {
+      "fail": "Position {code} des Vertrags {contract} ist mit {measured} {unit} aufgemessen, vereinbart sind {contracted} {unit}, das sind {over} % mehr (erlaubt {tolerance} %).",
+      "suggestion": "Prüfen Sie die Aufmaßmenge oder vereinbaren Sie die Mehrmenge als Nachtrag."
+    },
+    "measurement_exceeds_commitment": {
+      "fail": "Der Vertrag {code} ist mit {measured} aufgemessen, das sind {difference} mehr als sein Wert samt freigegebenen Nachträgen von {committed}.",
+      "suggestion": "Geben Sie den Nachtrag für die Mehrleistung frei oder prüfen Sie das Aufmaß."
+    },
+    "invoice_without_contract": {
+      "fail": "Die Lieferantenrechnung {number} über {amount} gehört zu keinem Vertrag und keiner Bestellung.",
+      "suggestion": "Verknüpfen Sie ihre Positionen mit einem Vertrag oder erfassen Sie sie als Direktkosten auf einem Konto."
+    }
+  },
+  "payment_release": {
+    "cumulative_total_fell": {
+      "fail": "Die Rechnung {number} zum Vertrag {contract} weist bis heute {net} aus, weniger als die {previous} der vorherigen Rechnung {previous_number}, obwohl der Vertrag kumulativ abgerechnet wird.",
+      "suggestion": "Rechnet die Rechnung nur die neue Leistung ab, wird der Vertrag inkrementell abgerechnet; mindert sie die Gesamtsumme, erfassen Sie sie als Gutschrift."
+    },
+    "invoice_after_final": {
+      "fail": "Die Rechnung {number} zum Vertrag {contract} folgt auf die Schlussrechnung {final}.",
+      "suggestion": "Erfassen Sie spätere Leistungen als Stundenlohnarbeiten oder Gutschrift, oder markieren Sie die richtige Rechnung als Schlussrechnung."
+    },
+    "claim_invoice_in_cumulative": {
+      "fail": "Die Rechnung {number} zum Vertrag {contract} wurde aus einer Forderung erstellt und rechnet einen Zeitraum ab, der Vertrag wird aber kumulativ abgerechnet.",
+      "suggestion": "Verwenden Sie je Vertrag eine Abrechnungsart: Stellen Sie den Vertrag auf inkrementelle Abrechnung um oder erfassen Sie stattdessen die kumulativen Rechnungen des Auftragnehmers."
+    },
+    "release_differs": {
+      "fail": "Die bestätigte Zahlungsfreigabe der Rechnung {number} zum Vertrag {contract} beträgt {stored}, nach den Vertragsbedingungen ergibt sich heute aber {computed}.",
+      "suggestion": "Prüfen Sie, was sich seit der Freigabe geändert hat (Bedingungen, Rechnungsbeträge, Abzüge), öffnen Sie die Freigabe dann erneut und bestätigen Sie sie noch einmal."
+    },
+    "rounding_out_of_range": {
+      "fail": "Die Rechnung {number} wird um {rounding} gerundet, außerhalb der vereinbarten Rundungsstufe von {step}.",
+      "suggestion": "Die Rundung kürzt eine Freigabe um weniger als eine Stufe; aktivieren Sie die Rundung in den Zahlungsbedingungen oder öffnen Sie die Freigabe erneut."
+    },
+    "final_retention_without_warranty": {
+      "fail": "Die Schlussrechnung {number} zum Vertrag {contract} behält {amount} Einbehalt zurück, es ist aber kein Gewährleistungseinbehalt vereinbart.",
+      "suggestion": "Vereinbaren Sie einen Gewährleistungseinbehalt in den Zahlungsbedingungen oder öffnen Sie die Freigabe erneut, damit der gesamte Einbehalt mit der Schlussrechnung ausgezahlt wird."
+    },
+    "posting_exceeds_held": {
+      "fail": "Im Vertrag {contract} wurde mehr Einbehalt zurückgezahlt, als einbehalten ist: {amount} zu viel.",
+      "suggestion": "Stornieren Sie die zu hohe Einbehaltsbuchung und buchen Sie den tatsächlich einbehaltenen Betrag."
+    },
+    "posting_before_event": {
+      "fail": "{amount} Einbehalt im Vertrag {contract} wurden am {posted} zurückgezahlt, vor dem Freigabeereignis, das am {due} fällig war.",
+      "suggestion": "Prüfen Sie das Datum des Freigabeereignisses oder buchen Sie die Freigabe erst, wenn das Ereignis eingetreten ist."
+    },
+    "posting_without_event_date": {
+      "fail": "{amount} Einbehalt im Vertrag {contract} wurden zurückgezahlt, aber das Datum des Freigabeereignisses ist nicht erfasst.",
+      "suggestion": "Erfassen Sie das Datum, an dem das Freigabeereignis eingetreten ist, damit die Zahlung dagegen geprüft werden kann."
+    },
+    "retention_still_held": {
+      "fail": "Der Vertrag {contract} ist abgeschlossen und hält noch {amount} Einbehalt.",
+      "suggestion": "Geben Sie den Einbehalt zum Ereignis im Einbehaltsregister frei oder lassen Sie ihn für die Gewährleistungsfrist einbehalten."
+    },
+    "discount_not_agreed": {
+      "fail": "Die Freigabe der Rechnung {number} zum Vertrag {contract} nimmt {amount} Skonto ab, der Vertrag sieht aber keines vor.",
+      "suggestion": "Aktivieren Sie das Skonto in den Zahlungsbedingungen oder öffnen Sie die Freigabe erneut und geben Sie sie ohne Skonto frei."
+    },
+    "discount_after_deadline": {
+      "fail": "Bei der Rechnung {number} wurde ein Skonto von {amount} abgezogen, die Zahlung am {paid_on} erfolgte aber nach der Skontofrist {until}.",
+      "suggestion": "Zahlen Sie den Skontobetrag nach oder halten Sie fest, warum der Auftragnehmer das verspätete Skonto akzeptiert hat."
+    },
+    "invoiced_over_measured": {
+      "fail": "Der Vertrag {contract} ist mit {invoiced} abgerechnet, {difference} über den aufgemessenen {measured} (Menge mal Einheitspreis).",
+      "suggestion": "Prüfen Sie das Aufmaß, bevor Sie weiteres Geld freigeben, oder behalten Sie die Differenz bei der nächsten Freigabe ein."
+    },
+    "invoiced_over_contract": {
+      "fail": "Der Vertrag {contract} ist mit {invoiced} abgerechnet, {difference} über seinem Wert von {value}, und es ist nichts aufgemessen.",
+      "suggestion": "Erfassen Sie das Aufmaß oder den Nachtrag, der den Mehrbetrag abdeckt, bevor Sie weiteres Geld freigeben."
+    },
+    "reverse_charge_with_vat": {
+      "fail": "Die Rechnung {number} unterliegt dem Reverse-Charge-Verfahren, weist aber {vat} Umsatzsteuer aus.",
+      "suggestion": "Eine Rechnung im Reverse-Charge-Verfahren weist keine Umsatzsteuer aus; korrigieren Sie den Steuerbetrag oder die Steuerkategorie der Positionen."
+    },
+    "line_without_vat_rate": {
+      "fail": "Die Rechnung {number} weist Umsatzsteuer aus, aber {count} ihrer Positionen haben keinen Steuersatz.",
+      "suggestion": "Tragen Sie bei jeder Position den Steuersatz ein, damit Abzüge und Exporte die richtige Steuer verwenden."
+    },
+    "duplicate_number": {
+      "fail": "Die Rechnungsnummer {number} desselben Auftragnehmers ist {count}-mal erfasst.",
+      "suggestion": "Stornieren Sie die Kopie oder korrigieren Sie die Rechnungsnummer, falls es verschiedene Rechnungen sind."
+    },
+    "possible_duplicate": {
+      "fail": "Die Rechnung {number} hat denselben Auftragnehmer, Betrag ({amount}) und dasselbe Datum ({on}) wie die Rechnung {other}.",
+      "suggestion": "Prüfen Sie, dass es nicht dieselbe Rechnung ist, die unter einer anderen Nummer doppelt erfasst wurde."
+    },
+    "certificate_missing": {
+      "fail": "Rechnung {number} zum Vertrag {contract}: Dem Zahlungsempfänger liegt zum {on} kein gültiger Nachweis vor ({certificate}), den {reference} vor der Freigabe der Zahlung verlangt.",
+      "suggestion": "Erfassen Sie den Nachweis am Nachunternehmer-Datensatz des Zahlungsempfängers oder halten Sie die Zahlung zurück, bis er vorgelegt wird."
+    },
+    "split_payment_annotation_missing": {
+      "fail": "Die Rechnung {number} weist Bauleistungen oder andere Waren des Split-Payment-Verfahrens aus und übersteigt {threshold}, trägt aber nicht den Vermerk «{annotation}».",
+      "suggestion": "Fordern Sie vom Lieferanten eine korrigierte Rechnung mit dem Vermerk an und zahlen Sie sie in jedem Fall per Split Payment: die Zahlungspflicht hängt nicht vom Vermerk ab."
+    },
+    "split_payment_not_used": {
+      "fail": "Die Rechnung {number} unterliegt dem Split Payment, eine Zahlung dafür wurde jedoch mit einer anderen Methode erfasst. Der Käufer haftet zusätzlich für {sanction}, 30 Prozent der darauf entfallenden Umsatzsteuer.",
+      "suggestion": "Zahlen Sie solche Rechnungen per Split Payment vom USt-Konto und erfassen Sie die Methode an der Zahlung als split_payment."
+    },
+    "split_payment_annex_unknown": {
+      "fail": "Die Rechnung {number} übersteigt {threshold}, und es ist nicht erfasst, ob sie Waren oder Leistungen aus dem Anhang zum Split Payment ausweist.",
+      "suggestion": "Erfassen Sie an der Rechnung, ob sie Waren oder Leistungen aus dem Anhang ausweist (annex_15), oder deren Codes (pkwiu_codes), damit die Zahlungsmethode geprüft werden kann."
+    },
+    "reduced_rate_above_area_limit": {
+      "fail": "Die Rechnung {number} berechnet {rate} Prozent Umsatzsteuer auf den gesamten Preis, die Wohnung hat jedoch {area_m2} m2 Nutzfläche, und der ermäßigte Satz gilt bis {limit_m2} m2 ({reference}).",
+      "suggestion": "Berechnen Sie den ermäßigten Satz auf {reduced_share_percent} Prozent des Preises und den Regelsatz auf den Rest."
+    },
+    "reduced_rate_object_unknown": {
+      "fail": "Die Rechnung {number} berechnet den ermäßigten Wohnungssatz von {rate} Prozent, im Projekt ist aber nicht erfasst, für welche Wohnung sie gilt und wie groß die Nutzfläche ist ({reference}).",
+      "suggestion": "Erfassen Sie Wohnungsart und Nutzfläche am Projekt (vat_housing), damit Satz und Flächengrenze geprüft werden können."
+    },
+    "reduced_rate_not_eligible": {
+      "fail": "Die Rechnung {number} berechnet den ermäßigten Wohnungssatz von {rate} Prozent auf {object}, was dafür nicht in Frage kommt ({reference}).",
+      "suggestion": "Berechnen Sie den Regelsatz oder korrigieren Sie die am Projekt erfasste Wohnung."
+    },
+    "domestic_reverse_charge_ended": {
+      "fail": "Die Rechnung {number} wendet Reverse Charge auf {count} Position(en) an, doch das inländische Reverse-Charge-Verfahren für Bauleistungen ist in diesem Land ausgelaufen.",
+      "suggestion": "Fordern Sie, sofern der Lieferant nicht im Ausland ansässig ist, eine Rechnung mit Umsatzsteuer an; solche Rechnungen werden per Split Payment bezahlt."
+    },
+    "payment_term_over_cap": {
+      "fail": "Der Vertrag {contract} vereinbart eine Zahlungsfrist von {days} Tagen, länger als die {cap} Tage, die das Zahlungsverzugsgesetz zwischen Unternehmen zulässt.",
+      "suggestion": "Kürzen Sie die Frist auf {cap} Tage oder erfassen Sie, warum die längere Frist ausdrücklich vereinbart und für den Nachunternehmer nicht grob unbillig ist."
+    }
+  },
+  "cost_forecast": {
+    "below_commitment": {
+      "fail": "{code}: Die Prognose von {forecast} liegt unter den bereits beauftragten oder in offenen Nachträgen geforderten {owed} (um {difference} niedriger), und nichts erklärt das.",
+      "suggestion": "Hängen Sie das Dokument zum niedrigeren Wert an (Gutschrift, Vergleich, Protokoll) oder vermerken Sie an der Position, warum ihre Methode weniger ergibt."
+    },
+    "move_without_evidence": {
+      "fail": "{code}: Die Prognose hat sich seit dem letzten eingefrorenen Stand von {previous} auf {current} geändert ({delta}), über der Schwelle des Projekts, und hat noch keinen Kommentar und Nachweis.",
+      "suggestion": "Begründen Sie die Änderung und verknüpfen Sie das Dokument oder Protokoll dazu, bevor der Stand eingefroren wird."
+    },
+    "method_override_without_comment": {
+      "fail": "{code} wird mit {method} statt mit der Projektmethode {project_method} prognostiziert, und kein Kommentar sagt warum.",
+      "suggestion": "Ergänzen Sie einen kurzen Kommentar zur Methode der Position oder stellen Sie die Position auf die Projektmethode zurück."
+    },
+    "method": {
+      "best_available": "beste verfügbare Quelle",
+      "maximum": "Höchstwert",
+      "evm_cpi": "Kostenentwicklung (CPI)",
+      "manual": "manueller Betrag"
+    }
+  },
+  "payment_release_certificate_types": {
+    "social_security_clearance": "Unbedenklichkeitsbescheinigung der Sozialversicherung",
+    "construction_tax_exemption": "Bescheinigung über die Befreiung von der Bausteuer",
+    "employers_liability_clearance": "Unbedenklichkeitsbescheinigung zur Arbeitgeberhaftung",
+    "insurance": "Versicherungsnachweis",
+    "license": "Unternehmerlizenz"
   }
 }
