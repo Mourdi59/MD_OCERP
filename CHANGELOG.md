@@ -7,7 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Tip:** This file is long. Use your browser's **Find** (Ctrl+F) to jump to a version number, or see the [Releases page](https://github.com/datadrivenconstruction/OpenConstructionERP/releases) for a per-release view with download links.
 
-## [Unreleased]
+## [18.8.0] - 2026-10-20
+
+### Added
+
+- Appearance styles in Settings. Five ready styles, plus your own choice of accent colour (seven, all readable in light and dark), font (Inter, IBM Plex Sans, Source Sans 3 or the system font), density and corners. The look applies at once and survives a reload without flashing, and an administrator can save it as the default for the whole workspace. The fonts ship with the platform, so it still works offline.
+- Ready profiles for background services: Maximum speed, Balanced and Maximum features, each with its estimated memory and number of services. The active profile is recognised, manual changes show as Custom, Maximum features warns when the server may not have enough memory, and only administrators can switch.
 
 ### Changed
 
@@ -18,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - DGN conversion (no converter exists for it in the new generation) and the Linux apt/`.deb` converter installer. The NOTICE no longer describes a third-party CAD SDK or Qt inside the Windows installer.
+
+### Fixed
+
+- Permit and site logistics notifications show translated text instead of raw keys, and dismissing a notification that is already gone no longer shows an error.
 
 ## [18.7.0] - 2026-10-19
 

@@ -53,12 +53,7 @@ interface ChangelogEntry {
  * claims to be, so anything numeric-looking here would be read as a release
  * that nothing else in the tree has been bumped to.
  */
-const UNRELEASED: ChangelogEntry | null = {
-  version: 'Unreleased',
-  date: '2026-10-19',
-  summary:
-    'CAD and BIM conversion now uses DDC Converters 2.0 (release 2026.10) for RVT, IFC and DWG. Windows 10/11 x64; Linux and macOS are coming soon.',
-};
+const UNRELEASED: ChangelogEntry | null = null;
 
 // Sorted newest to oldest. Sort is enforced at runtime below (semver-aware) so
 // out-of-order entries here still display correctly.
@@ -71,6 +66,13 @@ const UNRELEASED: ChangelogEntry | null = {
 // The entries from 15.3.0 up read at the new length; the older ones below still
 // carry the long form and are left alone as the record of what shipped.
 const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '18.8.0',
+    date: '2026-10-20',
+    tag: 'NEW',
+    summary:
+      'Choose how the platform looks: five ready styles, or your own accent colour, font, density and corners, saved for you or as the workspace default. Background services come in three ready profiles, from maximum speed to maximum features, CAD and BIM conversion moves to DDC Converters 2.0 for RVT, IFC and DWG, and permit and logistics notifications are translated.',
+  },
   {
     version: '18.7.0',
     date: '2026-10-19',
