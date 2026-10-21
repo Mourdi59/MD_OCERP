@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Four Saudi Arabia demo projects for different business models, each with its estimate, budget, procurement, subcontract, schedule and billing data: an engineering consultancy (villa compound, Riyadh), a building contractor (residential tower, Jeddah), site development and landscaping (community park, Dammam) and a full-service group project covering consultancy, construction, site works, landscaping, fit-out and FF&E supply (mixed-use hub, Riyadh). Their subcontract shows a monthly progress billing history of three or four claims with retention that reconciles, and purchase requisitions per tender package drawn from the bill, in draft, submitted, approved and ordered states.
 - An optional step in first-run setup, "How your platform will look": pick one of the ready colour styles and menu sets, change the accent colour, and see a live mini preview before anything is applied. Skip keeps the defaults, and an administrator can also save the choice as the workspace default.
+- Subcontractor contact persons and tender recipients now link to the central contact directory: a match by email within the same account is linked, otherwise a linked contact is created, and two existing contacts are never merged automatically. A validation rule warns about contact persons that are still unlinked, and a backfill script (dry run by default) links existing records (#524).
+- The contact list can be paged with a cursor, which stays stable while contacts are added, and a repeatable benchmark for large contact directories and large GAEB files records its numbers to a local ledger (#529).
 
 ## [18.8.0] - 2026-10-20
 
