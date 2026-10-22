@@ -144,7 +144,7 @@ def _decode_cursor(cursor: str) -> tuple[str, uuid.UUID] | None:
             raise ValueError
         return key, uuid.UUID(cid)
     except (ValueError, TypeError, binascii.Error) as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid cursor") from exc
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Invalid cursor") from exc
 
 
 @router.get(

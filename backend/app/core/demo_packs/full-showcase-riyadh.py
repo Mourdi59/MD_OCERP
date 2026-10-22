@@ -52,7 +52,7 @@ TEMPLATE = DemoTemplate(
         "development, landscaping, fit-out and FF&E, with Saudi Building Code references."
     ),
     boq_metadata={
-        "standard": "MasterFormat divisions + SBC 2024 (SBC 201/301/304/401/501/601/701/801)",
+        "standard": "Division-based classification + SBC 2024 (SBC 201/301/304/401/501/601/701/801)",
         "phase": "Contract budget by business line",
         "base_date": "2026-Q2",
         "price_level": "Riyadh 2026 (SAR, excl. VAT)",

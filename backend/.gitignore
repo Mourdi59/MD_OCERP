@@ -108,3 +108,6 @@
 # Probe dumps left beside the seed scripts
 /app/scripts/_flagship_dump.txt
 /app/scripts/_snap_dump.txt
+
+# perf benchmark results (tests/perf/bench_contacts_gaeb.py)
+tests/perf/ledger.jsonl

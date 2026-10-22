@@ -47,9 +47,9 @@ TEMPLATE = DemoTemplate(
     project_code="KSA-BLD-JED-2026",
     validation_rule_sets=["masterformat", "boq_quality"],
     boq_name="Contractor estimate - Marina Heights Residential Tower",
-    boq_description="Detailed contractor estimate by MasterFormat division with Saudi Building Code references.",
+    boq_description="Detailed contractor estimate by work division with Saudi Building Code references.",
     boq_metadata={
-        "standard": "MasterFormat divisions + SBC 2024 (SBC 201/301/304/401/501/601/701/801)",
+        "standard": "Division-based classification + SBC 2024 (SBC 201/301/304/401/501/601/701/801)",
         "phase": "Tender estimate converted to contract budget",
         "base_date": "2026-Q2",
         "price_level": "Jeddah 2026 (SAR, excl. VAT)",

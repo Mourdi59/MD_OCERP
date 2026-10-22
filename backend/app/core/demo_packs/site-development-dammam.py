@@ -48,7 +48,7 @@ TEMPLATE = DemoTemplate(
     boq_name="Site development BOQ - Al Fanateer Community Park",
     boq_description="Priced bill of quantities by work package: earthworks, utilities, hardscape and softscape.",
     boq_metadata={
-        "standard": "MasterFormat divisions 02, 03, 26, 31, 32, 33 + SBC 2024",
+        "standard": "Division-based classification (divisions 02, 03, 26, 31, 32, 33) + SBC 2024",
         "phase": "Tender BOQ",
         "base_date": "2026-Q2",
         "price_level": "Dammam 2026 (SAR, excl. VAT)",

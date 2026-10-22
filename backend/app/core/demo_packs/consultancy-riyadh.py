@@ -53,7 +53,7 @@ TEMPLATE = DemoTemplate(
         "construction cost estimate (C1-C6) with Saudi Building Code references."
     ),
     boq_metadata={
-        "standard": "MasterFormat divisions + SBC 2024 (SBC 201/301/304/501/601/801)",
+        "standard": "Division-based classification + SBC 2024 (SBC 201/301/304/501/601/801)",
         "phase": "Fee proposal (F) and Class 3 cost estimate (C)",
         "base_date": "2026-Q2",
         "price_level": "Riyadh 2026 (SAR, excl. VAT)",
