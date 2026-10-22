@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Tip:** This file is long. Use your browser's **Find** (Ctrl+F) to jump to a version number, or see the [Releases page](https://github.com/datadrivenconstruction/OpenConstructionERP/releases) for a per-release view with download links.
 
+## [Unreleased]
+
+## [18.8.2] - 2026-10-22
+
+### Added
+
+- A switcher bar on the hosted demo: the four Saudi Arabia demo projects sit at the top of the app and you move between them in one click, or open one directly with `?demo=<name>`.
+- First-run setup offers the four Saudi Arabia demo projects as ready starting points, each with what it shows and who it suits, installed and opened in one click.
+- Tender recipients can be added in bulk from a CSV or XLSX file, with a preview of each row, duplicates and invalid addresses flagged before anything is saved.
+- Labour standards can carry an optional area, and partner packs can recommend the modules that suit them.
+
 ## [18.8.1] - 2026-10-22
 
 ### Added

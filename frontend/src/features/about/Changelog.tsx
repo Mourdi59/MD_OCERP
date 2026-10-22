@@ -67,6 +67,13 @@ const UNRELEASED: ChangelogEntry | null = null;
 // carry the long form and are left alone as the record of what shipped.
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '18.8.2',
+    date: '2026-10-22',
+    tag: 'NEW',
+    summary:
+      'The hosted demo shows its four Saudi Arabia projects in a bar at the top, one click apart, and first-run setup offers them as ready starting points. Tender recipients can be imported in bulk from CSV or XLSX, and labour standards can carry an optional area.',
+  },
+  {
     version: '18.8.1',
     date: '2026-10-22',
     tag: 'NEW',
