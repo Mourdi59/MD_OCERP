@@ -17,3 +17,7 @@ async def on_startup() -> None:
 
     register_tendering_permissions()
     register_recipient_import_rules()
+
+    from app.modules.tendering.validators import register_tendering_validation_rules
+
+    register_tendering_validation_rules()
