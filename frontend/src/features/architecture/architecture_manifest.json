@@ -276821,10 +276821,10 @@
     },
     {
       "name": "onboarding",
-      "ts_files": 27,
+      "ts_files": 30,
       "css_files": 0,
-      "test_files": 15,
-      "total_files": 27
+      "test_files": 16,
+      "total_files": 30
     },
     {
       "name": "payment-clock",
@@ -278994,7 +278994,7 @@
     "total_schemas": 4120,
     "total_python_files": 2810,
     "frontend_features": 209,
-    "frontend_ts_files": 3603,
+    "frontend_ts_files": 3606,
     "frontend_backend_mapped": 187
   },
   "frontend_backend_mapping": {
