@@ -1238,7 +1238,17 @@ export function BOQListPage() {
           description={t('boq.no_boqs_hint', { defaultValue: 'A Bill of Quantities is the foundation of your estimate. Start by creating a project, then add sections (trade groups) and positions (work items) with quantities and rates.' })}
           action={{
             label: t('boq.create_boq', { defaultValue: 'Create BOQ' }),
-            onClick: () => navigate('/projects/new'),
+            // An estimate needs a project: with none yet, create one first;
+            // otherwise open the same create modal as the header button.
+            onClick: () => {
+              if (!projects || projects.length === 0) {
+                navigate('/projects/new');
+                return;
+              }
+              const pid = projectIdFromUrl || activeProjectId || projectFilter || (projects.length === 1 ? projects[0]!.id : undefined) || undefined;
+              setCreateModalProjectId(pid);
+              setCreateModalOpen(true);
+            },
           }}
         />
       ) : (
