@@ -274,7 +274,8 @@ jobs:
     # below is 658 tests, which projects to roughly 43 minutes. That would sit
     # inside a 45 minute cap with about 5% to spare, which is not headroom, it
     # is a cancellation waiting for the next module to land. 60.
-    timeout-minutes: 60
+    # Both selections together take 55-60 minutes, so a 60 minute cap cut the second one off.
+    timeout-minutes: 90
     defaults:
       run:
         working-directory: backend

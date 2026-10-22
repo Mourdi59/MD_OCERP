@@ -57204,6 +57204,11 @@
             {
               "name": "limit",
               "type": "int"
+            },
+            {
+              "name": "next_cursor",
+              "type": "str | None",
+              "default": "None"
             }
           ]
         },
@@ -246947,6 +246952,12 @@
               "fk_target": "oe_subcontractors_subcontractor.id"
             },
             {
+              "name": "contact_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
               "name": "name",
               "annotation": "Mapped[str]",
               "sql_type": "String",
@@ -248650,6 +248661,11 @@
             {
               "name": "subcontractor_id",
               "type": "UUID"
+            },
+            {
+              "name": "contact_id",
+              "type": "UUID | None",
+              "default": "None"
             },
             {
               "name": "name",
@@ -265228,6 +265244,11 @@
             {
               "name": "subcontractor_id",
               "type": "str | None"
+            },
+            {
+              "name": "contact_id",
+              "type": "UUID | None",
+              "default": "None"
             }
           ]
         },
@@ -265252,6 +265273,11 @@
             },
             {
               "name": "subcontractor_id",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "contact_id",
               "type": "str | None",
               "default": "None"
             },
@@ -266173,6 +266199,7 @@
       ],
       "import_dependencies": [
         "boq",
+        "contacts",
         "projects",
         "teams",
         "users"
@@ -276684,10 +276711,10 @@
     },
     {
       "name": "onboarding",
-      "ts_files": 25,
+      "ts_files": 27,
       "css_files": 0,
-      "test_files": 14,
-      "total_files": 25
+      "test_files": 15,
+      "total_files": 27
     },
     {
       "name": "payment-clock",
@@ -278783,6 +278810,7 @@
     ],
     "tendering": [
       "boq",
+      "contacts",
       "projects",
       "teams",
       "users"
@@ -278850,13 +278878,13 @@
     "backend_modules": 215,
     "modules_with_manifests": 213,
     "total_models": 788,
-    "total_columns": 9171,
+    "total_columns": 9172,
     "total_relationships": 240,
     "total_routes": 4625,
     "total_schemas": 4117,
     "total_python_files": 2809,
     "frontend_features": 209,
-    "frontend_ts_files": 3599,
+    "frontend_ts_files": 3601,
     "frontend_backend_mapped": 187
   },
   "frontend_backend_mapping": {
