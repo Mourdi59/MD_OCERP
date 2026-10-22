@@ -53,13 +53,7 @@ interface ChangelogEntry {
  * claims to be, so anything numeric-looking here would be read as a release
  * that nothing else in the tree has been bumped to.
  */
-const UNRELEASED: ChangelogEntry | null = {
-  version: 'Unreleased',
-  date: '2026-10-22',
-  tag: 'NEW',
-  summary:
-    'An optional step in first-run setup, \'How your platform will look\': pick a ready colour style and menu set, change the accent colour, and see a live preview before anything is applied. Skip keeps the defaults. Four Saudi Arabia demo projects, one per business model: engineering consultancy, building contractor, site development and landscaping, and a full-service group with fit-out and FF&E supply. Each has its estimate, budget, procurement, subcontract, schedule and billing data. The subcontract carries three or four monthly progress claims with reconciling retention, and each tender package has a purchase requisition drawn from the bill.',
-};
+const UNRELEASED: ChangelogEntry | null = null;
 
 // Sorted newest to oldest. Sort is enforced at runtime below (semver-aware) so
 // out-of-order entries here still display correctly.
@@ -72,6 +66,13 @@ const UNRELEASED: ChangelogEntry | null = {
 // The entries from 15.3.0 up read at the new length; the older ones below still
 // carry the long form and are left alone as the record of what shipped.
 const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '18.8.1',
+    date: '2026-10-22',
+    tag: 'NEW',
+    summary:
+      'An optional step in first-run setup, \'How your platform will look\': pick a ready colour style and menu set, change the accent colour, and see a live preview before anything is applied. Skip keeps the defaults. Four Saudi Arabia demo projects, one per business model: engineering consultancy, building contractor, site development and landscaping, and a full-service group with fit-out and FF&E supply. Each has its estimate, budget, procurement, subcontract, schedule and billing data. The subcontract carries three or four monthly progress claims with reconciling retention, and each tender package has a purchase requisition drawn from the bill.',
+  },
   {
     version: '18.8.0',
     date: '2026-10-20',
