@@ -1,7 +1,7 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 /**
- * Component tests for the Settings "Text size" control.
+ * Component tests for the Settings "Window zoom" control.
  *
  * Two things a screenshot cannot show are asserted: that the browser build
  * offers no buttons it could not honour, and that in the desktop app a choice
@@ -32,7 +32,7 @@ afterEach(() => {
 describe('<TextSizeSetting>', () => {
   it('points to browser zoom in the web app and offers no buttons', async () => {
     await renderSetting();
-    expect(screen.getByText('Text size')).toBeInTheDocument();
+    expect(screen.getByText('Window zoom')).toBeInTheDocument();
     expect(screen.getByText(/Your browser sets the text size/)).toBeInTheDocument();
     expect(screen.queryAllByRole('button')).toHaveLength(0);
   });
