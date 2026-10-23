@@ -182,6 +182,10 @@ const resource = {
     "tendering.x84_error_x84_has_blocking_issues": "The file still has blocking issues.",
     "tendering.bid_link.summary_no_link": "No link yet",
     "tendering.bid_link.summary_title": "{{count}} invited:",
+    "price_index.p0151.import": "Import Stats SA P0151.1 (South Africa CPAP)",
+    "price_index.p0151.hint": "Upload the release file from Stats SA. Table 1 becomes one series per work group, with the Stats SA acknowledgement.",
+    "price_index.p0151.done": "{{series}} work group series, {{created}} new and {{updated}} revised values",
+    "price_index.p0151.skipped": "{{count}} cells without a number were skipped",
   }
 } as { translation: Record<string, string> };
 
