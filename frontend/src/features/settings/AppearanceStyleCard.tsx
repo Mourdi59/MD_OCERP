@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { Check } from 'lucide-react';
 import { Card, CardHeader, CardContent, Button } from '@/shared/ui';
 import { apiPut } from '@/shared/lib/api';
-import { getIntlLocale } from '@/shared/lib/intlLocale';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import {
   ACCENTS,
   ACCENT_SWATCH,
@@ -198,7 +198,7 @@ function CustomColourRow() {
           <p className="text-xs text-semantic-warning" role="status">
             {t('settings.style_custom_low_contrast', {
               defaultValue: 'White text on this colour is hard to read ({{ratio}}:1, needs 4.5:1).',
-              ratio: new Intl.NumberFormat(getIntlLocale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(check.ratio),
+              ratio: new Intl.NumberFormat(getNumberLocale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(check.ratio),
             })}{' '}
             <button
               type="button"

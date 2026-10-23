@@ -47,7 +47,7 @@ export interface Appearance {
   accentHex?: string;
 }
 
-export type AppearanceAxis = keyof Appearance;
+export type AppearanceAxis = Exclude<keyof Appearance, 'accentHex'>;
 
 export const AXIS_VALUES: { [K in AppearanceAxis]: readonly Appearance[K][] } = {
   accent: ACCENTS,
