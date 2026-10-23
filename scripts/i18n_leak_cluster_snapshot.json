@@ -2017,5 +2017,37 @@
     ],
     "key_count_at_seed": 3,
     "note": "Reviewed: analytics.perf.median, analytics.perf.stat.median and analytics.hist.cost_median read 'Median' because the statistical term is spelled Median in Danish, German, Norwegian, Swedish, Indonesian and Filipino; the non-member locales carry their own word (ru Медиана, fr Médiane, nl Mediaan)."
+  },
+  {
+    "locale_set": [
+      "no",
+      "sv"
+    ],
+    "key_count_at_seed": 3,
+    "note": "Bind/Full are the native Norwegian and Swedish words"
+  },
+  {
+    "locale_set": [
+      "da",
+      "de",
+      "fr",
+      "it",
+      "no",
+      "ro",
+      "sv"
+    ],
+    "key_count_at_seed": 3,
+    "note": "Standard is the native word in each of these languages"
+  },
+  {
+    "locale_set": [
+      "es",
+      "fr",
+      "id",
+      "pt",
+      "ro"
+    ],
+    "key_count_at_seed": 3,
+    "note": "Total is the native word in each of these languages"
   }
 ]

@@ -1863,5 +1863,10 @@
     "en_value": "Budget",
     "note": "the word is the native term in da, de, fil, fr, it, nl and sv; every other locale translates it",
     "reason_category": "cognate_loanword"
+  },
+  "tendering.sealed.col_hash": {
+    "en_value": "SHA-256",
+    "note": "hash algorithm name, a standard identifier written the same way in every locale including ru",
+    "reason_category": "standard_code"
   }
 }

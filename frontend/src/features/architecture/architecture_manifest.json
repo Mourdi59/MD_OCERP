@@ -10846,7 +10846,9 @@
           ]
         }
       ],
-      "import_dependencies": []
+      "import_dependencies": [
+        "tendering"
+      ]
     },
     {
       "module_id": "bcf",
@@ -176149,6 +176151,7 @@
         "permit_conditions.py",
         "plan_source.py",
         "router.py",
+        "rule_snapshot.py",
         "schemas.py",
         "seed.py",
         "service.py",
@@ -176867,6 +176870,132 @@
             }
           ],
           "relationships": []
+        },
+        {
+          "class_name": "RuleSnapshot",
+          "tablename": "oe_procurement_concept_rule_snapshot",
+          "docstring": "Frozen record of the rules evaluated when a package's procedure was set (never updated).",
+          "columns": [
+            {
+              "name": "package_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false
+            },
+            {
+              "name": "procedure_code",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "catalogue_source",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "catalogue_id",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "catalogue_version",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            },
+            {
+              "name": "checked_on",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "inputs",
+              "annotation": "Mapped[dict[str, Any]]",
+              "sql_type": "JSON",
+              "nullable": false
+            },
+            {
+              "name": "rules",
+              "annotation": "Mapped[list[dict[str, Any]]]",
+              "sql_type": "JSON",
+              "nullable": false
+            },
+            {
+              "name": "result",
+              "annotation": "Mapped[dict[str, Any]]",
+              "sql_type": "JSON",
+              "nullable": false
+            },
+            {
+              "name": "digest",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "taken_by",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "class_name": "RuleOverride",
+          "tablename": "oe_procurement_concept_rule_override",
+          "docstring": "A person's override of one rule outcome of a snapshot; the reason is mandatory.",
+          "columns": [
+            {
+              "name": "snapshot_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_procurement_concept_rule_snapshot.id"
+            },
+            {
+              "name": "rule_code",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "original_outcome",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "override_outcome",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "reason",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            },
+            {
+              "name": "overridden_by",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "overridden_at",
+              "annotation": "Mapped[datetime]",
+              "sql_type": "DateTime",
+              "nullable": false
+            }
+          ],
+          "relationships": []
         }
       ],
       "routes": [
@@ -176956,6 +177085,17 @@
           "path": "/projects/{project_id}/packages/{package_id}/threshold",
           "handler": "threshold_check",
           "request_schema": "date | None"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/packages/{package_id}/rule-snapshots",
+          "handler": "rule_snapshots"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/packages/{package_id}/rule-snapshots/{snapshot_id}/overrides",
+          "handler": "override_rule",
+          "request_schema": "RuleOverrideIn"
         },
         {
           "method": "GET",
@@ -177366,6 +177506,27 @@
             {
               "name": "action",
               "type": "Literal['hold', 'resume', 'cancel']"
+            },
+            {
+              "name": "reason",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "class_name": "RuleOverrideIn",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "Override one rule outcome of a snapshot. The reason is mandatory and checked by the service.",
+          "fields": [
+            {
+              "name": "rule_code",
+              "type": "str"
+            },
+            {
+              "name": "outcome",
+              "type": "Literal['pass', 'warn', 'fail']"
             },
             {
               "name": "reason",
@@ -186647,6 +186808,7 @@
         "takeoff",
         "tasks",
         "teams",
+        "tendering",
         "transmittals",
         "users"
       ]
@@ -264069,7 +264231,9 @@
         "repository.py",
         "router.py",
         "schemas.py",
+        "sealed.py",
         "service.py",
+        "validators.py",
         "workbooks.py",
         "xlsx_translations.py"
       ],
@@ -264308,6 +264472,100 @@
               "annotation": "Mapped[str | None]",
               "sql_type": "String",
               "nullable": true
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "class_name": "TenderSealing",
+          "tablename": "oe_tendering_sealing",
+          "docstring": "A package tendered in sealed mode: one row per sealed package.\n\nA package without a row is informal. Opening is recorded here; with\n``dual_opening`` the first authorised user is stored as the first approver\nand a second, distinct user opens.",
+          "columns": [
+            {
+              "name": "package_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_tendering_package.id"
+            },
+            {
+              "name": "dual_opening",
+              "annotation": "Mapped[bool]",
+              "sql_type": "Boolean",
+              "nullable": false
+            },
+            {
+              "name": "first_approver_id",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "first_approved_at",
+              "annotation": "Mapped[datetime | None]",
+              "sql_type": "DateTime",
+              "nullable": true
+            },
+            {
+              "name": "opened_at",
+              "annotation": "Mapped[datetime | None]",
+              "sql_type": "DateTime",
+              "nullable": true
+            },
+            {
+              "name": "opened_by",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "created_by",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "class_name": "TenderBidReceipt",
+          "tablename": "oe_tendering_bid_receipt",
+          "docstring": "What a bidder was given when a sealed submission was accepted.\n\n``content_sha256`` is the digest of the canonical submission content\n(``sealed.canonical_content``); the newest receipt of a bid is the one its\nstored content is verified against.",
+          "columns": [
+            {
+              "name": "package_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_tendering_package.id"
+            },
+            {
+              "name": "bid_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_tendering_bid.id"
+            },
+            {
+              "name": "invitation_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "content_sha256",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "received_at",
+              "annotation": "Mapped[datetime]",
+              "sql_type": "DateTime",
+              "nullable": false
             }
           ],
           "relationships": []
@@ -264584,6 +264842,40 @@
           "handler": "get_bid_analysis",
           "response_model": "BidAnalysisResponse",
           "request_schema": "TenderingService"
+        },
+        {
+          "method": "PUT",
+          "path": "/packages/{package_id}/submission-mode/",
+          "handler": "set_submission_mode",
+          "response_model": "PackageResponse",
+          "request_schema": "SubmissionModeUpdate"
+        },
+        {
+          "method": "GET",
+          "path": "/packages/{package_id}/sealed/",
+          "handler": "get_sealed_status",
+          "response_model": "SealedStatusResponse",
+          "request_schema": "TenderingService"
+        },
+        {
+          "method": "POST",
+          "path": "/packages/{package_id}/sealed/open/",
+          "handler": "open_sealed_bids",
+          "response_model": "SealedStatusResponse",
+          "request_schema": "TenderingService"
+        },
+        {
+          "method": "GET",
+          "path": "/packages/{package_id}/sealed/validation/",
+          "handler": "validate_sealed_package",
+          "request_schema": "TenderingService"
+        },
+        {
+          "method": "GET",
+          "path": "/bids/{bid_id}/integrity/",
+          "handler": "check_bid_integrity",
+          "response_model": "BidIntegrityResponse",
+          "request_schema": "TenderingService"
         }
       ],
       "schemas": [
@@ -264706,6 +264998,16 @@
               "name": "bid_count",
               "type": "int",
               "default": "0"
+            },
+            {
+              "name": "submission_mode",
+              "type": "str",
+              "default": "'informal'"
+            },
+            {
+              "name": "sealed",
+              "type": "'SealedInfo | None'",
+              "default": "None"
             }
           ]
         },
@@ -264916,6 +265218,193 @@
             {
               "name": "updated_at",
               "type": "datetime"
+            },
+            {
+              "name": "sealed",
+              "type": "bool",
+              "default": "False"
+            }
+          ]
+        },
+        {
+          "class_name": "SealedInfo",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Opening state of a sealed package as listed with the package.",
+          "fields": [
+            {
+              "name": "state",
+              "type": "str"
+            },
+            {
+              "name": "dual_opening",
+              "type": "bool",
+              "default": "False"
+            },
+            {
+              "name": "deadline_utc",
+              "type": "datetime | None",
+              "default": "None"
+            },
+            {
+              "name": "first_approver_id",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "first_approved_at",
+              "type": "datetime | None",
+              "default": "None"
+            },
+            {
+              "name": "opened_at",
+              "type": "datetime | None",
+              "default": "None"
+            },
+            {
+              "name": "opened_by",
+              "type": "str | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "SubmissionModeUpdate",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Switch a package between informal and sealed submissions.",
+          "fields": [
+            {
+              "name": "mode",
+              "type": "Literal['informal', 'sealed']"
+            },
+            {
+              "name": "dual_opening",
+              "type": "bool",
+              "default": "False"
+            }
+          ]
+        },
+        {
+          "class_name": "SealedSubmission",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "A received sealed submission: who and when, never what.",
+          "fields": [
+            {
+              "name": "bid_id",
+              "type": "UUID"
+            },
+            {
+              "name": "company_name",
+              "type": "str"
+            },
+            {
+              "name": "received_at",
+              "type": "datetime"
+            },
+            {
+              "name": "sha256",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "class_name": "SealedStatusResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Sealed state of a package on the server clock.",
+          "fields": [
+            {
+              "name": "package_id",
+              "type": "UUID"
+            },
+            {
+              "name": "mode",
+              "type": "str"
+            },
+            {
+              "name": "state",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "dual_opening",
+              "type": "bool",
+              "default": "False"
+            },
+            {
+              "name": "deadline_utc",
+              "type": "datetime | None",
+              "default": "None"
+            },
+            {
+              "name": "server_now",
+              "type": "datetime"
+            },
+            {
+              "name": "deadline_passed",
+              "type": "bool",
+              "default": "False"
+            },
+            {
+              "name": "first_approver_id",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "first_approved_at",
+              "type": "datetime | None",
+              "default": "None"
+            },
+            {
+              "name": "opened_at",
+              "type": "datetime | None",
+              "default": "None"
+            },
+            {
+              "name": "opened_by",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "submissions",
+              "type": "list[SealedSubmission]"
+            }
+          ]
+        },
+        {
+          "class_name": "BidIntegrityResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Recomputed digest of a bid against the digest on its receipt.",
+          "fields": [
+            {
+              "name": "bid_id",
+              "type": "UUID"
+            },
+            {
+              "name": "receipt_sha256",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "current_sha256",
+              "type": "str"
+            },
+            {
+              "name": "received_at",
+              "type": "datetime | None",
+              "default": "None"
+            },
+            {
+              "name": "intact",
+              "type": "bool"
             }
           ]
         },
@@ -266271,6 +266760,21 @@
             {
               "name": "bid_amount",
               "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "sealed",
+              "type": "bool",
+              "default": "False"
+            },
+            {
+              "name": "receipt_sha256",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "received_at",
+              "type": "datetime | None",
               "default": "None"
             },
             {
@@ -276072,10 +276576,10 @@
     },
     {
       "name": "bim",
-      "ts_files": 135,
+      "ts_files": 140,
       "css_files": 0,
-      "test_files": 49,
-      "total_files": 136
+      "test_files": 51,
+      "total_files": 141
     },
     {
       "name": "bim_requirements",
@@ -276940,10 +277444,10 @@
     },
     {
       "name": "procurement_concept",
-      "ts_files": 24,
+      "ts_files": 25,
       "css_files": 0,
       "test_files": 3,
-      "total_files": 24
+      "total_files": 25
     },
     {
       "name": "progress",
@@ -277171,10 +277675,10 @@
     },
     {
       "name": "settings",
-      "ts_files": 38,
+      "ts_files": 42,
       "css_files": 0,
-      "test_files": 13,
-      "total_files": 38
+      "test_files": 15,
+      "total_files": 42
     },
     {
       "name": "setup",
@@ -277325,10 +277829,10 @@
     },
     {
       "name": "tendering",
-      "ts_files": 23,
+      "ts_files": 24,
       "css_files": 0,
       "test_files": 8,
-      "total_files": 23
+      "total_files": 24
     },
     {
       "name": "timeline",
@@ -277476,7 +277980,9 @@
       "projects",
       "users"
     ],
-    "backup": [],
+    "backup": [
+      "tendering"
+    ],
     "bcf": [
       "bim_hub",
       "clash",
@@ -278599,6 +279105,7 @@
       "takeoff",
       "tasks",
       "teams",
+      "tendering",
       "transmittals",
       "users"
     ],
@@ -278987,14 +279494,14 @@
   "statistics": {
     "backend_modules": 215,
     "modules_with_manifests": 213,
-    "total_models": 788,
-    "total_columns": 9172,
+    "total_models": 792,
+    "total_columns": 9202,
     "total_relationships": 240,
-    "total_routes": 4627,
-    "total_schemas": 4120,
-    "total_python_files": 2810,
+    "total_routes": 4634,
+    "total_schemas": 4126,
+    "total_python_files": 2813,
     "frontend_features": 209,
-    "frontend_ts_files": 3606,
+    "frontend_ts_files": 3617,
     "frontend_backend_mapped": 187
   },
   "frontend_backend_mapping": {
