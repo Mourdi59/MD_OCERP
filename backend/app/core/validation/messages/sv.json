@@ -1296,5 +1296,19 @@
       "fail": "Exporten med försäljningspriser avviker från redigerarens summa med {gap}, mer än toleransen {tolerance}",
       "suggestion": "Granska avrundningen i exportförhandsvisningen eller höj toleransen för denna kalkyl"
     }
+  },
+  "pakistan": {
+    "item_classified": {
+      "fail": "Post {ordinal} saknar klassificeringskod och kan därför inte grupperas under den arbetsklass den tillhör",
+      "suggestion": "Tilldela posten en klassificeringskod (MasterFormat är standard för Pakistan) så att mängderna summeras per arbetsklass"
+    },
+    "sales_tax_line_present": {
+      "fail": "Fakturan saknar en rad för försäljningsskatt",
+      "suggestion": "Lägg till försäljningsskatten som en egen rad efter delsumman: provinsskatten på tjänster för ett byggkontrakt, eller den federala försäljningsskatten på varor för en leverans"
+    },
+    "sales_tax_rate_known": {
+      "fail": "Raden för försäljningsskatt tar ut {percent} procent, vilket inte är en sats som gäller för byggande i Pakistan",
+      "suggestion": "Kontrollera satsen för provinsen och betalaren, till exempel 16 procent i Punjab eller 15 procent i Sindh, en sänkt sats för offentliga anläggningsarbeten, eller 18 procent federal försäljningsskatt på varor"
+    }
   }
 }
