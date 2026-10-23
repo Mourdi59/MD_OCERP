@@ -9,7 +9,7 @@ reasoned change of one rule outcome of a snapshot. Both CASCADE with the
 project. Every step is inspector-guarded.
 
 Revision ID: v200_procurement_rule_snapshot
-Revises: v199_subcontractor_contact_link
+Revises: v200_tendering_sealed_submissions
 Create Date: 2026-10-22
 """
 
@@ -23,7 +23,7 @@ from alembic import op
 from app.database import GUID
 
 revision: str = "v200_procurement_rule_snapshot"
-down_revision: str | Sequence[str] | None = "v199_subcontractor_contact_link"
+down_revision: str | Sequence[str] | None = "v200_tendering_sealed_submissions"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
