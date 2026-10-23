@@ -279,7 +279,7 @@ export function BidPortalPage() {
                 <p>
                   {t('tendering.sealed.receipt_received', {
                     defaultValue: 'Received {{date}}',
-                    date: v.received_at ? new Date(v.received_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'medium' }) : '',
+                    date: v.received_at ? formatDateValue(v.received_at, { dateStyle: 'medium', timeStyle: 'medium' }) : '',
                   })}
                 </p>
                 <p className="flex flex-wrap items-center gap-2">

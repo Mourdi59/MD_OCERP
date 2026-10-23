@@ -334,7 +334,7 @@ async def seed_procurement_concept_demo(session: AsyncSession, project_ids: Iter
             continue
         totals["projects"] += 1
         for k, v in counts.items():
-            totals[k] += v
+            totals[k] = totals.get(k, 0) + v
     return totals
 
 

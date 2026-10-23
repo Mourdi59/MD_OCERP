@@ -18,6 +18,7 @@ import { Copy, Lock, LockOpen, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { Badge, Button, Card, type BadgeVariant } from '@/shared/ui';
 import { apiPatch } from '@/shared/lib/api';
 import { copyToClipboard } from '@/shared/lib/browser';
+import { formatDateValue } from '@/shared/lib/formatters';
 import { useToastStore } from '@/stores/useToastStore';
 
 import {
@@ -36,7 +37,7 @@ import {
 export function localDateTime(iso: string | null | undefined): string {
   if (!iso) return '';
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  return Number.isNaN(d.getTime()) ? iso : formatDateValue(iso, { dateStyle: 'medium', timeStyle: 'short' });
 }
 
 /** ISO instant -> value of a datetime-local input (local wall clock). */

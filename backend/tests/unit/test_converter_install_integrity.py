@@ -96,7 +96,8 @@ def _zip_bytes(files: dict[str, bytes]) -> bytes:
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for name, data in files.items():
-            zf.writestr(name, data)
+            # A fixed timestamp keeps the digest stable when two builds straddle a second boundary.
+            zf.writestr(zipfile.ZipInfo(name, date_time=(2026, 1, 1, 0, 0, 0)), data, zipfile.ZIP_DEFLATED)
     return buf.getvalue()
 
 
