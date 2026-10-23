@@ -53,7 +53,7 @@ export function TextSizeSetting() {
   return (
     <div className="mt-5 border-t border-border-light pt-4">
       <p id={labelId} className="text-sm font-medium text-content-primary">
-        {t('settings.text_size_title', { defaultValue: 'Text size' })}
+        {t('settings.window_zoom_title', { defaultValue: 'Window zoom' })}
       </p>
       {canSetUiScale ? (
         <>

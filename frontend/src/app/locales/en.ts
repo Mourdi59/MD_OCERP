@@ -45377,6 +45377,7 @@ const resource = {
     "settings.style_text_larger": "Larger, 125%",
     "settings.style_text_largest": "Largest, 137.5%",
     "settings.style_text_preview": "The quick brown fox: 1,250.00 m3 of concrete, C30/37.",
+    "settings.window_zoom_title": "Window zoom",
     // --- /Settings → Company & documents ---
     // --- AI dock: docked assistant and human-confirmed AI actions ---
     "chat.dock.choose_project": "Choose a project",

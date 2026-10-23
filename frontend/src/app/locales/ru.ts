@@ -53725,6 +53725,7 @@ const resource = {
     "settings.style_text_larger": "Ещё крупнее, 125%",
     "settings.style_text_largest": "Максимальный, 137,5%",
     "settings.style_text_preview": "Пример текста: 1 250,00 м3 бетона, C30/37.",
+    "settings.window_zoom_title": "Масштаб окна",
     // --- /Settings → Company & documents ---
     "approvalRoutes.kind_change_order": "Распоряжение об изменении",
     "approvalRoutes.kind_contract": "Договор",

@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Tip:** This file is long. Use your browser's **Find** (Ctrl+F) to jump to a version number, or see the [Releases page](https://github.com/datadrivenconstruction/OpenConstructionERP/releases) for a per-release view with download links.
 
+## [Unreleased]
+
+### Added
+
+- BIM models can be grouped by category, level, type, family, material, IFC class or any parameter, two levels deep, with counts, length, area and volume per group, isolate and colour by group, and CSV or Excel export.
+- Property filters on the BIM page (equals, contains, not, range) show as chips and are kept in the `?bf=` link, so a shared link opens the same view.
+- Sealed tender submissions: bids stay hidden from staff, exports and backups until an audited opening after the deadline, with an optional two-person opening and a SHA-256 receipt for every bidder.
+- A procurement procedure keeps a frozen snapshot of the rules it was decided on, and overriding a rule outcome needs a written reason that is recorded.
+- Settings: workspace logo with an optional dark variant, a free company colour checked for contrast, start page after sign-in, first day of week, text size from 87.5% to 137.5%, and personal motion and contrast options.
+
+### Fixed
+
+- Linux and macOS converter packages are pinned to fresh digests, so installs on those systems work again.
+- IFC files exported from authoring tools now bring their area, volume, length and height quantities.
+- A Revit file the converter rejects is reported as an error instead of asking for a converter.
+- Saved BIM groups no longer show zero elements.
+- The desktop zoom setting is now called Window zoom, so it is not confused with the new text size.
+
 ## [18.8.2] - 2026-10-22
 
 ### Added

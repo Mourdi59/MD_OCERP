@@ -53276,6 +53276,7 @@ const resource = {
     "settings.style_text_larger": "Größer, 125 %",
     "settings.style_text_largest": "Am größten, 137,5 %",
     "settings.style_text_preview": "Beispieltext: 1.250,00 m3 Beton, C30/37.",
+    "settings.window_zoom_title": "Fensterzoom",
     // --- /Settings → Company & documents ---
     "approvalRoutes.kind_change_order": "Änderungsauftrag",
     "approvalRoutes.kind_contract": "Vertrag",
