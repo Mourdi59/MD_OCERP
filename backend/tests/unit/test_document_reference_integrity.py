@@ -85,6 +85,7 @@ UNCONSTRAINED_DOCUMENT_REFERENCES: dict[str, tuple[str, ...]] = {
         "AiTakeoffRun.document_id",
         "TakeoffDocument.source_document_id",
         "TakeoffMeasurement.document_id",
+        "TakeoffMeasurement.drawing_document_id",
     ),
     "tax_withholding": ("PartyTaxStatus.evidence_document_id",),
     "temporary_works": (

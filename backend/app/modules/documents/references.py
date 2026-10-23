@@ -272,6 +272,14 @@ DOCUMENT_REFERENCES: tuple[DocumentReference, ...] = (
         "unlinks",
     ),
     DocumentReference(
+        "takeoff",
+        "TakeoffMeasurement",
+        "oe_takeoff_measurement",
+        "drawing_document_id",
+        "scalar",
+        "unlinks",
+    ),
+    DocumentReference(
         "tax_withholding",
         "PartyTaxStatus",
         "oe_tax_withholding_party",
