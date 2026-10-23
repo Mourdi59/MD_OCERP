@@ -42,7 +42,7 @@ import {
   Plus,
 } from 'lucide-react';
 import type { BIMElementGroup } from './api';
-import BIMPropertyFilterBar, { type FilterChip } from './BIMPropertyFilterBar';
+import BIMPropertyFilterBar, { type FilterChip as PropertyFilterChip } from './BIMPropertyFilterBar';
 import {
   decodeUrlFilter,
   encodeUrlFilter,
@@ -949,7 +949,7 @@ export default function BIMFilterPanel({
     state.types.size > 0 ||
     (state.conditions?.length ?? 0) > 0;
 
-  const baseChips: FilterChip[] = [
+  const baseChips: PropertyFilterChip[] = [
     ...(state.search
       ? [
           {

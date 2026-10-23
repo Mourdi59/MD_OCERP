@@ -303,6 +303,8 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
     # Every project route of the module; the framework agreement routes are tenant scoped, see _NOT_ROUTER_GATED.
     "procurement_concept": [
         "pinned_catalogue",
+        "rule_snapshots",
+        "override_rule",
         "get_concept",
         "set_concept",
         "concept_action",
@@ -738,6 +740,11 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
     # excluded in _NOT_ROUTER_GATED below.
     "tendering": [
         "get_package",
+        "set_submission_mode",
+        "get_sealed_status",
+        "open_sealed_bids",
+        "validate_sealed_package",
+        "check_bid_integrity",
         "get_package_scope",
         "update_package",
         "create_bid",

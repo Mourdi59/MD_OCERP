@@ -201,7 +201,7 @@ export default function BIMGroupByPanel({
 
   const exportCsv = useCallback(() => {
     const csv = groupsToCsv(tree, exportLabels, nested);
-    triggerDownload(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }), `${fileBase}.csv`);
+    triggerDownload(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }), `${fileBase}.csv`);
   }, [tree, exportLabels, nested, fileBase]);
 
   const exportXlsx = useCallback(async () => {

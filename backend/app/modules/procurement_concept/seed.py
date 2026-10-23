@@ -648,7 +648,43 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     for s in soundings:
         session.add(s)
     await session.flush()
-    return {"packages": len(awards), "candidates": candidates, "soundings": len(soundings)}
+    shots = await _seed_rule_snapshots(session, project_id, concept, catalogue, awards, main)
+    return {"packages": len(awards), "candidates": candidates, "soundings": len(soundings), "snapshots": shots}
+
+
+async def _seed_rule_snapshots(
+    session: AsyncSession,
+    project_id: uuid.UUID,
+    concept: Any,
+    catalogue: Any,
+    awards: list[Any],
+    main: Any,
+) -> int:
+    """Freeze the rules each set procedure was chosen under, as the service does, and record one reasoned override."""
+    from app.modules.procurement_concept.models import RuleOverride
+    from app.modules.procurement_concept.service import ProcurementConceptService
+
+    service = ProcurementConceptService(session)
+    shots = {
+        a.id: await service._take_snapshot(project_id, concept, catalogue, a, None) for a in awards if a.procedure_code
+    }
+    shot = shots.get(main.id) or next(iter(shots.values()), None)
+    outcomes = (shot.result or {}).get("outcomes", []) if shot is not None else []
+    first = next((o for o in outcomes if o.get("outcome") in ("warn", "fail")), outcomes[0] if outcomes else None)
+    if first is not None:
+        session.add(
+            RuleOverride(
+                project_id=project_id,
+                snapshot_id=shot.id,
+                rule_code=first["rule_code"],
+                original_outcome=first["outcome"],
+                override_outcome="pass" if first["outcome"] != "pass" else "warn",
+                reason="Reviewed by the procurement lead: the evidence on file covers this rule for the package.",
+                overridden_at=datetime.now(UTC),
+            )
+        )
+        await session.flush()
+    return len(shots)
 
 
 def _shipped_catalogues() -> list:

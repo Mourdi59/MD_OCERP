@@ -289,6 +289,7 @@ async def test_get_anomalies_empty_project() -> None:
 def _make_bid(total: float, company: str) -> SimpleNamespace:
     return SimpleNamespace(
         id=uuid.uuid4(),
+        package_id=uuid.uuid4(),
         company_name=company,
         currency="EUR",
         total_amount=str(total),
@@ -306,6 +307,8 @@ async def test_get_bid_analysis_spread_and_vendors() -> None:
         _make_bid(500_000, "Sigma"),  # outlier by IQR rule
     ]
     service.session = SimpleNamespace(execute=AsyncMock(return_value=_FakeExecuteResult(rows=bids)))
+    service._closed_sealed_ids = AsyncMock(return_value=set())
+    service._closed_sealed_ids = AsyncMock(return_value=set())
 
     resp = await service.get_bid_analysis(PROJECT_ID)
     assert resp.spread.sample_size == 5

@@ -771,12 +771,12 @@ class TenderingService:
 
     async def _sealing(self, package_id: uuid.UUID) -> Any:
         """The sealing row of a package; None for informal or a session-less test double."""
-        if not hasattr(self.session, "execute"):
+        if not hasattr(getattr(self, "session", None), "execute"):
             return None
         return await SealedTenderService(self.session).get(package_id)
 
     async def _closed_sealed_ids(self, package_ids: set[uuid.UUID]) -> set[uuid.UUID]:
-        if not hasattr(self.session, "execute"):
+        if not hasattr(getattr(self, "session", None), "execute"):
             return set()
         return await SealedTenderService(self.session).closed_package_ids(package_ids)
 
