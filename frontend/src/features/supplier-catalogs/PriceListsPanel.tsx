@@ -269,7 +269,7 @@ export function PriceListsPanel({ vendors }: { vendors: Vendor[] }) {
   });
   const lists = listsQ.data ?? [];
   useEffect(() => {
-    if (lists.length && !lists.some((l) => l.id === priceListId)) setPriceListId(lists[0].id);
+    if (lists.length && !lists.some((l) => l.id === priceListId)) setPriceListId(lists[0]?.id ?? '');
     if (!lists.length) setPriceListId('');
   }, [lists, priceListId]);
 

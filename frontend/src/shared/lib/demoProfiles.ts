@@ -25,13 +25,13 @@ const BASE = ['grp_overview', 'grp_documents', 'grp_communication'] as const;
 export const DEMO_PROFILES: readonly DemoProfile[] = [
   {
     slug: 'consultancy-riyadh',
-    appearance: { accent: 'violet', font: 'inter', density: 'comfortable', radius: 'round' },
+    appearance: { accent: 'violet', font: 'inter', density: 'comfortable', radius: 'round', text: 'default' },
     groups: [...BASE, 'grp_drawings', 'grp_cost_data', 'grp_estimating', 'grp_scheduling', 'grp_commercial', 'grp_controls_bi'],
     stem: 'demo_profiles.consultancy',
   },
   {
     slug: 'contractor-jeddah',
-    appearance: { accent: 'amber', font: 'ibm-plex-sans', density: 'compact', radius: 'sharp' },
+    appearance: { accent: 'amber', font: 'ibm-plex-sans', density: 'compact', radius: 'sharp', text: 'default' },
     groups: [
       ...BASE,
       'grp_takeoff',
@@ -50,13 +50,13 @@ export const DEMO_PROFILES: readonly DemoProfile[] = [
   },
   {
     slug: 'site-development-dammam',
-    appearance: { accent: 'emerald', font: 'source-sans-3', density: 'comfortable', radius: 'standard' },
+    appearance: { accent: 'emerald', font: 'source-sans-3', density: 'comfortable', radius: 'standard', text: 'default' },
     groups: [...BASE, 'grp_takeoff', 'grp_reality', 'grp_estimating', 'grp_scheduling', 'grp_field', 'grp_site', 'grp_esg', 'grp_handover'],
     stem: 'demo_profiles.site_development',
   },
   {
     slug: 'full-showcase-riyadh',
-    appearance: { accent: 'blue', font: 'system', density: 'comfortable', radius: 'standard' },
+    appearance: { accent: 'blue', font: 'system', density: 'comfortable', radius: 'standard', text: 'default' },
     groups: null,
     stem: 'demo_profiles.full_showcase',
   },

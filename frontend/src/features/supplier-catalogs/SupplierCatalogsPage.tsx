@@ -630,6 +630,7 @@ function createLabel(tab: Tab, t: (k: string, opts?: Record<string, unknown>) =>
     // CONN-46: the procurement tab is a hand-off banner with no create flow
     // here (records belong to /procurement), so it never reaches a button.
     case 'procurement':
+    case 'pricelists':
       return '';
   }
 }
