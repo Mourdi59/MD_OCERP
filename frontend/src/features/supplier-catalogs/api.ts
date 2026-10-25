@@ -919,7 +919,7 @@ export interface ItemAttachment {
 }
 
 export function listVendorPriceLists(vendorId: string): Promise<PriceList[]> {
-  return apiGet<PriceList[]>(`/v1/supplier-catalogs/vendors/${vendorId}/price-lists`);
+  return apiGet<{ items: PriceList[] }>(`/v1/supplier-catalogs/vendors/${vendorId}/price-lists`).then((r) => r.items);
 }
 
 export function listPriceListEntries(
@@ -965,7 +965,9 @@ export function commitPriceListImport(
 }
 
 export function listVendorDiscounts(vendorId: string): Promise<DiscountAgreement[]> {
-  return apiGet<DiscountAgreement[]>(`/v1/supplier-catalogs/vendors/${vendorId}/discounts`);
+  return apiGet<{ items: DiscountAgreement[] }>(`/v1/supplier-catalogs/vendors/${vendorId}/discounts`).then(
+    (r) => r.items,
+  );
 }
 
 export function createVendorDiscount(vendorId: string, data: CreateDiscountPayload): Promise<DiscountAgreement> {
@@ -984,7 +986,9 @@ export function deleteVendorDiscount(id: string): Promise<void> {
 }
 
 export function listItemAttachments(itemId: string): Promise<ItemAttachment[]> {
-  return apiGet<ItemAttachment[]>(`/v1/supplier-catalogs/catalog-items/${itemId}/attachments`);
+  return apiGet<{ items: ItemAttachment[] }>(`/v1/supplier-catalogs/catalog-items/${itemId}/attachments`).then(
+    (r) => r.items,
+  );
 }
 
 export function addItemAttachment(

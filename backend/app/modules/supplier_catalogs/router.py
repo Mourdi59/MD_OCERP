@@ -26,12 +26,14 @@ from app.modules.supplier_catalogs.schemas import (
     CatalogItemUpdate,
     CommodityCodeResponse,
     DiscountAgreementCreate,
+    DiscountAgreementListResponse,
     DiscountAgreementResponse,
     DiscountAgreementUpdate,
     GoodsReceiptCreate,
     GRResponse,
     ImportPresetResponse,
     ItemAttachmentCreate,
+    ItemAttachmentListResponse,
     ItemAttachmentResponse,
     ItemCategoryCreate,
     ItemCategoryResponse,
@@ -48,6 +50,7 @@ from app.modules.supplier_catalogs.schemas import (
     PriceListImportCommitResult,
     PriceListImportPreview,
     PriceListImportResult,
+    PriceListListResponse,
     PriceListResponse,
     PRResponse,
     ScorecardRecomputeRequest,
@@ -507,15 +510,23 @@ async def commit_price_list_import(
 
 @router.get(
     "/vendors/{vendor_id}/price-lists",
-    response_model=list[PriceListResponse],
+    response_model=PriceListListResponse,
     dependencies=[Depends(RequirePermission("supplier_catalogs.catalog.read"))],
 )
 async def list_vendor_price_lists(
     vendor_id: uuid.UUID,
     user_id: CurrentUserId,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=200, ge=1, le=1000),
     service: SupplierCatalogsService = Depends(_svc),
-) -> list[PriceListResponse]:
-    return await service.list_price_lists(vendor_id)
+) -> PriceListListResponse:
+    rows = await service.list_price_lists(vendor_id)
+    return PriceListListResponse(
+        items=[PriceListResponse.model_validate(p) for p in rows[offset : offset + limit]],
+        total=len(rows),
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.get(
@@ -585,15 +596,23 @@ async def validate_price_list(
 
 @router.get(
     "/vendors/{vendor_id}/discounts",
-    response_model=list[DiscountAgreementResponse],
+    response_model=DiscountAgreementListResponse,
     dependencies=[Depends(RequirePermission("supplier_catalogs.discount.read"))],
 )
 async def list_vendor_discounts(
     vendor_id: uuid.UUID,
     user_id: CurrentUserId,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=200, ge=1, le=1000),
     service: SupplierCatalogsService = Depends(_svc),
-) -> list[DiscountAgreementResponse]:
-    return [DiscountAgreementResponse.model_validate(a) for a in await service.list_discounts(vendor_id)]
+) -> DiscountAgreementListResponse:
+    rows = await service.list_discounts(vendor_id)
+    return DiscountAgreementListResponse(
+        items=[DiscountAgreementResponse.model_validate(a) for a in rows[offset : offset + limit]],
+        total=len(rows),
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.post(
@@ -648,15 +667,17 @@ async def delete_vendor_discount(
 
 @router.get(
     "/catalog-items/{item_id}/attachments",
-    response_model=list[ItemAttachmentResponse],
+    response_model=ItemAttachmentListResponse,
     dependencies=[Depends(RequirePermission("supplier_catalogs.catalog.read"))],
 )
 async def list_item_attachments(
     item_id: uuid.UUID,
     user_id: CurrentUserId,
     session: SessionDep,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=200, ge=1, le=1000),
     service: SupplierCatalogsService = Depends(_svc),
-) -> list[ItemAttachmentResponse]:
+) -> ItemAttachmentListResponse:
     """Datasheets and drawings of an item, only those in projects the caller can open."""
     allowed: dict[uuid.UUID, bool] = {}
     out = []
@@ -669,7 +690,7 @@ async def list_item_attachments(
                 allowed[att.project_id] = False
         if allowed[att.project_id]:
             out.append(ItemAttachmentResponse.model_validate(att))
-    return out
+    return ItemAttachmentListResponse(items=out[offset : offset + limit], total=len(out), offset=offset, limit=limit)
 
 
 @router.post(

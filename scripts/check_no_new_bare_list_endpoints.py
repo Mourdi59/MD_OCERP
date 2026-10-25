@@ -110,6 +110,17 @@ CANNOT_TRUNCATE: frozenset[str] = frozenset(
         # nothing could reach, while advertising a truncation this endpoint
         # must never have.
         "rebar_schedule/router.py::cutting_summary",
+        # A fixed taxonomy, not a register. PRESETS in supplier_catalogs/price_import.py
+        # is a dict compiled into the source (generic, SAP condition export),
+        # extended by a developer and never at runtime. The route returns every
+        # value of it with no query and no LIMIT, and the import dialog has to
+        # offer every preset, so a short answer would hide a mapping.
+        "supplier_catalogs/router.py::list_import_presets",
+        # The item category taxonomy that a discount agreement is scoped to. It
+        # is a short code list read whole into a picker; a page of it would
+        # leave categories that cannot be chosen, a correctness bug rather than
+        # a short page. The query is capped at 2000 rows only as a safety stop.
+        "supplier_catalogs/router.py::list_categories",
         # A fixed registry of EN 16931 country profiles the build supports.
         # The list is compiled from profiles.py, gains an entry when a developer
         # adds a new country profile, and is never user-expandable. The route

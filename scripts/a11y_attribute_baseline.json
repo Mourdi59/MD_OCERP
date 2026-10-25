@@ -3,6 +3,7 @@
  "allowlist": {
   "untranslated_attributes": {
    "app/layout/CustomBranding.tsx::title::OpenConstructionERP": "product name - identical in every language; a translator meeting it cold would render it",
+   "features/boq/grid/LinkedFormulaPanel.tsx::placeholder::volume + type_bp_volume": "formula sample - quantity and parameter identifiers the user types verbatim; translating them would break the formula",
    "features/dashboard/DashboardPage.tsx::alt::DataDrivenConstruction": "company name - identical in every language",
    "features/modules/RequestCustomModuleDialog.tsx::alt::DataDrivenConstruction": "company name - identical in every language"
   }

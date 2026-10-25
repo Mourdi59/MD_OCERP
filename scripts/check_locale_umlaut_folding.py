@@ -98,8 +98,9 @@ _VALUE = re.compile(r'^\s*"(?:[^"\\]|\\.)*"\s*:\s*("(?:[^"\\]|\\.)*")')
 #: An interpolation placeholder is an identifier too, carried inside the
 #: value: `{{gross}} - {{openings}} Openings =` names the variable the code
 #: passes in, and spelling it `{{groß}}` would print the raw braces. Cut out
-#: before counting, like keys are.
-_PLACEHOLDER = re.compile(r"\{\{[^{}]*\}\}")
+#: before counting, like keys are. The backend validation messages use the
+#: single-brace form `{gross}`, the frontend bundles the double-brace one.
+_PLACEHOLDER = re.compile(r"\{\{[^{}]*\}\}|\{[^{}]*\}")
 
 
 def _fold(word: str) -> set[str]:

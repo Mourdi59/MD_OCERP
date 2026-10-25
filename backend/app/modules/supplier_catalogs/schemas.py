@@ -1089,3 +1089,30 @@ class PeppolIngestResult(BaseModel):
     currency: str
     exception_reason: str | None = None
     peppol_message_id: str | None = None
+
+
+class PriceListListResponse(BaseModel):
+    """One page of a vendor's price lists; ``total`` counts every list of the vendor."""
+
+    items: list[PriceListResponse]
+    total: int
+    offset: int = 0
+    limit: int = 200
+
+
+class DiscountAgreementListResponse(BaseModel):
+    """One page of a vendor's discount agreements; ``total`` counts every agreement of the vendor."""
+
+    items: list[DiscountAgreementResponse]
+    total: int
+    offset: int = 0
+    limit: int = 200
+
+
+class ItemAttachmentListResponse(BaseModel):
+    """One page of the attachments the caller may open; ``total`` counts the visible ones."""
+
+    items: list[ItemAttachmentResponse]
+    total: int
+    offset: int = 0
+    limit: int = 200

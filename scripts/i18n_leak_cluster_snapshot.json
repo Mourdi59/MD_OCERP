@@ -2049,5 +2049,13 @@
     ],
     "key_count_at_seed": 3,
     "note": "Total is the native word in each of these languages"
+  },
+  {
+    "locale_set": [
+      "hr",
+      "it"
+    ],
+    "key_count_at_seed": 3,
+    "note": "Formula is the native word in Croatian and Italian (boq.apply_tab_formula, boq.column_formula, boq.measurement.formula); a shared word, not a leak."
   }
 ]

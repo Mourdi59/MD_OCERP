@@ -1868,5 +1868,10 @@
     "en_value": "SHA-256",
     "note": "hash algorithm name, a standard identifier written the same way in every locale including ru",
     "reason_category": "standard_code"
+  },
+  "supplier_catalogs.f_gtin": {
+    "en_value": "GTIN / EAN",
+    "note": "GS1 trade item number and EAN barcode standard codes, written the same way in every locale including ru",
+    "reason_category": "standard_code"
   }
 }
