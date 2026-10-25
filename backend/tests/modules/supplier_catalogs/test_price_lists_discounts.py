@@ -536,8 +536,9 @@ async def test_item_document_of_a_foreign_project_is_refused_and_hidden(session:
     )
     session.add(foreign)
     await session.flush()
-    listed = await r.list_item_attachments(item.id, "u1", session, svc)
-    assert [a.document_id for a in listed] == [mine_doc]
+    listed = await r.list_item_attachments(item.id, "u1", session, offset=0, limit=200, service=svc)
+    assert [a.document_id for a in listed.items] == [mine_doc]
+    assert listed.total == 1
     with pytest.raises(HTTPException) as exc:
         await r.delete_item_attachment(item.id, foreign.id, "u1", session, svc)
     assert exc.value.status_code == 404
