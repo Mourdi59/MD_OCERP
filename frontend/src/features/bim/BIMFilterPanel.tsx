@@ -55,6 +55,7 @@ import { useDisplayQuantity } from '@/shared/hooks/useDisplayQuantity';
 import {
   bucketOf,
   isNoiseCategory,
+  isHiddenByBuildingsOnly,
   prettifyCategoryName,
   BUCKETS,
   type BIMCategoryBucket,
@@ -701,6 +702,8 @@ export default function BIMFilterPanel({
 
     for (const el of elements) {
       if (isolationSet && !isolationSet.has(el.id)) continue;
+      // A Revit family type is a definition, not a building element.
+      if (state.buildingsOnly && el.is_type_definition) continue;
       const tpe = getTypeKey(el, format);
       const isNoise = isNoiseCategory(tpe);
       if (!matchesSearch(el)) continue;
@@ -838,7 +841,7 @@ export default function BIMFilterPanel({
       const predicate = (el: BIMElementData): boolean => {
         const tpe = getTypeKey(el, format);
         // Buildings-only toggle hides annotation/analytical noise
-        if (s.buildingsOnly && isNoiseCategory(tpe)) return false;
+        if (s.buildingsOnly && isHiddenByBuildingsOnly(el, tpe)) return false;
         if (conditionIds && !conditionIds.has(el.id)) return false;
         // Storey filter (empty set = show all).  Elements without a storey
         // are always visible - hiding them when the user picks a specific
@@ -986,7 +989,7 @@ export default function BIMFilterPanel({
     return elements.filter((el) => {
       if (isolationSet && !isolationSet.has(el.id)) return false;
       const tpe = getTypeKey(el, format);
-      if (state.buildingsOnly && isNoiseCategory(tpe)) return false;
+      if (state.buildingsOnly && isHiddenByBuildingsOnly(el, tpe)) return false;
       if (conditionIds && !conditionIds.has(el.id)) return false;
       // Mirror applyFilters()/the 3D viewport: a storey filter only narrows
       // elements that actually carry a storey, so storey-less elements stay
