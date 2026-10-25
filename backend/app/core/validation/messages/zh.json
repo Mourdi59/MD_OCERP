@@ -1310,5 +1310,22 @@
       "fail": "销售税行按{percent}%计税，这不是巴基斯坦建筑业适用的税率",
       "suggestion": "请按省份和付款方核对税率，例如旁遮普省16%、信德省15%，政府土木工程适用减免税率，或商品适用18%联邦销售税"
     }
+  },
+  "supplier_catalogs": {
+    "price_list_not_found": "未找到价目表",
+    "catalog_item_not_found": "未找到目录项",
+    "entry_not_found": "所选供应商价格不存在",
+    "entry_other_vendor": "所选价格属于其他供应商的价目表",
+    "price_list_expired": "价目表“{name}”已于 {valid_to} 过期。请导入最新价目表，或手动录入协商价格。",
+    "import_unreadable": "无法将该文件作为价目表读取 ({reason})",
+    "import_needs_price_column": "请选择价格所在的列",
+    "duplicate_vendor_sku": "以下供应商料号在文件中出现多次: {skus}",
+    "valid_to_before_valid_from": "结束日期早于开始日期",
+    "category_not_found": "未找到项目分类",
+    "net_above_gross": "净价 {net} 高于标价 {gross}",
+    "discount_not_found": "未找到折扣协议",
+    "discount_basis": "请填写折扣百分比或固定净价（固定净价需要指定项目）",
+    "attachment_not_found": "未找到附件",
+    "price_missing": "清单行“{line}”没有当前有效价格：请输入单价或导入供应商价目表"
   }
 }

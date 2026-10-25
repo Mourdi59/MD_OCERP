@@ -1310,5 +1310,22 @@
       "fail": "Satış vergisi satırı {percent} yüzde uyguluyor; bu, Pakistan'da inşaat için geçerli bir oran değil",
       "suggestion": "Oranı eyalete ve ödeyene göre kontrol edin: örneğin Pencap'ta yüzde 16, Sind'de yüzde 15, devlet inşaat işleri için indirimli oran veya mallarda yüzde 18 federal satış vergisi"
     }
+  },
+  "supplier_catalogs": {
+    "price_list_not_found": "Fiyat listesi bulunamadı",
+    "catalog_item_not_found": "Katalog kalemi bulunamadı",
+    "entry_not_found": "Seçilen tedarikçi fiyatı mevcut değil",
+    "entry_other_vendor": "Seçilen fiyat başka bir tedarikçinin fiyat listesine ait",
+    "price_list_expired": "\"{name}\" fiyat listesinin süresi {valid_to} tarihinde doldu. Güncel listeyi içe aktarın veya anlaşılan fiyatı elle girin.",
+    "import_unreadable": "Dosya fiyat listesi olarak okunamıyor ({reason})",
+    "import_needs_price_column": "Fiyatı içeren sütunu seçin",
+    "duplicate_vendor_sku": "Bu tedarikçi stok kodları dosyada birden fazla kez geçiyor: {skus}",
+    "valid_to_before_valid_from": "Bitiş tarihi başlangıç tarihinden önce",
+    "category_not_found": "Kalem kategorisi bulunamadı",
+    "net_above_gross": "Net fiyat {net}, liste fiyatı {gross} değerinden yüksek",
+    "discount_not_found": "İskonto anlaşması bulunamadı",
+    "discount_basis": "İskonto yüzdesi veya sabit net fiyat girin (sabit net fiyat için kalem gerekir)",
+    "attachment_not_found": "Ek bulunamadı",
+    "price_missing": "\"{line}\" satırı için geçerli fiyat yok: birim fiyat girin veya tedarikçinin fiyat listesini içe aktarın"
   }
 }

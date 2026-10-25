@@ -1310,5 +1310,22 @@
       "fail": "La riga dell'imposta sulle vendite applica il {percent} per cento, che non è un'aliquota valida per l'edilizia in Pakistan",
       "suggestion": "Verificate l'aliquota in base alla provincia e al pagatore, ad esempio il 16 per cento nel Punjab o il 15 per cento nel Sindh, un'aliquota ridotta per le opere pubbliche o il 18 per cento di imposta federale sulle vendite di beni"
     }
+  },
+  "supplier_catalogs": {
+    "price_list_not_found": "Listino prezzi non trovato",
+    "catalog_item_not_found": "Articolo del catalogo non trovato",
+    "entry_not_found": "Il prezzo fornitore scelto non esiste",
+    "entry_other_vendor": "Il prezzo scelto appartiene al listino di un altro fornitore",
+    "price_list_expired": "Il listino \"{name}\" è scaduto il {valid_to}. Importa il listino aggiornato oppure inserisci a mano il prezzo concordato.",
+    "import_unreadable": "Il file non può essere letto come listino prezzi ({reason})",
+    "import_needs_price_column": "Scegli la colonna che contiene il prezzo",
+    "duplicate_vendor_sku": "Questi codici articolo del fornitore compaiono più volte nel file: {skus}",
+    "valid_to_before_valid_from": "La data di fine è precedente alla data di inizio",
+    "category_not_found": "Categoria articolo non trovata",
+    "net_above_gross": "Il prezzo netto {net} è superiore al prezzo di listino {gross}",
+    "discount_not_found": "Accordo di sconto non trovato",
+    "discount_basis": "Indica una percentuale di sconto oppure un prezzo netto fisso (il prezzo netto fisso richiede un articolo)",
+    "attachment_not_found": "Allegato non trovato",
+    "price_missing": "Nessun prezzo in vigore per la voce \"{line}\": inserisci un prezzo unitario o importa il listino del fornitore"
   }
 }
