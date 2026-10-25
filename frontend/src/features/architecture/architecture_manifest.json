@@ -22022,6 +22022,11 @@
               "default": "None"
             },
             {
+              "name": "is_type_definition",
+              "type": "bool",
+              "default": "False"
+            },
+            {
               "name": "created_at",
               "type": "datetime"
             },
@@ -24830,6 +24835,7 @@
         "cost_risk_engine.py",
         "ddc_runner.py",
         "dxf_native.py",
+        "embedding.py",
         "epd_materials.py",
         "events.py",
         "exchange_formats.py",
@@ -26030,6 +26036,12 @@
           "handler": "review_position_copilot_proposals",
           "response_model": "CopilotReviewResponse",
           "request_schema": "CopilotReviewRequest"
+        },
+        {
+          "method": "GET",
+          "path": "/boqs/{boq_id}/export/embedding-preview/",
+          "handler": "export_embedding_preview",
+          "request_schema": "BOQService"
         },
         {
           "method": "GET",
@@ -37032,6 +37044,7 @@
         "repository.py",
         "router.py",
         "schemas.py",
+        "seed.py",
         "service.py",
         "validators.py",
         "wh347.py"
@@ -38803,7 +38816,8 @@
         }
       ],
       "import_dependencies": [
-        "payroll"
+        "payroll",
+        "projects"
       ]
     },
     {
@@ -64661,6 +64675,11 @@
             {
               "name": "current_period",
               "type": "str | None"
+            },
+            {
+              "name": "non_adjustable_portion",
+              "type": "Decimal | None",
+              "default": "None"
             }
           ]
         },
@@ -82395,6 +82414,7 @@
         "inbox_logic.py",
         "manifest.py",
         "models.py",
+        "nav_badges.py",
         "repository.py",
         "router.py",
         "schemas.py",
@@ -82499,6 +82519,11 @@
           "path": "/inbox/{item_id}/state",
           "handler": "restore_inbox_item",
           "response_model": "InboxActionResponse"
+        },
+        {
+          "method": "GET",
+          "path": "/nav-badges/",
+          "handler": "get_nav_badges"
         }
       ],
       "schemas": [
@@ -83883,15 +83908,19 @@
         "file_approvals",
         "finance",
         "hse_advanced",
+        "ncr",
         "notifications",
         "procurement",
         "projects",
+        "punchlist",
         "qms",
         "rfi",
         "risk",
         "safety",
         "schedule",
+        "tasks",
         "teams",
+        "tendering",
         "users",
         "validation",
         "variations"
@@ -107591,6 +107620,11 @@
               "name": "project_id",
               "type": "UUID | None",
               "description": "Project open in the app, if any."
+            },
+            {
+              "name": "actions",
+              "type": "list[str]",
+              "description": "Ids of the palette actions this browser can run; the assistant may propose one."
             }
           ]
         },
@@ -170805,7 +170839,8 @@
         "router.py",
         "schemas.py",
         "seed.py",
-        "service.py"
+        "service.py",
+        "statssa_p0151.py"
       ],
       "manifest": {
         "name": "oe_price_index",
@@ -171026,6 +171061,12 @@
           "handler": "create_series",
           "response_model": "CostIndexSeriesResponse",
           "request_schema": "CostIndexSeriesCreate"
+        },
+        {
+          "method": "POST",
+          "path": "/import/statssa-p0151/",
+          "handler": "import_statssa_p0151",
+          "request_schema": "UploadFile"
         },
         {
           "method": "GET",
@@ -252304,11 +252345,15 @@
         "models.py",
         "peppol.py",
         "permissions.py",
+        "price_import.py",
+        "pricelist_service.py",
+        "pricing.py",
         "repository.py",
         "router.py",
         "schemas.py",
         "seed.py",
-        "service.py"
+        "service.py",
+        "validators.py"
       ],
       "manifest": {
         "name": "oe_supplier_catalogs",
@@ -252573,6 +252618,12 @@
               "annotation": "Mapped[bool]",
               "sql_type": "Boolean",
               "nullable": false
+            },
+            {
+              "name": "product_url",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
             }
           ],
           "relationships": []
@@ -252698,6 +252749,30 @@
               "name": "notes",
               "annotation": "Mapped[str | None]",
               "sql_type": "Text",
+              "nullable": true
+            },
+            {
+              "name": "net_price",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
+              "name": "discount_pct",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
+              "name": "discount_source",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "discount_agreement_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
               "nullable": true
             }
           ],
@@ -252836,6 +252911,18 @@
               "annotation": "Mapped[Decimal]",
               "sql_type": "Numeric",
               "nullable": false
+            },
+            {
+              "name": "gross_unit_price",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
+              "name": "discount_source",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
             }
           ],
           "relationships": [
@@ -253013,6 +253100,30 @@
               "annotation": "Mapped[Decimal]",
               "sql_type": "Numeric",
               "nullable": false
+            },
+            {
+              "name": "gross_unit_price",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
+              "name": "discount_pct",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
+              "name": "discount_source",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "catalog_entry_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
             }
           ],
           "relationships": [
@@ -253899,6 +254010,140 @@
             }
           ],
           "relationships": []
+        },
+        {
+          "class_name": "DiscountAgreement",
+          "tablename": "oe_supplier_catalogs_discount_agreement",
+          "docstring": "A contractor's negotiated discount on one vendor's list prices.\n\nScope narrows from the whole vendor, to one price list, to one item\ncategory, to one item. The most specific agreement in force wins (see\n``pricing.resolve_net``). An item agreement may name a fixed net price\ninstead of a percentage.",
+          "columns": [
+            {
+              "name": "vendor_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_supplier_catalogs_vendor.id"
+            },
+            {
+              "name": "price_list_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true,
+              "is_fk": true,
+              "fk_target": "oe_supplier_catalogs_price_list.id"
+            },
+            {
+              "name": "category_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true,
+              "is_fk": true,
+              "fk_target": "oe_supplier_catalogs_item_category.id"
+            },
+            {
+              "name": "catalog_item_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true,
+              "is_fk": true,
+              "fk_target": "oe_supplier_catalogs_catalog_item.id"
+            },
+            {
+              "name": "name",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "reference",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "discount_pct",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
+              "name": "fixed_net_price",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
+              "name": "valid_from",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "valid_to",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "active",
+              "annotation": "Mapped[bool]",
+              "sql_type": "Boolean",
+              "nullable": false
+            },
+            {
+              "name": "notes",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "Text",
+              "nullable": true
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "class_name": "CatalogItemAttachment",
+          "tablename": "oe_supplier_catalogs_item_attachment",
+          "docstring": "A datasheet or drawing of a catalog item, stored as a documents row.\n\nThe file lives in the documents module (project scoped); this row only\nlinks it, so download keeps the documents access check.",
+          "columns": [
+            {
+              "name": "catalog_item_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_supplier_catalogs_catalog_item.id"
+            },
+            {
+              "name": "document_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false
+            },
+            {
+              "name": "project_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false
+            },
+            {
+              "name": "kind",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "title",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "added_by",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            }
+          ],
+          "relationships": []
         }
       ],
       "routes": [
@@ -253958,6 +254203,12 @@
           "request_schema": "VendorRatingPayload"
         },
         {
+          "method": "GET",
+          "path": "/categories",
+          "handler": "list_categories",
+          "response_model": "list[ItemCategoryResponse]"
+        },
+        {
           "method": "POST",
           "path": "/categories",
           "handler": "create_category",
@@ -254011,6 +254262,93 @@
           "handler": "import_price_list",
           "response_model": "PriceListImportResult",
           "request_schema": "UploadFile"
+        },
+        {
+          "method": "GET",
+          "path": "/price-list-import-presets",
+          "handler": "list_import_presets",
+          "response_model": "list[ImportPresetResponse]"
+        },
+        {
+          "method": "POST",
+          "path": "/price-lists/{vendor_id}/import/preview",
+          "handler": "preview_price_list_import",
+          "response_model": "PriceListImportPreview",
+          "request_schema": "UploadFile"
+        },
+        {
+          "method": "POST",
+          "path": "/price-lists/{vendor_id}/import/commit",
+          "handler": "commit_price_list_import",
+          "response_model": "PriceListImportCommitResult",
+          "request_schema": "UploadFile"
+        },
+        {
+          "method": "GET",
+          "path": "/vendors/{vendor_id}/price-lists",
+          "handler": "list_vendor_price_lists",
+          "response_model": "list[PriceListResponse]",
+          "request_schema": "SupplierCatalogsService"
+        },
+        {
+          "method": "GET",
+          "path": "/price-lists/{price_list_id}/entries",
+          "handler": "list_price_list_entries",
+          "response_model": "PriceListEntriesResponse",
+          "request_schema": "SupplierCatalogsService"
+        },
+        {
+          "method": "GET",
+          "path": "/price-lists/{price_list_id}/validation",
+          "handler": "validate_price_list",
+          "request_schema": "SupplierCatalogsService"
+        },
+        {
+          "method": "GET",
+          "path": "/vendors/{vendor_id}/discounts",
+          "handler": "list_vendor_discounts",
+          "response_model": "list[DiscountAgreementResponse]",
+          "request_schema": "SupplierCatalogsService"
+        },
+        {
+          "method": "POST",
+          "path": "/vendors/{vendor_id}/discounts",
+          "handler": "create_vendor_discount",
+          "response_model": "DiscountAgreementResponse",
+          "request_schema": "DiscountAgreementCreate"
+        },
+        {
+          "method": "PATCH",
+          "path": "/discounts/{agreement_id}",
+          "handler": "update_vendor_discount",
+          "response_model": "DiscountAgreementResponse",
+          "request_schema": "DiscountAgreementUpdate"
+        },
+        {
+          "method": "DELETE",
+          "path": "/discounts/{agreement_id}",
+          "handler": "delete_vendor_discount",
+          "request_schema": "SupplierCatalogsService"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog-items/{item_id}/attachments",
+          "handler": "list_item_attachments",
+          "response_model": "list[ItemAttachmentResponse]",
+          "request_schema": "SupplierCatalogsService"
+        },
+        {
+          "method": "POST",
+          "path": "/catalog-items/{item_id}/attachments",
+          "handler": "add_item_attachment",
+          "response_model": "ItemAttachmentResponse",
+          "request_schema": "ItemAttachmentCreate"
+        },
+        {
+          "method": "DELETE",
+          "path": "/catalog-items/{item_id}/attachments/{attachment_id}",
+          "handler": "delete_item_attachment",
+          "request_schema": "SupplierCatalogsService"
         },
         {
           "method": "POST",
@@ -254659,6 +254997,10 @@
             {
               "name": "commodity_scheme",
               "type": "str"
+            },
+            {
+              "name": "product_url",
+              "type": "str | None"
             }
           ]
         },
@@ -254727,6 +255069,10 @@
               "name": "active",
               "type": "bool | None",
               "default": "None"
+            },
+            {
+              "name": "product_url",
+              "type": "str | None"
             }
           ]
         },
@@ -254809,6 +255155,16 @@
             {
               "name": "active",
               "type": "bool"
+            },
+            {
+              "name": "product_url",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "attachment_count",
+              "type": "int",
+              "default": "0"
             }
           ]
         },
@@ -254942,6 +255298,525 @@
               "name": "uploaded_by",
               "type": "str | None",
               "default": "None"
+            },
+            {
+              "name": "entry_count",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "expired",
+              "type": "bool",
+              "default": "False"
+            }
+          ]
+        },
+        {
+          "class_name": "PriceListEntryRow",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "One vendor price as the estimator reads it: list price, discount, net.",
+          "fields": [
+            {
+              "name": "entry_id",
+              "type": "UUID"
+            },
+            {
+              "name": "catalog_item_id",
+              "type": "UUID"
+            },
+            {
+              "name": "sku",
+              "type": "str"
+            },
+            {
+              "name": "name",
+              "type": "str"
+            },
+            {
+              "name": "unit_of_measure",
+              "type": "str"
+            },
+            {
+              "name": "vendor_sku",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "mpn",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "gtin",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "gross_price",
+              "type": "Decimal"
+            },
+            {
+              "name": "net_price",
+              "type": "Decimal"
+            },
+            {
+              "name": "discount_pct",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
+              "name": "discount_source",
+              "type": "str"
+            },
+            {
+              "name": "discount_agreement_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "min_order_qty",
+              "type": "Decimal"
+            },
+            {
+              "name": "lead_time_days",
+              "type": "int"
+            },
+            {
+              "name": "product_url",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "attachment_count",
+              "type": "int",
+              "default": "0"
+            }
+          ]
+        },
+        {
+          "class_name": "PriceListEntriesResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "price_list",
+              "type": "PriceListResponse"
+            },
+            {
+              "name": "items",
+              "type": "list[PriceListEntryRow]"
+            },
+            {
+              "name": "total",
+              "type": "int"
+            },
+            {
+              "name": "offset",
+              "type": "int"
+            },
+            {
+              "name": "limit",
+              "type": "int"
+            }
+          ]
+        },
+        {
+          "class_name": "ImportPresetResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "A column-mapping preset: the header spellings it recognises per field.",
+          "fields": [
+            {
+              "name": "name",
+              "type": "str"
+            },
+            {
+              "name": "fields",
+              "type": "dict[str, list[str]]"
+            }
+          ]
+        },
+        {
+          "class_name": "ImportRowResult",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "What the import does with one row of the file.",
+          "fields": [
+            {
+              "name": "row",
+              "type": "int"
+            },
+            {
+              "name": "action",
+              "type": "str"
+            },
+            {
+              "name": "matched_by",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "catalog_item_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "sku",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "item_name",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "vendor_sku",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "old_price",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
+              "name": "new_price",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
+              "name": "currency",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "errors",
+              "type": "list[str]"
+            }
+          ]
+        },
+        {
+          "class_name": "PriceListImportPreview",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Dry run of an import: nothing is written.",
+          "fields": [
+            {
+              "name": "preset",
+              "type": "str"
+            },
+            {
+              "name": "sheet",
+              "type": "str"
+            },
+            {
+              "name": "headers",
+              "type": "list[str]"
+            },
+            {
+              "name": "mapping",
+              "type": "dict[str, str]"
+            },
+            {
+              "name": "sample",
+              "type": "list[list[str]]"
+            },
+            {
+              "name": "total_rows",
+              "type": "int"
+            },
+            {
+              "name": "counts",
+              "type": "dict[str, int]"
+            },
+            {
+              "name": "duplicate_vendor_skus",
+              "type": "list[str]"
+            },
+            {
+              "name": "valid_from",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "valid_to",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "currencies",
+              "type": "list[str]"
+            },
+            {
+              "name": "rows",
+              "type": "list[ImportRowResult]"
+            },
+            {
+              "name": "rows_truncated",
+              "type": "bool",
+              "default": "False"
+            }
+          ]
+        },
+        {
+          "class_name": "PriceListImportCommitResult",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "price_list_id",
+              "type": "UUID"
+            },
+            {
+              "name": "counts",
+              "type": "dict[str, int]"
+            },
+            {
+              "name": "unmatched",
+              "type": "list[ImportRowResult]"
+            },
+            {
+              "name": "changed",
+              "type": "list[ImportRowResult]"
+            }
+          ]
+        },
+        {
+          "class_name": "DiscountAgreementCreate",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "A discount on the vendor's list prices.\n\nLeave ``price_list_id``, ``category_id`` and ``catalog_item_id`` empty for\nan overall discount. ``fixed_net_price`` (a net price per unit instead of a\npercentage) needs ``catalog_item_id``.",
+          "fields": [
+            {
+              "name": "name",
+              "type": "str"
+            },
+            {
+              "name": "reference",
+              "type": "str | None"
+            },
+            {
+              "name": "price_list_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "category_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "catalog_item_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "discount_pct",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
+              "name": "fixed_net_price",
+              "type": "Decimal | None"
+            },
+            {
+              "name": "valid_from",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "valid_to",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "active",
+              "type": "bool",
+              "default": "True"
+            },
+            {
+              "name": "notes",
+              "type": "str | None"
+            }
+          ]
+        },
+        {
+          "class_name": "DiscountAgreementUpdate",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Patch an agreement. The scope (price list, category, item) is fixed.",
+          "fields": [
+            {
+              "name": "name",
+              "type": "str | None"
+            },
+            {
+              "name": "reference",
+              "type": "str | None"
+            },
+            {
+              "name": "discount_pct",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
+              "name": "fixed_net_price",
+              "type": "Decimal | None"
+            },
+            {
+              "name": "valid_from",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "valid_to",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "active",
+              "type": "bool | None",
+              "default": "None"
+            },
+            {
+              "name": "notes",
+              "type": "str | None"
+            }
+          ]
+        },
+        {
+          "class_name": "DiscountAgreementResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "id",
+              "type": "UUID"
+            },
+            {
+              "name": "vendor_id",
+              "type": "UUID"
+            },
+            {
+              "name": "name",
+              "type": "str"
+            },
+            {
+              "name": "reference",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "price_list_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "category_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "catalog_item_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "discount_pct",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
+              "name": "fixed_net_price",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
+              "name": "valid_from",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "valid_to",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "active",
+              "type": "bool"
+            },
+            {
+              "name": "notes",
+              "type": "str | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "ItemAttachmentCreate",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Link a file already in Documents to a catalog item.",
+          "fields": [
+            {
+              "name": "document_id",
+              "type": "UUID"
+            },
+            {
+              "name": "kind",
+              "type": "str"
+            },
+            {
+              "name": "title",
+              "type": "str | None"
+            }
+          ]
+        },
+        {
+          "class_name": "ItemAttachmentResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "id",
+              "type": "UUID"
+            },
+            {
+              "name": "catalog_item_id",
+              "type": "UUID"
+            },
+            {
+              "name": "document_id",
+              "type": "UUID"
+            },
+            {
+              "name": "project_id",
+              "type": "UUID"
+            },
+            {
+              "name": "kind",
+              "type": "str"
+            },
+            {
+              "name": "title",
+              "type": "str"
             }
           ]
         },
@@ -255013,6 +255888,36 @@
               "name": "rating",
               "type": "int | None",
               "default": "None"
+            },
+            {
+              "name": "gross_price",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
+              "name": "net_price",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
+              "name": "discount_pct",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
+              "name": "discount_source",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "entry_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "valid_to",
+              "type": "str | None",
+              "default": "None"
             }
           ]
         },
@@ -255042,7 +255947,7 @@
             },
             {
               "name": "estimated_unit_price",
-              "type": "Decimal"
+              "type": "Decimal | None"
             }
           ]
         },
@@ -255119,6 +256024,16 @@
             {
               "name": "estimated_total",
               "type": "Decimal"
+            },
+            {
+              "name": "gross_unit_price",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
+              "name": "discount_source",
+              "type": "str | None",
+              "default": "None"
             }
           ]
         },
@@ -255209,7 +256124,12 @@
             },
             {
               "name": "unit_price",
-              "type": "Decimal"
+              "type": "Decimal | None"
+            },
+            {
+              "name": "catalog_entry_id",
+              "type": "UUID | None",
+              "default": "None"
             }
           ]
         },
@@ -255312,6 +256232,26 @@
             {
               "name": "invoiced_qty",
               "type": "Decimal"
+            },
+            {
+              "name": "gross_unit_price",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
+              "name": "discount_pct",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
+              "name": "discount_source",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "catalog_entry_id",
+              "type": "UUID | None",
+              "default": "None"
             }
           ]
         },
@@ -256501,7 +257441,11 @@
           ]
         }
       ],
-      "import_dependencies": []
+      "import_dependencies": [
+        "boq",
+        "costs",
+        "documents"
+      ]
     },
     {
       "module_id": "takeoff",
@@ -264235,6 +265179,7 @@
         "service.py",
         "validators.py",
         "workbooks.py",
+        "x84_import.py",
         "xlsx_translations.py"
       ],
       "manifest": {
@@ -264627,6 +265572,20 @@
           "handler": "create_bid",
           "response_model": "BidResponse",
           "request_schema": "BidCreate"
+        },
+        {
+          "method": "POST",
+          "path": "/packages/{package_id}/bids/import-x84/preview/",
+          "handler": "preview_x84_bid",
+          "response_model": "X84ImportPreview",
+          "request_schema": "UploadFile"
+        },
+        {
+          "method": "POST",
+          "path": "/packages/{package_id}/bids/import-x84/",
+          "handler": "import_x84_bid",
+          "response_model": "BidResponse",
+          "request_schema": "UploadFile"
         },
         {
           "method": "GET",
@@ -266809,6 +267768,114 @@
               "type": "str | None"
             }
           ]
+        },
+        {
+          "class_name": "X84LineCheck",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "One priced line of an X84 file, matched against the tender's bill.",
+          "fields": [
+            {
+              "name": "ordinal",
+              "type": "str"
+            },
+            {
+              "name": "position_id",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "description",
+              "type": "str",
+              "default": "''"
+            },
+            {
+              "name": "unit",
+              "type": "str",
+              "default": "''"
+            },
+            {
+              "name": "quantity",
+              "type": "str",
+              "default": "''"
+            },
+            {
+              "name": "unit_rate",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "issues",
+              "type": "list[str]"
+            }
+          ]
+        },
+        {
+          "class_name": "X84ImportPreview",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "What importing an X84 file would put into the bid comparison.",
+          "fields": [
+            {
+              "name": "filename",
+              "type": "str",
+              "default": "''"
+            },
+            {
+              "name": "sha256",
+              "type": "str",
+              "default": "''"
+            },
+            {
+              "name": "da_kind",
+              "type": "str",
+              "default": "''"
+            },
+            {
+              "name": "currency",
+              "type": "str",
+              "default": "''"
+            },
+            {
+              "name": "tender_currency",
+              "type": "str",
+              "default": "''"
+            },
+            {
+              "name": "file_issues",
+              "type": "list[str]"
+            },
+            {
+              "name": "lines",
+              "type": "list[X84LineCheck]"
+            },
+            {
+              "name": "matched",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "priced",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "missing_ordinals",
+              "type": "list[str]"
+            },
+            {
+              "name": "total_amount",
+              "type": "str",
+              "default": "'0.00'"
+            },
+            {
+              "name": "blocking",
+              "type": "bool",
+              "default": "False"
+            }
+          ]
         }
       ],
       "import_dependencies": [
@@ -267923,6 +268990,7 @@
         "__init__.py",
         "manifest.py",
         "models.py",
+        "oidc.py",
         "permissions.py",
         "repository.py",
         "router.py",
@@ -276527,10 +277595,10 @@
     },
     {
       "name": "auth",
-      "ts_files": 20,
+      "ts_files": 21,
       "css_files": 0,
       "test_files": 7,
-      "total_files": 20
+      "total_files": 21
     },
     {
       "name": "authority-submission",
@@ -276590,10 +277658,10 @@
     },
     {
       "name": "boq",
-      "ts_files": 205,
+      "ts_files": 210,
       "css_files": 0,
-      "test_files": 110,
-      "total_files": 205
+      "test_files": 112,
+      "total_files": 210
     },
     {
       "name": "buyer-portal",
@@ -276876,6 +277944,13 @@
       "total_files": 26
     },
     {
+      "name": "demo",
+      "ts_files": 1,
+      "css_files": 0,
+      "test_files": 0,
+      "total_files": 1
+    },
+    {
       "name": "design-options",
       "ts_files": 5,
       "css_files": 0,
@@ -276947,10 +278022,10 @@
     },
     {
       "name": "erp-chat",
-      "ts_files": 73,
+      "ts_files": 74,
       "css_files": 2,
       "test_files": 14,
-      "total_files": 75
+      "total_files": 76
     },
     {
       "name": "esg",
@@ -277276,10 +278351,10 @@
     },
     {
       "name": "methodology",
-      "ts_files": 15,
+      "ts_files": 16,
       "css_files": 0,
-      "test_files": 3,
-      "total_files": 15
+      "test_files": 4,
+      "total_files": 16
     },
     {
       "name": "moc",
@@ -277773,10 +278848,10 @@
     },
     {
       "name": "supplier-catalogs",
-      "ts_files": 6,
+      "ts_files": 8,
       "css_files": 0,
-      "test_files": 1,
-      "total_files": 6
+      "test_files": 2,
+      "total_files": 8
     },
     {
       "name": "sustainability",
@@ -277829,10 +278904,10 @@
     },
     {
       "name": "tendering",
-      "ts_files": 24,
+      "ts_files": 26,
       "css_files": 0,
-      "test_files": 8,
-      "total_files": 24
+      "test_files": 9,
+      "total_files": 26
     },
     {
       "name": "timeline",
@@ -278386,15 +279461,19 @@
       "file_approvals",
       "finance",
       "hse_advanced",
+      "ncr",
       "notifications",
       "procurement",
       "projects",
+      "punchlist",
       "qms",
       "rfi",
       "risk",
       "safety",
       "schedule",
+      "tasks",
       "teams",
+      "tendering",
       "users",
       "validation",
       "variations"
@@ -279392,6 +280471,9 @@
       "users"
     ],
     "supplier_catalogs": [
+      "boq",
+      "costs",
+      "documents",
       "procurement",
       "projects",
       "users"
@@ -279494,14 +280576,14 @@
   "statistics": {
     "backend_modules": 215,
     "modules_with_manifests": 213,
-    "total_models": 792,
-    "total_columns": 9202,
+    "total_models": 794,
+    "total_columns": 9231,
     "total_relationships": 240,
-    "total_routes": 4634,
-    "total_schemas": 4126,
-    "total_python_files": 2813,
-    "frontend_features": 209,
-    "frontend_ts_files": 3617,
+    "total_routes": 4653,
+    "total_schemas": 4139,
+    "total_python_files": 2823,
+    "frontend_features": 210,
+    "frontend_ts_files": 3630,
     "frontend_backend_mapped": 187
   },
   "frontend_backend_mapping": {
@@ -279567,6 +280649,7 @@
     "deadlines": "deadlines",
     "defects-liability": "defects_liability",
     "delivery_model": "delivery_model",
+    "demo": null,
     "design-options": "design_options",
     "design_management": "design_management",
     "documents": "documents",
