@@ -6,6 +6,7 @@
  * engine, so a preview matches what the backend computes at apply time.
  */
 import { buildElementVars, evaluateElementFormula, normalizeVarName } from './elementFormula';
+import { compareNames } from '@/shared/lib/collator';
 import type { CreateQuantityLinkData, QuantityAggregation } from '../../api';
 
 export interface FormulaElementInput {
@@ -86,7 +87,7 @@ export function collectFormulaVars(elements: FormulaElementInput[]): FormulaVarC
   }
   return [...byName.values()]
     .filter((c) => c.count > 0)
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+    .sort((a, b) => b.count - a.count || compareNames(a.name, b.name));
 }
 
 export function previewFormula(

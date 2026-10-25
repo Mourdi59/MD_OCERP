@@ -53,6 +53,7 @@ import {
   type Vendor,
 } from './api';
 import { apiGet } from '@/shared/lib/api';
+import { fmtList } from '@/shared/lib/formatters';
 
 const inputCls =
   'h-9 w-full rounded-lg border border-border bg-surface-primary px-3 text-sm focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue';
@@ -734,7 +735,7 @@ function ImportPriceListModal({
               <AlertOctagon size={14} className="mt-0.5 shrink-0 text-semantic-error" />
               {t('supplier_catalogs.import_dups', {
                 defaultValue: 'These vendor SKUs appear more than once: {{skus}}. Fix the file, then preview again.',
-                skus: preview.duplicate_vendor_skus.slice(0, 10).join(', '),
+                skus: fmtList(preview.duplicate_vendor_skus.slice(0, 10)),
               })}
             </div>
           )}
@@ -772,7 +773,7 @@ function ImportPriceListModal({
                     <td className="px-2 py-1">
                       {actionBadge(t, r.action)}
                       {r.errors.length > 0 && (
-                        <span className="ml-1 text-semantic-error">{r.errors.map((e) => rowError(t, e)).join(', ')}</span>
+                        <span className="ml-1 text-semantic-error">{fmtList(r.errors.map((e) => rowError(t, e)))}</span>
                       )}
                     </td>
                     <td className="px-2 py-1 font-mono">{r.vendor_sku || '—'}</td>

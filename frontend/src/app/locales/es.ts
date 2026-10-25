@@ -57335,6 +57335,7 @@ const resource = {
     "modules.catalog.hse_frame": "Marco HSE",
     "modules.catalog.project_handbook": "Manual del proyecto",
     "modules.pp_desc_eleven_areas_framework": "Gestión del proyecto por parte de la propiedad en once áreas de gestión, en dos fases, desarrollo del proyecto y ejecución de la obra, con una puerta de control entre ambas y un documento marco aprobado por área.",
+    "modules.pp_name_pakistan_pk": "Paquete de Construcción de Pakistán",
     "notifications.stakeholders.commitment_overdue.body": "El compromiso {{code}} vencía el {{due}}.",
     "notifications.stakeholders.commitment_overdue.title": "Un compromiso ha pasado su fecha límite",
     "notifications.stakeholders.plan_overdue.body": "{{title}} vencía el {{due}} y aún no está registrada.",

@@ -1,6 +1,6 @@
 # Pakistan Construction Pack - first-login onboarding wizard.
 version: 2
-locale: en
+locale: en-GB
 title: "Welcome to OpenConstructionERP - Pakistan"
 subtitle: "Three steps to line the workspace up with Pakistani practice: province and tax status, payment terms, rupee."
 

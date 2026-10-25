@@ -54385,6 +54385,7 @@ const resource = {
     "modules.catalog.hse_frame": "HSE raamistik",
     "modules.catalog.project_handbook": "Projekti käsiraamat",
     "modules.pp_desc_eleven_areas_framework": "Tellija poolne projektijuhtimine üheteistkümnes juhtimisvaldkonnas kahes faasis, projekti arendus ja ehitusteostus, nende vahel üks värav ning iga valdkonna kohta üks kinnitatud raamdokument.",
+    "modules.pp_name_pakistan_pk": "Ehituspakett: Pakistan",
     "notifications.stakeholders.commitment_overdue.body": "Lubaduse {{code}} tähtaeg oli {{due}}.",
     "notifications.stakeholders.commitment_overdue.title": "Lubaduse tähtaeg on möödas",
     "notifications.stakeholders.plan_overdue.body": "{{title}} pidi toimuma {{due}} ja seda pole veel registreeritud.",

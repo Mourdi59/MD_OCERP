@@ -18,7 +18,7 @@ MANIFEST = PartnerPackManifest(
         "defaults and the Clause 70 price adjustment, marla, kanal, sft, cft and rft as units, the Pakistani "
         "public holidays, Pakistani rupee."
     ),
-    default_locale="en",
+    default_locale="en-GB",
     additional_locales={"ur": "locales/ur.json"},
     # No Pakistani cost base is shipped: the provincial schedules of rates are a separate decision.
     cwicr_regions=[],

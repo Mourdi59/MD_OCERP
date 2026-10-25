@@ -439,6 +439,7 @@ def _match_supported(tag: str) -> str | None:
 #: of the country, with the reason.
 ENGLISH_BY_CHOICE: dict[str, str] = {
     "IN": "Indian contracts, the CPWD schedules and the DSR are written in English; Hindi is offered beside it.",
+    "PK": "Pakistani contracts, the PEC standard bidding documents and the PPRA rules are written in English; Urdu is offered beside it.",
 }
 
 

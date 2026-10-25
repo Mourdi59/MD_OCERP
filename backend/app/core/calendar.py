@@ -1957,7 +1957,7 @@ _EXTENT_STANDINS: dict[str, str] = {
 #: through ``_gcc_eids``. That test is the point of the pair: Nigeria joined
 #: this set the day it was added and would have been missed by anybody writing
 #: the list from memory of which countries are "the Gulf ones".
-_HIJRI_DEPENDENT: frozenset[str] = frozenset({"AE", "BH", "EG", "KW", "NG", "OM", "QA", "SA"})
+_HIJRI_DEPENDENT: frozenset[str] = frozenset({"AE", "BH", "EG", "KW", "NG", "OM", "PK", "QA", "SA"})
 
 #: What answers for a year that began before the country's holiday roster took
 #: effect: the later roster, applied to the whole year. Egypt's Decree 294/2025

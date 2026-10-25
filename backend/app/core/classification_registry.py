@@ -191,6 +191,9 @@ COUNTRY_TO_STANDARD: Mapping[str, str] = MappingProxyType(
         # ── MasterFormat, CSI-aligned ────────────────────────────────
         "US": "masterformat",
         "CA": "masterformat",
+        # Pakistan: the PEC standard bidding documents and the provincial
+        # schedules of rates are arranged in CSI-style divisions.
+        "PK": "masterformat",
         # Latin America and Iberia outside Brazil. Their catalogues
         # align with CSI divisions more closely than with DIN.
         "MX": "masterformat",

@@ -248,6 +248,14 @@ DOCUMENT_REFERENCES: tuple[DocumentReference, ...] = (
     # before the unlink, so the takeoff document keeps working; what dangles is
     # the provenance link, not the content.
     DocumentReference(
+        "supplier_catalogs",
+        "CatalogItemAttachment",
+        "oe_supplier_catalogs_item_attachment",
+        "document_id",
+        "scalar",
+        "strands",
+    ),
+    DocumentReference(
         "takeoff",
         "TakeoffDocument",
         "oe_takeoff_document",

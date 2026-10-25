@@ -14,6 +14,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BOQToolbar, type BOQToolbarProps } from '../BOQToolbar';
 
 function stubT(key: string, options?: Record<string, string | number>): string {
@@ -59,9 +60,11 @@ function makeProps(overrides: Partial<BOQToolbarProps>): BOQToolbarProps {
 /** Renders the toolbar and opens the Export menu (portaled to document.body). */
 function renderWithMenuOpen(overrides: Partial<BOQToolbarProps> = {}) {
   const view = render(
-    <MemoryRouter>
-      <BOQToolbar {...makeProps(overrides)} />
-    </MemoryRouter>,
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <MemoryRouter>
+        <BOQToolbar {...makeProps(overrides)} />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
   fireEvent.click(screen.getByRole('button', { name: 'boq.export' }));
   return view;

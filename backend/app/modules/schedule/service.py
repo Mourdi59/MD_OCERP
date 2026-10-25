@@ -881,6 +881,14 @@ WORK_CALENDARS: dict[str, dict] = {
         "work_days": {0, 1, 2, 3, 4, 5},  # Mon-Sat
         "label": "India (Mon-Sat, 8h)",
     },
+    # Pakistan. Source of the week: the federal government's Monday-Friday office
+    # week, the same week core.calendar._WORKING_WEEK carries for PK. A site that
+    # works Saturday sets its own calendar. Holidays: core.calendar._holidays_pk.
+    "PAKISTAN": {
+        "hours_per_day": 8,
+        "work_days": {0, 1, 2, 3, 4},  # Mon-Fri
+        "label": "Pakistan (Mon-Fri, 8h)",
+    },
 }
 
 
@@ -911,6 +919,7 @@ _CALENDAR_BY_COUNTRY: dict[str, str] = {
     "IT": "ITALY",
     "KW": "GULF",
     "OM": "GULF",
+    "PK": "PAKISTAN",
     "PL": "POLAND",
     "QA": "GULF",
     "RU": "RU",
@@ -1002,6 +1011,7 @@ _CALENDAR_BY_LABEL: dict[str, str] = {
     # states work. The UAE is named in full and is the one that does not.
     "MIDDLE EAST": "GULF",
     "OMAN": "GULF",
+    "PAKISTAN": "PAKISTAN",
     "POLAND": "POLAND",
     "QATAR": "GULF",
     "SAUDI ARABIA": "GULF",

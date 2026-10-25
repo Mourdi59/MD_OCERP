@@ -482,7 +482,7 @@ _WORKBOOK_FORMATS: tuple[ExchangeFormat, ...] = (
     ExchangeFormat(
         format_id="in_schedule_of_rates",
         name="Schedule of rates",
-        countries=("IN", "BD", "LK", "NP"),
+        countries=("IN", "BD", "LK", "NP", "PK"),
         extensions=(".xlsx", ".xls", ".csv"),
         summary="The South Asian priced schedule, measured against a published public works rate book.",
         reader="excel",

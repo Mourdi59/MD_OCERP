@@ -336,6 +336,7 @@ EXPECTED_CALENDAR_BY_COUNTRY = {
     "CN": "CHINA",
     "IN": "INDIA",
     "IT": "ITALY",
+    "PK": "PAKISTAN",
     "PL": "POLAND",
 }
 

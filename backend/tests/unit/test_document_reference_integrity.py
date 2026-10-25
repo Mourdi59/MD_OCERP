@@ -80,6 +80,7 @@ UNCONSTRAINED_DOCUMENT_REFERENCES: dict[str, tuple[str, ...]] = {
     "punchlist": ("PunchItem.document_id",),
     "qms": ("QMSInspection.attachment_document_ids", "QMSInspectionAttachment.document_id"),
     "resumable_uploads": ("ResumableUploadSession.document_id",),
+    "supplier_catalogs": ("CatalogItemAttachment.document_id",),
     "takeoff": (
         "AiTakeoffRun.document_id",
         "TakeoffDocument.source_document_id",

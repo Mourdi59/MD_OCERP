@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { boqApi, type QuantityAggregation } from '../api';
+import { fmtList, getIntlLocale } from '@/shared/lib/formatters';
 import {
   buildFormulaLinkPayload,
   collectFormulaVars,
@@ -28,7 +29,7 @@ interface Props {
 }
 
 const fmt = (n: number) =>
-  Number.isInteger(n) ? String(n) : n.toLocaleString(undefined, { maximumFractionDigits: 4 });
+  Number.isInteger(n) ? String(n) : n.toLocaleString(getIntlLocale(), { maximumFractionDigits: 4 });
 
 export function LinkedFormulaPanel({
   elements,
@@ -176,7 +177,7 @@ export function LinkedFormulaPanel({
                   {preview.skipped.map((s) => (
                     <li key={s.id} className="truncate">
                       {s.label}
-                      {s.missing.length > 0 ? ` - ${s.missing.join(', ')}` : s.error ? ` - ${s.error}` : ''}
+                      {s.missing.length > 0 ? ` - ${fmtList(s.missing)}` : s.error ? ` - ${s.error}` : ''}
                     </li>
                   ))}
                 </ul>
