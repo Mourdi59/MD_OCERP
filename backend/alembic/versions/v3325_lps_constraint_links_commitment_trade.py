@@ -12,7 +12,7 @@ Inspector-guarded: the boot path runs ``create_all`` before migrations, so the
 columns may already exist.
 
 Revision ID: v3325_lps_constraint_links_commitment_trade
-Revises: v200_supplier_pricelists_discounts
+Revises: v3330_field_clock_geofence_offline_versions
 Create Date: 2026-10-26
 """
 
@@ -24,7 +24,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "v3325_lps_constraint_links_commitment_trade"
-down_revision: str | Sequence[str] | None = "v200_supplier_pricelists_discounts"
+down_revision: str | Sequence[str] | None = "v3330_field_clock_geofence_offline_versions"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

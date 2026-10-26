@@ -18,7 +18,7 @@ Every step is inspector-guarded, so a database whose tables ``create_all``
 already built reaches this revision and does nothing.
 
 Revision ID: v3330_field_clock_geofence_offline_versions
-Revises: v201_takeoff_measurement_drawing_ref
+Revises: vg01_guarantees_register
 Create Date: 2026-10-26
 """
 
@@ -32,7 +32,7 @@ from alembic import op
 from app.database import GUID
 
 revision: str = "v3330_field_clock_geofence_offline_versions"
-down_revision: str | Sequence[str] | None = "v201_takeoff_measurement_drawing_ref"
+down_revision: str | Sequence[str] | None = "vg01_guarantees_register"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

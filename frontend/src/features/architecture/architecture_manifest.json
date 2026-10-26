@@ -58146,7 +58146,7 @@
         {
           "class_name": "ContractSecurity",
           "tablename": "oe_contracts_security",
-          "docstring": "Financial security held against a contract.\n\nCovers performance / payment / advance-payment / retention bonds, parent\ncompany and bank guarantees, and the standard insurance lines. The optional\n``document_id`` is a plain UUID to the documents module (resolved at the\nservice layer, no ORM ForeignKey).",
+          "docstring": "Financial security held against a contract.\n\nCovers performance / payment / advance-payment / retention bonds, parent\ncompany and bank guarantees, and the standard insurance lines. The optional\n``document_id`` is a plain UUID to the documents module (resolved at the\nservice layer, no ORM ForeignKey). A bond or guarantee row with\n``guarantee_id`` set is a projection of the guarantees register: the register\nwrites it and the contract API refuses edits to the projected fields.",
           "columns": [
             {
               "name": "contract_id",
@@ -58220,6 +58220,12 @@
               "name": "notes",
               "annotation": "Mapped[str | None]",
               "sql_type": "Text",
+              "nullable": true
+            },
+            {
+              "name": "guarantee_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
               "nullable": true
             },
             {
@@ -63205,6 +63211,11 @@
               "default": "None"
             },
             {
+              "name": "guarantee_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
               "name": "metadata",
               "type": "dict[str, Any]"
             },
@@ -64720,6 +64731,7 @@
         "contacts",
         "costmodel",
         "finance",
+        "guarantees",
         "i18n_foundation",
         "price_index",
         "progress",
@@ -78390,6 +78402,13 @@
           "request_schema": "CvrLineCreate"
         },
         {
+          "method": "POST",
+          "path": "/reports/{report_id}/lines/from-field-time/",
+          "handler": "import_field_labour",
+          "response_model": "CvrLineResponse",
+          "request_schema": "CvrService"
+        },
+        {
           "method": "GET",
           "path": "/lines/{line_id}",
           "handler": "get_line",
@@ -79358,6 +79377,7 @@
       ],
       "import_dependencies": [
         "contracts",
+        "field_time",
         "projects"
       ]
     },
@@ -79399,10 +79419,12 @@
       "module_category": "business",
       "files": [
         "__init__.py",
+        "clock_headcount.py",
         "events.py",
         "intl.py",
         "manifest.py",
         "models.py",
+        "offline_demo.py",
         "pdf_export.py",
         "pdf_translations.py",
         "permissions.py",
@@ -79521,6 +79543,12 @@
               "name": "metadata_",
               "annotation": "Mapped[dict]",
               "sql_type": "JSON",
+              "nullable": false
+            },
+            {
+              "name": "version",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
               "nullable": false
             }
           ],
@@ -79687,6 +79715,12 @@
               "name": "metadata_",
               "annotation": "Mapped[dict]",
               "sql_type": "JSON",
+              "nullable": false
+            },
+            {
+              "name": "version",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
               "nullable": false
             }
           ],
@@ -80117,6 +80151,20 @@
           "request_schema": "DailyDiaryUpdate"
         },
         {
+          "method": "POST",
+          "path": "/diaries/{diary_id}/merge/",
+          "handler": "merge_diary",
+          "response_model": "OfflineMergeResponse",
+          "request_schema": "OfflineMergeRequest"
+        },
+        {
+          "method": "GET",
+          "path": "/diaries/{diary_id}/merge-audit/",
+          "handler": "diary_merge_audit",
+          "response_model": "list[MergeAuditOut]",
+          "request_schema": "None"
+        },
+        {
           "method": "DELETE",
           "path": "/diaries/{diary_id}",
           "handler": "delete_diary",
@@ -80238,6 +80286,20 @@
           "handler": "update_entry",
           "response_model": "DiaryEntryResponse",
           "request_schema": "DiaryEntryUpdate"
+        },
+        {
+          "method": "POST",
+          "path": "/diary-entries/{entry_id}/merge/",
+          "handler": "merge_entry",
+          "response_model": "OfflineMergeResponse",
+          "request_schema": "OfflineMergeRequest"
+        },
+        {
+          "method": "GET",
+          "path": "/diary-entries/{entry_id}/merge-audit/",
+          "handler": "entry_merge_audit",
+          "response_model": "list[MergeAuditOut]",
+          "request_schema": "None"
         },
         {
           "method": "DELETE",
@@ -80468,6 +80530,10 @@
           "docstring": "Create a new daily diary.",
           "fields": [
             {
+              "name": "client_op_id",
+              "type": "str | None"
+            },
+            {
               "name": "project_id",
               "type": "UUID"
             },
@@ -80510,6 +80576,10 @@
           "docstring": "Partial update for a daily diary.",
           "fields": [
             {
+              "name": "version",
+              "type": "int | None"
+            },
+            {
               "name": "site_supervisor_id",
               "type": "UUID | None",
               "default": "None"
@@ -80545,6 +80615,11 @@
           ],
           "docstring": "Daily diary returned from the API.",
           "fields": [
+            {
+              "name": "version",
+              "type": "int",
+              "default": "1"
+            },
             {
               "name": "id",
               "type": "UUID"
@@ -80850,6 +80925,10 @@
           "docstring": "Create a new diary entry.",
           "fields": [
             {
+              "name": "client_op_id",
+              "type": "str | None"
+            },
+            {
               "name": "diary_id",
               "type": "UUID"
             },
@@ -80948,6 +81027,10 @@
           "docstring": "Partial update for a diary entry.",
           "fields": [
             {
+              "name": "version",
+              "type": "int | None"
+            },
+            {
               "name": "entry_type",
               "type": "str | None"
             },
@@ -80997,6 +81080,11 @@
           ],
           "docstring": "Diary entry returned from the API.",
           "fields": [
+            {
+              "name": "version",
+              "type": "int",
+              "default": "1"
+            },
             {
               "name": "id",
               "type": "UUID"
@@ -82399,8 +82487,10 @@
       ],
       "import_dependencies": [
         "documents",
+        "field_time",
         "project_governance",
         "projects",
+        "punchlist",
         "users"
       ]
     },
@@ -83919,6 +84009,8 @@
         "risk",
         "safety",
         "schedule",
+        "schedule_advanced",
+        "subcontractors",
         "tasks",
         "teams",
         "tendering",
@@ -111384,9 +111476,15 @@
       "module_category": "business",
       "files": [
         "__init__.py",
+        "clock_repository.py",
+        "clock_router.py",
+        "clock_schemas.py",
+        "clock_seed.py",
+        "clock_service.py",
         "counted.py",
         "events.py",
         "field_time_math.py",
+        "geofence_math.py",
         "manifest.py",
         "models.py",
         "permissions.py",
@@ -111625,6 +111723,322 @@
               "back_populates": "lines"
             }
           ]
+        },
+        {
+          "class_name": "FieldSiteGeofence",
+          "tablename": "oe_field_time_geofence",
+          "docstring": "A site boundary on one project: a circle or a polygon in WGS84.",
+          "columns": [
+            {
+              "name": "project_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_projects_project.id"
+            },
+            {
+              "name": "name",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "shape",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "center_lat",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
+              "name": "center_lng",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
+              "name": "radius_m",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
+              "name": "polygon",
+              "annotation": "Mapped[list]",
+              "sql_type": "JSON",
+              "nullable": false
+            },
+            {
+              "name": "tolerance_m",
+              "annotation": "Mapped[Decimal]",
+              "sql_type": "Numeric",
+              "nullable": false
+            },
+            {
+              "name": "supervisor_user_ids",
+              "annotation": "Mapped[list]",
+              "sql_type": "JSON",
+              "nullable": false
+            },
+            {
+              "name": "default_cost_code",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "active",
+              "annotation": "Mapped[bool]",
+              "sql_type": "Boolean",
+              "nullable": false
+            },
+            {
+              "name": "created_by",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "metadata_",
+              "annotation": "Mapped[dict]",
+              "sql_type": "JSON",
+              "nullable": false
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "class_name": "FieldClockSettings",
+          "tablename": "oe_field_time_clock_settings",
+          "docstring": "Per-project switches for the time clock: on/off, retention, break.",
+          "columns": [
+            {
+              "name": "project_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_projects_project.id"
+            },
+            {
+              "name": "enabled",
+              "annotation": "Mapped[bool]",
+              "sql_type": "Boolean",
+              "nullable": false
+            },
+            {
+              "name": "retention_days",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            },
+            {
+              "name": "default_break_minutes",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            },
+            {
+              "name": "consent_text_version",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "class_name": "FieldClockConsent",
+          "tablename": "oe_field_time_clock_consent",
+          "docstring": "A worker's recorded consent to position capture at clock-in and clock-out.",
+          "columns": [
+            {
+              "name": "project_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_projects_project.id"
+            },
+            {
+              "name": "resource_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_resources_resource.id"
+            },
+            {
+              "name": "granted",
+              "annotation": "Mapped[bool]",
+              "sql_type": "Boolean",
+              "nullable": false
+            },
+            {
+              "name": "granted_at",
+              "annotation": "Mapped[datetime | None]",
+              "sql_type": "AwareDateTime",
+              "nullable": true
+            },
+            {
+              "name": "withdrawn_at",
+              "annotation": "Mapped[datetime | None]",
+              "sql_type": "AwareDateTime",
+              "nullable": true
+            },
+            {
+              "name": "text_version",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "recorded_by",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "class_name": "FieldClockEvent",
+          "tablename": "oe_field_time_clock_event",
+          "docstring": "One clock-in or clock-out with the position at that moment only.",
+          "columns": [
+            {
+              "name": "project_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_projects_project.id"
+            },
+            {
+              "name": "resource_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_resources_resource.id"
+            },
+            {
+              "name": "kind",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "occurred_at",
+              "annotation": "Mapped[datetime]",
+              "sql_type": "AwareDateTime",
+              "nullable": false
+            },
+            {
+              "name": "latitude",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
+              "name": "longitude",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
+              "name": "accuracy_m",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
+              "name": "position_purged_at",
+              "annotation": "Mapped[datetime | None]",
+              "sql_type": "AwareDateTime",
+              "nullable": true
+            },
+            {
+              "name": "geofence_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true,
+              "is_fk": true,
+              "fk_target": "oe_field_time_geofence.id"
+            },
+            {
+              "name": "inside",
+              "annotation": "Mapped[bool]",
+              "sql_type": "Boolean",
+              "nullable": false
+            },
+            {
+              "name": "distance_m",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
+              "name": "approval_status",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "approval_reason",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "Text",
+              "nullable": true
+            },
+            {
+              "name": "approved_by",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "approved_at",
+              "annotation": "Mapped[datetime | None]",
+              "sql_type": "AwareDateTime",
+              "nullable": true
+            },
+            {
+              "name": "pair_event_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "timesheet_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "client_op_id",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "recorded_by",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "note",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "Text",
+              "nullable": true
+            }
+          ],
+          "relationships": []
         }
       ],
       "routes": [
@@ -112714,6 +113128,8 @@
         "equipment",
         "field_diary",
         "fieldreports",
+        "geo_hub",
+        "notifications",
         "projects",
         "resources",
         "subcontractors",
@@ -133389,6 +133805,1552 @@
       ]
     },
     {
+      "module_id": "guarantees",
+      "module_label": "Guarantees and Bonds",
+      "module_category": "business",
+      "files": [
+        "__init__.py",
+        "defaults.py",
+        "demo.py",
+        "events.py",
+        "jobs.py",
+        "logic.py",
+        "manifest.py",
+        "models.py",
+        "permissions.py",
+        "repository.py",
+        "router.py",
+        "schemas.py",
+        "service.py",
+        "validators.py"
+      ],
+      "manifest": {
+        "name": "oe_guarantees",
+        "version": "1.0.0",
+        "display_name": "Guarantees and Bonds",
+        "description": "Register of bank guarantees and bonds: bid bonds, performance bonds, advance payment and retention guarantees, warranty bonds and parent company guarantees, given to clients or received from subcontractors. Tracks issuer, beneficiary, amount, expiry, auto-extension and claim period through a status lifecycle with a full audit history, reduces the advance guarantee as interim payments recover the advance, gates the first payment on the performance bond, alerts 60, 30 and 14 days before expiry and shows company exposure by bank, by type and against bank credit lines.",
+        "author": "OpenConstructionERP Core Team",
+        "category": "business",
+        "depends": [
+          "oe_projects"
+        ],
+        "auto_install": true,
+        "enabled": true
+      },
+      "models": [
+        {
+          "class_name": "Guarantee",
+          "tablename": "oe_guarantees_guarantee",
+          "docstring": "One bank guarantee or bond.\n\n``amount`` is the current face value; ``original_amount`` is what the bank first\nissued, so a reduced advance guarantee still shows where it started.\n``advance_amount`` and ``advance_recovered`` only mean something on an advance\npayment guarantee: the register reduces ``amount`` to the advance still\noutstanding as interim payments recover it.",
+          "columns": [
+            {
+              "name": "project_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_projects_project.id"
+            },
+            {
+              "name": "reference",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "guarantee_type",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "direction",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "status",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "issuer_bank",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "bank_reference",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "beneficiary",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "applicant",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "amount",
+              "annotation": "Mapped[Decimal]",
+              "sql_type": "Numeric",
+              "nullable": false
+            },
+            {
+              "name": "original_amount",
+              "annotation": "Mapped[Decimal]",
+              "sql_type": "Numeric",
+              "nullable": false
+            },
+            {
+              "name": "currency",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "percent_of_contract",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
+              "name": "contract_value",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
+              "name": "issue_date",
+              "annotation": "Mapped[date | None]",
+              "sql_type": "SafeDate",
+              "nullable": true
+            },
+            {
+              "name": "expiry_date",
+              "annotation": "Mapped[date | None]",
+              "sql_type": "SafeDate",
+              "nullable": true
+            },
+            {
+              "name": "auto_extend",
+              "annotation": "Mapped[bool]",
+              "sql_type": "Boolean",
+              "nullable": false
+            },
+            {
+              "name": "extension_months",
+              "annotation": "Mapped[int | None]",
+              "sql_type": "Integer",
+              "nullable": true
+            },
+            {
+              "name": "claim_period_days",
+              "annotation": "Mapped[int | None]",
+              "sql_type": "Integer",
+              "nullable": true
+            },
+            {
+              "name": "defects_period_months",
+              "annotation": "Mapped[int | None]",
+              "sql_type": "Integer",
+              "nullable": true
+            },
+            {
+              "name": "advance_amount",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
+              "name": "advance_recovered",
+              "annotation": "Mapped[Decimal]",
+              "sql_type": "Numeric",
+              "nullable": false
+            },
+            {
+              "name": "advance_recovery_pct",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
+              "name": "replaces_cash_retention",
+              "annotation": "Mapped[bool]",
+              "sql_type": "Boolean",
+              "nullable": false
+            },
+            {
+              "name": "commission_rate_pct",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
+              "name": "form_code",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "contract_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "contract_security_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "subcontractor_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "tender_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "bid_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "facility_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "last_alert_band",
+              "annotation": "Mapped[int | None]",
+              "sql_type": "Integer",
+              "nullable": true
+            },
+            {
+              "name": "notes",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "Text",
+              "nullable": true
+            },
+            {
+              "name": "created_by",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "metadata_",
+              "annotation": "Mapped[dict]",
+              "sql_type": "JSON",
+              "nullable": false
+            }
+          ],
+          "relationships": [
+            {
+              "name": "events",
+              "type": "one-to-many",
+              "annotation": "Mapped[list['GuaranteeEvent']]",
+              "back_populates": "guarantee"
+            },
+            {
+              "name": "documents",
+              "type": "one-to-many",
+              "annotation": "Mapped[list['GuaranteeDocument']]",
+              "back_populates": "guarantee"
+            }
+          ]
+        },
+        {
+          "class_name": "GuaranteeEvent",
+          "tablename": "oe_guarantees_event",
+          "docstring": "One audit entry: who changed what on a guarantee, with the values before and after.",
+          "columns": [
+            {
+              "name": "guarantee_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_guarantees_guarantee.id"
+            },
+            {
+              "name": "action",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "from_status",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "to_status",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "amount_before",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
+              "name": "amount_after",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
+              "name": "changes",
+              "annotation": "Mapped[dict]",
+              "sql_type": "JSON",
+              "nullable": false
+            },
+            {
+              "name": "source",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "source_id",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "note",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "Text",
+              "nullable": true
+            },
+            {
+              "name": "actor_id",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            }
+          ],
+          "relationships": [
+            {
+              "name": "guarantee",
+              "type": "many-to-one",
+              "annotation": "Mapped[Guarantee]",
+              "target_model": "Guarantee",
+              "back_populates": "events"
+            }
+          ]
+        },
+        {
+          "class_name": "GuaranteeDocument",
+          "tablename": "oe_guarantees_document",
+          "docstring": "A guarantee PDF, amendment or release letter kept in the documents module.",
+          "columns": [
+            {
+              "name": "guarantee_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_guarantees_guarantee.id"
+            },
+            {
+              "name": "document_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false
+            },
+            {
+              "name": "kind",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "title",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            }
+          ],
+          "relationships": [
+            {
+              "name": "guarantee",
+              "type": "many-to-one",
+              "annotation": "Mapped[Guarantee]",
+              "target_model": "Guarantee",
+              "back_populates": "documents"
+            }
+          ]
+        },
+        {
+          "class_name": "GuaranteeFacility",
+          "tablename": "oe_guarantees_facility",
+          "docstring": "A bank credit line for guarantees, at company level.",
+          "columns": [
+            {
+              "name": "name",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "bank_name",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "currency",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "limit_amount",
+              "annotation": "Mapped[Decimal]",
+              "sql_type": "Numeric",
+              "nullable": false
+            },
+            {
+              "name": "expiry_date",
+              "annotation": "Mapped[date | None]",
+              "sql_type": "SafeDate",
+              "nullable": true
+            },
+            {
+              "name": "legal_entity_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "notes",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "Text",
+              "nullable": true
+            }
+          ],
+          "relationships": []
+        }
+      ],
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/exposure",
+          "handler": "company_exposure",
+          "response_model": "ExposureResponse",
+          "request_schema": "date | None"
+        },
+        {
+          "method": "GET",
+          "path": "/defaults",
+          "handler": "guarantee_defaults"
+        },
+        {
+          "method": "GET",
+          "path": "/facilities",
+          "handler": "list_facilities",
+          "response_model": "list[FacilityResponse]"
+        },
+        {
+          "method": "POST",
+          "path": "/facilities",
+          "handler": "create_facility",
+          "response_model": "FacilityResponse",
+          "request_schema": "FacilityCreate"
+        },
+        {
+          "method": "PATCH",
+          "path": "/facilities/{facility_id}",
+          "handler": "update_facility",
+          "response_model": "FacilityResponse",
+          "request_schema": "FacilityUpdate"
+        },
+        {
+          "method": "DELETE",
+          "path": "/facilities/{facility_id}",
+          "handler": "delete_facility"
+        },
+        {
+          "method": "POST",
+          "path": "/alerts/run",
+          "handler": "run_alerts",
+          "request_schema": "date | None"
+        },
+        {
+          "method": "GET",
+          "path": "/portfolio",
+          "handler": "portfolio",
+          "response_model": "list[SummaryResponse]"
+        },
+        {
+          "method": "GET",
+          "path": "/subcontractors/{subcontractor_id}/guarantees",
+          "handler": "subcontractor_guarantees",
+          "response_model": "list[GuaranteeResponse]"
+        },
+        {
+          "method": "GET",
+          "path": "/contracts/{contract_id}/payment-gate",
+          "handler": "payment_gate",
+          "response_model": "PaymentGateResponse"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/guarantees",
+          "handler": "list_guarantees",
+          "response_model": "list[GuaranteeResponse]",
+          "request_schema": "date | None"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/guarantees",
+          "handler": "create_guarantee",
+          "response_model": "GuaranteeResponse",
+          "request_schema": "GuaranteeCreate"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/exposure",
+          "handler": "project_exposure",
+          "response_model": "ExposureResponse",
+          "request_schema": "date | None"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/summary",
+          "handler": "project_summary",
+          "response_model": "SummaryResponse"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/validation",
+          "handler": "project_validation"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/guarantees/{guarantee_id}",
+          "handler": "get_guarantee",
+          "response_model": "GuaranteeDetailResponse"
+        },
+        {
+          "method": "PATCH",
+          "path": "/projects/{project_id}/guarantees/{guarantee_id}",
+          "handler": "update_guarantee",
+          "response_model": "GuaranteeResponse",
+          "request_schema": "GuaranteeUpdate"
+        },
+        {
+          "method": "DELETE",
+          "path": "/projects/{project_id}/guarantees/{guarantee_id}",
+          "handler": "delete_guarantee"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/guarantees/{guarantee_id}/transition",
+          "handler": "transition_guarantee",
+          "response_model": "GuaranteeResponse",
+          "request_schema": "TransitionRequest"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/guarantees/{guarantee_id}/advance-recovery",
+          "handler": "advance_recovery",
+          "response_model": "GuaranteeResponse",
+          "request_schema": "AdvanceRecoveryRequest"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/guarantees/{guarantee_id}/commission",
+          "handler": "post_commission",
+          "request_schema": "date"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/guarantees/{guarantee_id}/documents",
+          "handler": "link_document",
+          "response_model": "GuaranteeDocumentResponse",
+          "request_schema": "DocumentLinkRequest"
+        },
+        {
+          "method": "DELETE",
+          "path": "/projects/{project_id}/guarantees/{guarantee_id}/documents/{document_id}",
+          "handler": "unlink_document"
+        }
+      ],
+      "schemas": [
+        {
+          "class_name": "GuaranteeBase",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "guarantee_type",
+              "type": "GuaranteeTypeLiteral"
+            },
+            {
+              "name": "direction",
+              "type": "DirectionLiteral",
+              "default": "'given'"
+            },
+            {
+              "name": "issuer_bank",
+              "type": "str"
+            },
+            {
+              "name": "bank_reference",
+              "type": "str | None"
+            },
+            {
+              "name": "beneficiary",
+              "type": "str"
+            },
+            {
+              "name": "applicant",
+              "type": "str"
+            },
+            {
+              "name": "amount",
+              "type": "Decimal"
+            },
+            {
+              "name": "currency",
+              "type": "str"
+            },
+            {
+              "name": "percent_of_contract",
+              "type": "Decimal | None"
+            },
+            {
+              "name": "contract_value",
+              "type": "Decimal | None"
+            },
+            {
+              "name": "issue_date",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "expiry_date",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "auto_extend",
+              "type": "bool",
+              "default": "False"
+            },
+            {
+              "name": "extension_months",
+              "type": "int | None"
+            },
+            {
+              "name": "claim_period_days",
+              "type": "int | None"
+            },
+            {
+              "name": "defects_period_months",
+              "type": "int | None"
+            },
+            {
+              "name": "advance_amount",
+              "type": "Decimal | None"
+            },
+            {
+              "name": "advance_recovery_pct",
+              "type": "Decimal | None"
+            },
+            {
+              "name": "replaces_cash_retention",
+              "type": "bool",
+              "default": "False"
+            },
+            {
+              "name": "commission_rate_pct",
+              "type": "Decimal | None"
+            },
+            {
+              "name": "form_code",
+              "type": "str | None"
+            },
+            {
+              "name": "contract_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "subcontractor_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "tender_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "bid_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "facility_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "notes",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "metadata",
+              "type": "dict[str, Any]"
+            }
+          ]
+        },
+        {
+          "class_name": "GuaranteeCreate",
+          "bases": [
+            "GuaranteeBase"
+          ],
+          "docstring": "Create a guarantee; it starts in ``draft`` unless ``status`` says otherwise.",
+          "fields": [
+            {
+              "name": "reference",
+              "type": "str | None"
+            },
+            {
+              "name": "status",
+              "type": "Literal['draft', 'requested', 'issued']",
+              "default": "'draft'"
+            }
+          ]
+        },
+        {
+          "class_name": "GuaranteeUpdate",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Edit the descriptive fields. Status moves go through the transition endpoint.",
+          "fields": [
+            {
+              "name": "reference",
+              "type": "str | None"
+            },
+            {
+              "name": "issuer_bank",
+              "type": "str | None"
+            },
+            {
+              "name": "bank_reference",
+              "type": "str | None"
+            },
+            {
+              "name": "beneficiary",
+              "type": "str | None"
+            },
+            {
+              "name": "applicant",
+              "type": "str | None"
+            },
+            {
+              "name": "amount",
+              "type": "Decimal | None"
+            },
+            {
+              "name": "currency",
+              "type": "str | None"
+            },
+            {
+              "name": "percent_of_contract",
+              "type": "Decimal | None"
+            },
+            {
+              "name": "contract_value",
+              "type": "Decimal | None"
+            },
+            {
+              "name": "issue_date",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "expiry_date",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "auto_extend",
+              "type": "bool | None",
+              "default": "None"
+            },
+            {
+              "name": "extension_months",
+              "type": "int | None"
+            },
+            {
+              "name": "claim_period_days",
+              "type": "int | None"
+            },
+            {
+              "name": "defects_period_months",
+              "type": "int | None"
+            },
+            {
+              "name": "advance_amount",
+              "type": "Decimal | None"
+            },
+            {
+              "name": "advance_recovery_pct",
+              "type": "Decimal | None"
+            },
+            {
+              "name": "replaces_cash_retention",
+              "type": "bool | None",
+              "default": "None"
+            },
+            {
+              "name": "commission_rate_pct",
+              "type": "Decimal | None"
+            },
+            {
+              "name": "form_code",
+              "type": "str | None"
+            },
+            {
+              "name": "contract_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "subcontractor_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "tender_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "bid_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "facility_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "notes",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "metadata",
+              "type": "dict[str, Any] | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "TransitionRequest",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Move a guarantee to a new status, optionally with a new expiry or amount.",
+          "fields": [
+            {
+              "name": "status",
+              "type": "StatusLiteral"
+            },
+            {
+              "name": "new_expiry_date",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "new_amount",
+              "type": "Decimal | None"
+            },
+            {
+              "name": "note",
+              "type": "str | None"
+            }
+          ]
+        },
+        {
+          "class_name": "AdvanceRecoveryRequest",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Advance recovered through one interim payment (reduces the advance guarantee).",
+          "fields": [
+            {
+              "name": "recovered_amount",
+              "type": "Decimal"
+            },
+            {
+              "name": "source",
+              "type": "str | None"
+            },
+            {
+              "name": "source_id",
+              "type": "str | None"
+            },
+            {
+              "name": "note",
+              "type": "str | None"
+            }
+          ]
+        },
+        {
+          "class_name": "DocumentLinkRequest",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "document_id",
+              "type": "UUID"
+            },
+            {
+              "name": "kind",
+              "type": "DocumentKindLiteral",
+              "default": "'original'"
+            },
+            {
+              "name": "title",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "class_name": "GuaranteeDocumentResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "id",
+              "type": "UUID"
+            },
+            {
+              "name": "document_id",
+              "type": "UUID"
+            },
+            {
+              "name": "kind",
+              "type": "str"
+            },
+            {
+              "name": "title",
+              "type": "str"
+            },
+            {
+              "name": "created_at",
+              "type": "datetime"
+            }
+          ]
+        },
+        {
+          "class_name": "GuaranteeEventResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "id",
+              "type": "UUID"
+            },
+            {
+              "name": "action",
+              "type": "str"
+            },
+            {
+              "name": "from_status",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "to_status",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "amount_before",
+              "type": "MoneyOpt",
+              "default": "None"
+            },
+            {
+              "name": "amount_after",
+              "type": "MoneyOpt",
+              "default": "None"
+            },
+            {
+              "name": "changes",
+              "type": "dict[str, Any]"
+            },
+            {
+              "name": "source",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "source_id",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "note",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "actor_id",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "created_at",
+              "type": "datetime"
+            }
+          ]
+        },
+        {
+          "class_name": "GuaranteeResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "id",
+              "type": "UUID"
+            },
+            {
+              "name": "project_id",
+              "type": "UUID"
+            },
+            {
+              "name": "reference",
+              "type": "str"
+            },
+            {
+              "name": "guarantee_type",
+              "type": "str"
+            },
+            {
+              "name": "direction",
+              "type": "str"
+            },
+            {
+              "name": "status",
+              "type": "str"
+            },
+            {
+              "name": "issuer_bank",
+              "type": "str"
+            },
+            {
+              "name": "bank_reference",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "beneficiary",
+              "type": "str"
+            },
+            {
+              "name": "applicant",
+              "type": "str"
+            },
+            {
+              "name": "amount",
+              "type": "Money"
+            },
+            {
+              "name": "original_amount",
+              "type": "Money"
+            },
+            {
+              "name": "currency",
+              "type": "str"
+            },
+            {
+              "name": "percent_of_contract",
+              "type": "MoneyOpt",
+              "default": "None"
+            },
+            {
+              "name": "contract_value",
+              "type": "MoneyOpt",
+              "default": "None"
+            },
+            {
+              "name": "issue_date",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "expiry_date",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "auto_extend",
+              "type": "bool"
+            },
+            {
+              "name": "extension_months",
+              "type": "int | None",
+              "default": "None"
+            },
+            {
+              "name": "claim_period_days",
+              "type": "int | None",
+              "default": "None"
+            },
+            {
+              "name": "defects_period_months",
+              "type": "int | None",
+              "default": "None"
+            },
+            {
+              "name": "advance_amount",
+              "type": "MoneyOpt",
+              "default": "None"
+            },
+            {
+              "name": "advance_recovered",
+              "type": "Money"
+            },
+            {
+              "name": "advance_recovery_pct",
+              "type": "MoneyOpt",
+              "default": "None"
+            },
+            {
+              "name": "replaces_cash_retention",
+              "type": "bool"
+            },
+            {
+              "name": "commission_rate_pct",
+              "type": "MoneyOpt",
+              "default": "None"
+            },
+            {
+              "name": "form_code",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "contract_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "contract_security_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "subcontractor_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "tender_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "bid_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "facility_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "notes",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "metadata",
+              "type": "dict[str, Any]"
+            },
+            {
+              "name": "documents",
+              "type": "list[GuaranteeDocumentResponse]"
+            },
+            {
+              "name": "created_at",
+              "type": "datetime"
+            },
+            {
+              "name": "updated_at",
+              "type": "datetime"
+            },
+            {
+              "name": "days_to_expiry",
+              "type": "int | None",
+              "default": "None"
+            },
+            {
+              "name": "alert_band",
+              "type": "int | None",
+              "default": "None"
+            },
+            {
+              "name": "outstanding_advance",
+              "type": "MoneyOpt",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "GuaranteeDetailResponse",
+          "bases": [
+            "GuaranteeResponse"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "events",
+              "type": "list[GuaranteeEventResponse]"
+            },
+            {
+              "name": "findings",
+              "type": "list[dict[str, Any]]"
+            }
+          ]
+        },
+        {
+          "class_name": "FacilityCreate",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "name",
+              "type": "str"
+            },
+            {
+              "name": "bank_name",
+              "type": "str"
+            },
+            {
+              "name": "currency",
+              "type": "str"
+            },
+            {
+              "name": "limit_amount",
+              "type": "Decimal"
+            },
+            {
+              "name": "expiry_date",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "legal_entity_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "notes",
+              "type": "str | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "FacilityUpdate",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "name",
+              "type": "str | None"
+            },
+            {
+              "name": "bank_name",
+              "type": "str | None"
+            },
+            {
+              "name": "limit_amount",
+              "type": "Decimal | None"
+            },
+            {
+              "name": "expiry_date",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "notes",
+              "type": "str | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "FacilityResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "id",
+              "type": "UUID"
+            },
+            {
+              "name": "name",
+              "type": "str"
+            },
+            {
+              "name": "bank_name",
+              "type": "str"
+            },
+            {
+              "name": "currency",
+              "type": "str"
+            },
+            {
+              "name": "limit_amount",
+              "type": "Money"
+            },
+            {
+              "name": "expiry_date",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "legal_entity_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "notes",
+              "type": "str | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "AmountByKey",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "currency",
+              "type": "str"
+            },
+            {
+              "name": "amount",
+              "type": "Money"
+            },
+            {
+              "name": "bank",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "guarantee_type",
+              "type": "str | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "CreditLineUse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "facility_id",
+              "type": "str"
+            },
+            {
+              "name": "bank_name",
+              "type": "str"
+            },
+            {
+              "name": "currency",
+              "type": "str"
+            },
+            {
+              "name": "limit_amount",
+              "type": "Money"
+            },
+            {
+              "name": "used_amount",
+              "type": "Money"
+            },
+            {
+              "name": "available_amount",
+              "type": "Money"
+            },
+            {
+              "name": "utilisation_pct",
+              "type": "MoneyOpt",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "ExposureResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "live_count",
+              "type": "int"
+            },
+            {
+              "name": "totals",
+              "type": "list[AmountByKey]"
+            },
+            {
+              "name": "by_bank",
+              "type": "list[AmountByKey]"
+            },
+            {
+              "name": "by_type",
+              "type": "list[AmountByKey]"
+            },
+            {
+              "name": "held",
+              "type": "list[AmountByKey]"
+            },
+            {
+              "name": "credit_lines",
+              "type": "list[CreditLineUse]"
+            },
+            {
+              "name": "expiring",
+              "type": "list[GuaranteeResponse]"
+            },
+            {
+              "name": "project_id",
+              "type": "UUID | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "PaymentGateResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Whether a contract may receive its first interim payment.",
+          "fields": [
+            {
+              "name": "contract_id",
+              "type": "UUID"
+            },
+            {
+              "name": "allowed",
+              "type": "bool"
+            },
+            {
+              "name": "reason",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "performance_bond_id",
+              "type": "UUID | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "SummaryResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Compact per-project figures for the dashboard widget and the portfolio view.",
+          "fields": [
+            {
+              "name": "project_id",
+              "type": "UUID"
+            },
+            {
+              "name": "live_count",
+              "type": "int"
+            },
+            {
+              "name": "expiring_count",
+              "type": "int"
+            },
+            {
+              "name": "expired_count",
+              "type": "int"
+            },
+            {
+              "name": "totals",
+              "type": "list[AmountByKey]"
+            },
+            {
+              "name": "next_expiry",
+              "type": "date | None",
+              "default": "None"
+            }
+          ]
+        }
+      ],
+      "import_dependencies": [
+        "contracts",
+        "documents",
+        "finance",
+        "notifications",
+        "projects",
+        "tendering"
+      ]
+    },
+    {
       "module_id": "hse_advanced",
       "module_label": "HSE Advanced",
       "module_category": "business",
@@ -140635,6 +142597,12 @@
               "annotation": "Mapped[dict]",
               "sql_type": "JSON",
               "nullable": false
+            },
+            {
+              "name": "version",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
             }
           ],
           "relationships": []
@@ -140673,6 +142641,20 @@
           "handler": "update_inspection",
           "response_model": "InspectionResponse",
           "request_schema": "InspectionUpdate"
+        },
+        {
+          "method": "POST",
+          "path": "/{inspection_id}/merge/",
+          "handler": "merge_inspection",
+          "response_model": "OfflineMergeResponse",
+          "request_schema": "OfflineMergeRequest"
+        },
+        {
+          "method": "GET",
+          "path": "/{inspection_id}/merge-audit/",
+          "handler": "inspection_merge_audit",
+          "response_model": "list[MergeAuditOut]",
+          "request_schema": "None"
         },
         {
           "method": "DELETE",
@@ -140748,6 +142730,10 @@
           "docstring": "Create a new quality inspection.",
           "fields": [
             {
+              "name": "client_op_id",
+              "type": "str | None"
+            },
+            {
               "name": "project_id",
               "type": "UUID"
             },
@@ -140805,6 +142791,10 @@
           "docstring": "Partial update for a quality inspection.",
           "fields": [
             {
+              "name": "version",
+              "type": "int | None"
+            },
+            {
               "name": "inspection_type",
               "type": "str | None"
             },
@@ -140859,6 +142849,11 @@
           ],
           "docstring": "Inspection returned from the API.",
           "fields": [
+            {
+              "name": "version",
+              "type": "int",
+              "default": "1"
+            },
             {
               "name": "id",
               "type": "UUID"
@@ -199913,6 +201908,12 @@
               "annotation": "Mapped[float | None]",
               "sql_type": "Float",
               "nullable": true
+            },
+            {
+              "name": "version",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
             }
           ],
           "relationships": []
@@ -199967,6 +201968,20 @@
           "handler": "update_item",
           "response_model": "PunchItemResponse",
           "request_schema": "PunchItemUpdate"
+        },
+        {
+          "method": "POST",
+          "path": "/items/{item_id}/merge/",
+          "handler": "merge_item",
+          "response_model": "OfflineMergeResponse",
+          "request_schema": "OfflineMergeRequest"
+        },
+        {
+          "method": "GET",
+          "path": "/items/{item_id}/merge-audit/",
+          "handler": "item_merge_audit",
+          "response_model": "list[MergeAuditOut]",
+          "request_schema": "None"
         },
         {
           "method": "DELETE",
@@ -200029,6 +202044,10 @@
           ],
           "docstring": "Create a new punch list item.",
           "fields": [
+            {
+              "name": "client_op_id",
+              "type": "str | None"
+            },
             {
               "name": "project_id",
               "type": "UUID"
@@ -200113,6 +202132,10 @@
           "docstring": "Partial update for a punch list item.",
           "fields": [
             {
+              "name": "version",
+              "type": "int | None"
+            },
+            {
               "name": "contract_id",
               "type": "UUID | None",
               "default": "None"
@@ -200196,6 +202219,11 @@
           ],
           "docstring": "Punch list item returned from the API.",
           "fields": [
+            {
+              "name": "version",
+              "type": "int",
+              "default": "1"
+            },
             {
               "name": "id",
               "type": "UUID"
@@ -209411,6 +211439,7 @@
         "bim_hub",
         "contacts",
         "costmodel",
+        "dashboard",
         "finance",
         "portal",
         "procurement",
@@ -227231,9 +229260,13 @@
         "delay_engine.py",
         "delay_report.py",
         "delay_service.py",
+        "demo_lps.py",
         "events.py",
         "leveling.py",
+        "lps.py",
+        "lps_rules.py",
         "manifest.py",
+        "messages/__init__.py",
         "models.py",
         "permissions.py",
         "portfolio_cpm.py",
@@ -227494,6 +229527,24 @@
               "annotation": "Mapped[str]",
               "sql_type": "String",
               "nullable": false
+            },
+            {
+              "name": "linked_type",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "linked_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "link_resolved_at",
+              "annotation": "Mapped[datetime | None]",
+              "sql_type": "DateTime",
+              "nullable": true
             }
           ],
           "relationships": []
@@ -227635,6 +229686,18 @@
             },
             {
               "name": "actual_qty",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
+              "name": "subcontractor_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "target_progress_pct",
               "annotation": "Mapped[Decimal | None]",
               "sql_type": "Numeric",
               "nullable": true
@@ -229213,6 +231276,34 @@
           "handler": "raise_eot_claim",
           "response_model": "RaiseEotClaimResponse",
           "request_schema": "None"
+        },
+        {
+          "method": "GET",
+          "path": "/look-aheads/{la_id}/board",
+          "handler": "look_ahead_board",
+          "response_model": "LpsBoardResponse",
+          "request_schema": "ScheduleAdvancedService"
+        },
+        {
+          "method": "GET",
+          "path": "/master-schedules/{master_id}/constraints-log",
+          "handler": "master_constraints_log",
+          "response_model": "list[LpsConstraintRow]",
+          "request_schema": "ScheduleAdvancedService"
+        },
+        {
+          "method": "GET",
+          "path": "/master-schedules/{master_id}/ppc-history",
+          "handler": "master_ppc_history",
+          "response_model": "LpsPpcHistoryResponse",
+          "request_schema": "ScheduleAdvancedService"
+        },
+        {
+          "method": "GET",
+          "path": "/master-schedules/{master_id}/lps-validation",
+          "handler": "master_lps_validation",
+          "response_model": "LpsValidationResponse",
+          "request_schema": "ScheduleAdvancedService"
         }
       ],
       "schemas": [
@@ -229667,6 +231758,15 @@
             {
               "name": "status",
               "type": "str"
+            },
+            {
+              "name": "linked_type",
+              "type": "str | None"
+            },
+            {
+              "name": "linked_id",
+              "type": "UUID | None",
+              "default": "None"
             }
           ]
         },
@@ -229714,6 +231814,15 @@
             {
               "name": "status",
               "type": "str | None"
+            },
+            {
+              "name": "linked_type",
+              "type": "str | None"
+            },
+            {
+              "name": "linked_id",
+              "type": "UUID | None",
+              "default": "None"
             }
           ]
         },
@@ -229770,6 +231879,21 @@
               "name": "status",
               "type": "str",
               "default": "'open'"
+            },
+            {
+              "name": "linked_type",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "linked_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "link_resolved_at",
+              "type": "datetime | None",
+              "default": "None"
             },
             {
               "name": "created_at",
@@ -229959,6 +232083,15 @@
               "name": "made_at",
               "type": "datetime | None",
               "default": "None"
+            },
+            {
+              "name": "subcontractor_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "target_progress_pct",
+              "type": "Decimal | None"
             }
           ]
         },
@@ -230007,6 +232140,15 @@
               "name": "completed_at",
               "type": "datetime | None",
               "default": "None"
+            },
+            {
+              "name": "subcontractor_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "target_progress_pct",
+              "type": "Decimal | None"
             }
           ]
         },
@@ -230075,6 +232217,16 @@
             },
             {
               "name": "actual_qty",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
+              "name": "subcontractor_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "target_progress_pct",
               "type": "Decimal | None",
               "default": "None"
             },
@@ -232978,13 +235130,340 @@
               "type": "int"
             }
           ]
+        },
+        {
+          "class_name": "LpsConstraintRow",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "A constraint as the board and the constraints log show it.",
+          "fields": [
+            {
+              "name": "id",
+              "type": "UUID"
+            },
+            {
+              "name": "task_ref",
+              "type": "UUID"
+            },
+            {
+              "name": "task_name",
+              "type": "str",
+              "default": "''"
+            },
+            {
+              "name": "constraint_type",
+              "type": "str"
+            },
+            {
+              "name": "description",
+              "type": "str",
+              "default": "''"
+            },
+            {
+              "name": "owner_user_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "target_clear_date",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "status",
+              "type": "str"
+            },
+            {
+              "name": "cleared_at",
+              "type": "datetime | None",
+              "default": "None"
+            },
+            {
+              "name": "linked_type",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "linked_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "linked_label",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "linked_status",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "link_resolved_at",
+              "type": "datetime | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "LpsBoardTask",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "One schedule activity on the look-ahead board.",
+          "fields": [
+            {
+              "name": "task_ref",
+              "type": "UUID"
+            },
+            {
+              "name": "name",
+              "type": "str"
+            },
+            {
+              "name": "wbs_code",
+              "type": "str",
+              "default": "''"
+            },
+            {
+              "name": "start_date",
+              "type": "date"
+            },
+            {
+              "name": "end_date",
+              "type": "date"
+            },
+            {
+              "name": "week_start",
+              "type": "date"
+            },
+            {
+              "name": "progress_pct",
+              "type": "Decimal"
+            },
+            {
+              "name": "is_ready",
+              "type": "bool"
+            },
+            {
+              "name": "open_constraints",
+              "type": "int"
+            },
+            {
+              "name": "committed",
+              "type": "bool"
+            },
+            {
+              "name": "constraints",
+              "type": "list[LpsConstraintRow]"
+            }
+          ]
+        },
+        {
+          "class_name": "LpsBoardResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "The look-ahead board: activities pulled from the schedule, by week.",
+          "fields": [
+            {
+              "name": "look_ahead_id",
+              "type": "UUID"
+            },
+            {
+              "name": "master_schedule_id",
+              "type": "UUID"
+            },
+            {
+              "name": "project_id",
+              "type": "UUID"
+            },
+            {
+              "name": "period_start",
+              "type": "date"
+            },
+            {
+              "name": "period_end",
+              "type": "date"
+            },
+            {
+              "name": "weeks",
+              "type": "list[date]"
+            },
+            {
+              "name": "tasks",
+              "type": "list[LpsBoardTask]"
+            },
+            {
+              "name": "ready_count",
+              "type": "int"
+            },
+            {
+              "name": "blocked_count",
+              "type": "int"
+            }
+          ]
+        },
+        {
+          "class_name": "LpsPpcWeek",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "PPC of one weekly work plan.",
+          "fields": [
+            {
+              "name": "week_plan_id",
+              "type": "UUID"
+            },
+            {
+              "name": "week_start_date",
+              "type": "date"
+            },
+            {
+              "name": "status",
+              "type": "str"
+            },
+            {
+              "name": "committed",
+              "type": "int"
+            },
+            {
+              "name": "completed",
+              "type": "int"
+            },
+            {
+              "name": "ppc_percent",
+              "type": "Decimal | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "LpsParetoRow",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "One reason for variance on the Pareto chart.",
+          "fields": [
+            {
+              "name": "category",
+              "type": "str"
+            },
+            {
+              "name": "count",
+              "type": "int"
+            },
+            {
+              "name": "percent",
+              "type": "Decimal"
+            },
+            {
+              "name": "cumulative_percent",
+              "type": "Decimal"
+            }
+          ]
+        },
+        {
+          "class_name": "LpsPpcHistoryResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "PPC per week and the Pareto of reasons for variance.",
+          "fields": [
+            {
+              "name": "master_schedule_id",
+              "type": "UUID"
+            },
+            {
+              "name": "weeks",
+              "type": "list[LpsPpcWeek]"
+            },
+            {
+              "name": "average_ppc",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
+              "name": "pareto",
+              "type": "list[LpsParetoRow]"
+            }
+          ]
+        },
+        {
+          "class_name": "LpsValidationResult",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "One ``last_planner`` rule result.",
+          "fields": [
+            {
+              "name": "rule_id",
+              "type": "str"
+            },
+            {
+              "name": "severity",
+              "type": "str"
+            },
+            {
+              "name": "passed",
+              "type": "bool"
+            },
+            {
+              "name": "message",
+              "type": "str"
+            },
+            {
+              "name": "element_ref",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "suggestion",
+              "type": "str | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "LpsValidationResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "The ``last_planner`` rule set run over one master schedule.",
+          "fields": [
+            {
+              "name": "master_schedule_id",
+              "type": "UUID"
+            },
+            {
+              "name": "status",
+              "type": "str"
+            },
+            {
+              "name": "errors",
+              "type": "int"
+            },
+            {
+              "name": "warnings",
+              "type": "int"
+            },
+            {
+              "name": "results",
+              "type": "list[LpsValidationResult]"
+            }
+          ]
         }
       ],
       "import_dependencies": [
         "boq",
         "construction_control",
+        "notifications",
+        "procurement",
         "resources",
+        "rfi",
         "schedule",
+        "subcontractors",
         "variations"
       ]
     },
@@ -246969,8 +249448,11 @@
       "files": [
         "__init__.py",
         "claim_rules.py",
+        "demo_insurance.py",
         "events.py",
         "finance_bridge.py",
+        "insurance.py",
+        "insurance_rules.py",
         "intl.py",
         "manifest.py",
         "messages/__init__.py",
@@ -247311,6 +249793,30 @@
               "name": "notes",
               "annotation": "Mapped[str | None]",
               "sql_type": "Text",
+              "nullable": true
+            },
+            {
+              "name": "is_mandatory",
+              "annotation": "Mapped[bool]",
+              "sql_type": "Boolean",
+              "nullable": false
+            },
+            {
+              "name": "policy_number",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "coverage_amount",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
+              "name": "coverage_currency",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
               "nullable": true
             },
             {
@@ -247891,6 +250397,52 @@
             }
           ],
           "relationships": []
+        },
+        {
+          "class_name": "PaymentComplianceOverride",
+          "tablename": "oe_subcontractors_payment_compliance_override",
+          "docstring": "A manager's recorded decision to pay despite lapsed mandatory insurance.\n\nAppend-only audit row: who overrode, why, and which lapsed certificates the\ndecision covered. A certificate that lapses after the override is not covered.",
+          "columns": [
+            {
+              "name": "payment_application_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_subcontractors_payment_application.id"
+            },
+            {
+              "name": "subcontractor_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false
+            },
+            {
+              "name": "reason",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            },
+            {
+              "name": "covered_reasons",
+              "annotation": "Mapped[list]",
+              "sql_type": "JSON",
+              "nullable": false
+            },
+            {
+              "name": "overridden_by",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "overridden_at",
+              "annotation": "Mapped[datetime]",
+              "sql_type": "DateTime",
+              "nullable": false
+            }
+          ],
+          "relationships": []
         }
       ],
       "routes": [
@@ -248366,6 +250918,40 @@
           "method": "DELETE",
           "path": "/subcontractors/{sub_id}/lien-waivers/{waiver_id}",
           "handler": "delete_lien_waiver",
+          "request_schema": "None"
+        },
+        {
+          "method": "GET",
+          "path": "/subcontractors/{subcontractor_id}/insurance-status",
+          "handler": "subcontractor_insurance_status",
+          "response_model": "SubcontractorInsuranceStatus",
+          "request_schema": "None"
+        },
+        {
+          "method": "GET",
+          "path": "/payment-applications/{payment_id}/insurance-check",
+          "handler": "payment_insurance_check",
+          "response_model": "PaymentInsuranceStatus",
+          "request_schema": "None"
+        },
+        {
+          "method": "POST",
+          "path": "/payment-applications/{payment_id}/insurance-override",
+          "handler": "payment_insurance_override",
+          "response_model": "InsuranceOverrideView",
+          "request_schema": "InsuranceOverrideRequest"
+        },
+        {
+          "method": "GET",
+          "path": "/insurance/project/{project_id}",
+          "handler": "project_insurance_dashboard",
+          "response_model": "ProjectInsuranceDashboard",
+          "request_schema": "None"
+        },
+        {
+          "method": "POST",
+          "path": "/insurance/alerts/run",
+          "handler": "run_insurance_alerts",
           "request_schema": "None"
         }
       ],
@@ -249045,6 +251631,23 @@
               "name": "notes",
               "type": "str | None",
               "default": "None"
+            },
+            {
+              "name": "is_mandatory",
+              "type": "bool",
+              "default": "False"
+            },
+            {
+              "name": "policy_number",
+              "type": "str | None"
+            },
+            {
+              "name": "coverage_amount",
+              "type": "Decimal | None"
+            },
+            {
+              "name": "coverage_currency",
+              "type": "str | None"
             }
           ]
         },
@@ -249086,6 +251689,23 @@
               "name": "notes",
               "type": "str | None",
               "default": "None"
+            },
+            {
+              "name": "is_mandatory",
+              "type": "bool | None",
+              "default": "None"
+            },
+            {
+              "name": "policy_number",
+              "type": "str | None"
+            },
+            {
+              "name": "coverage_amount",
+              "type": "Decimal | None"
+            },
+            {
+              "name": "coverage_currency",
+              "type": "str | None"
             }
           ]
         },
@@ -249140,6 +251760,26 @@
             },
             {
               "name": "notes",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "is_mandatory",
+              "type": "bool",
+              "default": "False"
+            },
+            {
+              "name": "policy_number",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "coverage_amount",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
+              "name": "coverage_currency",
               "type": "str | None",
               "default": "None"
             },
@@ -250200,6 +252840,11 @@
             {
               "name": "details",
               "type": "list[ComplianceDetail]"
+            },
+            {
+              "name": "insurance_status",
+              "type": "str | None",
+              "description": "compliant / expiring / non_compliant from the insurance register; shown to bid evaluators"
             }
           ]
         },
@@ -250250,6 +252895,11 @@
             {
               "name": "details",
               "type": "list[ComplianceDetail]"
+            },
+            {
+              "name": "insurance_status",
+              "type": "str | None",
+              "default": "None"
             }
           ]
         },
@@ -250306,6 +252956,11 @@
             {
               "name": "details",
               "type": "list[ComplianceDetail]"
+            },
+            {
+              "name": "insurance_status",
+              "type": "str | None",
+              "default": "None"
             }
           ]
         },
@@ -251352,12 +254007,346 @@
               "type": "Decimal"
             }
           ]
+        },
+        {
+          "class_name": "InsuranceCertificateView",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "A certificate as the insurance views show it, with its alert bucket.",
+          "fields": [
+            {
+              "name": "id",
+              "type": "str"
+            },
+            {
+              "name": "subcontractor_id",
+              "type": "str"
+            },
+            {
+              "name": "cert_type",
+              "type": "str"
+            },
+            {
+              "name": "is_mandatory",
+              "type": "bool",
+              "default": "False"
+            },
+            {
+              "name": "valid_until",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "issue_date",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "revoked",
+              "type": "bool",
+              "default": "False"
+            },
+            {
+              "name": "policy_number",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "coverage_amount",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "coverage_currency",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "issued_by",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "bucket",
+              "type": "str",
+              "description": "valid / due_30 / due_14 / due_0 / expired / revoked"
+            },
+            {
+              "name": "days_to_expiry",
+              "type": "int | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "InsuranceFinding",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "One failed insurance rule.",
+          "fields": [
+            {
+              "name": "rule_id",
+              "type": "str"
+            },
+            {
+              "name": "severity",
+              "type": "str"
+            },
+            {
+              "name": "message",
+              "type": "str"
+            },
+            {
+              "name": "element_ref",
+              "type": "str | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "InsuranceOverrideView",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "A recorded manager override of the insurance payment gate.",
+          "fields": [
+            {
+              "name": "id",
+              "type": "UUID"
+            },
+            {
+              "name": "reason",
+              "type": "str"
+            },
+            {
+              "name": "covered_reasons",
+              "type": "list[str]"
+            },
+            {
+              "name": "overridden_by",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "overridden_at",
+              "type": "datetime"
+            }
+          ]
+        },
+        {
+          "class_name": "SubcontractorInsuranceStatus",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Insurance status of one subcontractor: card, prequalification and gate.",
+          "fields": [
+            {
+              "name": "subcontractor_id",
+              "type": "UUID"
+            },
+            {
+              "name": "as_of",
+              "type": "date"
+            },
+            {
+              "name": "status",
+              "type": "str",
+              "description": "compliant / expiring / non_compliant"
+            },
+            {
+              "name": "payment_blocked",
+              "type": "bool"
+            },
+            {
+              "name": "reasons",
+              "type": "list[str]"
+            },
+            {
+              "name": "certificates",
+              "type": "list[InsuranceCertificateView]"
+            },
+            {
+              "name": "findings",
+              "type": "list[InsuranceFinding]"
+            }
+          ]
+        },
+        {
+          "class_name": "PaymentInsuranceStatus",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Insurance gate verdict for one pay application.",
+          "fields": [
+            {
+              "name": "payment_application_id",
+              "type": "UUID"
+            },
+            {
+              "name": "subcontractor_id",
+              "type": "UUID"
+            },
+            {
+              "name": "blocked",
+              "type": "bool"
+            },
+            {
+              "name": "reasons",
+              "type": "list[str]"
+            },
+            {
+              "name": "overridden",
+              "type": "bool",
+              "default": "False"
+            },
+            {
+              "name": "override",
+              "type": "InsuranceOverrideView | None",
+              "default": "None"
+            },
+            {
+              "name": "certificates",
+              "type": "list[InsuranceCertificateView]"
+            }
+          ]
+        },
+        {
+          "class_name": "InsuranceOverrideRequest",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "The reason a manager gives for paying despite lapsed mandatory insurance.",
+          "fields": [
+            {
+              "name": "reason",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "class_name": "ProjectInsuranceSubRow",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "One subcontractor on the project compliance dashboard.",
+          "fields": [
+            {
+              "name": "subcontractor_id",
+              "type": "UUID"
+            },
+            {
+              "name": "name",
+              "type": "str"
+            },
+            {
+              "name": "status",
+              "type": "str"
+            },
+            {
+              "name": "payment_blocked",
+              "type": "bool"
+            },
+            {
+              "name": "reasons",
+              "type": "list[str]"
+            },
+            {
+              "name": "certificates",
+              "type": "list[InsuranceCertificateView]"
+            }
+          ]
+        },
+        {
+          "class_name": "ProjectInsurancePaymentRow",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "A pay application the insurance gate holds or held.",
+          "fields": [
+            {
+              "name": "payment_application_id",
+              "type": "UUID"
+            },
+            {
+              "name": "application_number",
+              "type": "str"
+            },
+            {
+              "name": "subcontractor_id",
+              "type": "UUID"
+            },
+            {
+              "name": "status",
+              "type": "str"
+            },
+            {
+              "name": "net_amount",
+              "type": "str"
+            },
+            {
+              "name": "currency",
+              "type": "str"
+            },
+            {
+              "name": "blocked",
+              "type": "bool"
+            },
+            {
+              "name": "overridden",
+              "type": "bool"
+            },
+            {
+              "name": "reasons",
+              "type": "list[str]"
+            },
+            {
+              "name": "override",
+              "type": "InsuranceOverrideView | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "ProjectInsuranceDashboard",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Insurance compliance of every subcontractor on one project.",
+          "fields": [
+            {
+              "name": "project_id",
+              "type": "UUID"
+            },
+            {
+              "name": "as_of",
+              "type": "date"
+            },
+            {
+              "name": "counts",
+              "type": "dict[str, int]"
+            },
+            {
+              "name": "certificate_buckets",
+              "type": "dict[str, int]"
+            },
+            {
+              "name": "subcontractors",
+              "type": "list[ProjectInsuranceSubRow]"
+            },
+            {
+              "name": "gated_payments",
+              "type": "list[ProjectInsurancePaymentRow]"
+            }
+          ]
         }
       ],
       "import_dependencies": [
         "contacts",
         "contracts",
         "finance",
+        "notifications",
         "projects",
         "tax_withholding"
       ]
@@ -278051,10 +281040,10 @@
     },
     {
       "name": "dashboard",
-      "ts_files": 48,
+      "ts_files": 49,
       "css_files": 0,
       "test_files": 14,
-      "total_files": 48
+      "total_files": 49
     },
     {
       "name": "dashboards",
@@ -278205,17 +281194,17 @@
     },
     {
       "name": "field",
-      "ts_files": 19,
+      "ts_files": 25,
       "css_files": 0,
-      "test_files": 5,
-      "total_files": 19
+      "test_files": 7,
+      "total_files": 25
     },
     {
       "name": "field-time",
-      "ts_files": 16,
+      "ts_files": 31,
       "css_files": 0,
-      "test_files": 3,
-      "total_files": 16
+      "test_files": 7,
+      "total_files": 31
     },
     {
       "name": "fieldreports",
@@ -278365,6 +281354,13 @@
       "total_files": 4
     },
     {
+      "name": "guarantees",
+      "ts_files": 12,
+      "css_files": 0,
+      "test_files": 1,
+      "total_files": 12
+    },
+    {
       "name": "help",
       "ts_files": 28,
       "css_files": 0,
@@ -278422,10 +281418,10 @@
     },
     {
       "name": "inspections",
-      "ts_files": 5,
+      "ts_files": 6,
       "css_files": 0,
       "test_files": 0,
-      "total_files": 5
+      "total_files": 6
     },
     {
       "name": "integrations",
@@ -278730,10 +281726,10 @@
     },
     {
       "name": "punchlist",
-      "ts_files": 21,
+      "ts_files": 22,
       "css_files": 0,
       "test_files": 8,
-      "total_files": 21
+      "total_files": 22
     },
     {
       "name": "qms",
@@ -278877,10 +281873,10 @@
     },
     {
       "name": "schedule-advanced",
-      "ts_files": 10,
+      "ts_files": 16,
       "css_files": 0,
-      "test_files": 2,
-      "total_files": 10
+      "test_files": 3,
+      "total_files": 16
     },
     {
       "name": "search",
@@ -278982,10 +281978,10 @@
     },
     {
       "name": "subcontractors",
-      "ts_files": 27,
+      "ts_files": 31,
       "css_files": 0,
-      "test_files": 9,
-      "total_files": 27
+      "test_files": 10,
+      "total_files": 31
     },
     {
       "name": "submittals",
@@ -279503,6 +282499,7 @@
       "contacts",
       "costmodel",
       "finance",
+      "guarantees",
       "i18n_foundation",
       "price_index",
       "progress",
@@ -279590,14 +282587,17 @@
     ],
     "cvr": [
       "contracts",
+      "field_time",
       "projects",
       "users"
     ],
     "dach_pack": [],
     "daily_diary": [
       "documents",
+      "field_time",
       "project_governance",
       "projects",
+      "punchlist",
       "users"
     ],
     "dashboard": [
@@ -279619,6 +282619,8 @@
       "risk",
       "safety",
       "schedule",
+      "schedule_advanced",
+      "subcontractors",
       "tasks",
       "teams",
       "tendering",
@@ -279807,6 +282809,8 @@
       "equipment",
       "field_diary",
       "fieldreports",
+      "geo_hub",
+      "notifications",
       "projects",
       "resources",
       "subcontractors",
@@ -279930,6 +282934,14 @@
     ],
     "global_presence": [
       "users"
+    ],
+    "guarantees": [
+      "contracts",
+      "documents",
+      "finance",
+      "notifications",
+      "projects",
+      "tendering"
     ],
     "hse_advanced": [
       "projects",
@@ -280407,6 +283419,7 @@
       "boq",
       "contacts",
       "costmodel",
+      "dashboard",
       "finance",
       "portal",
       "procurement",
@@ -280507,9 +283520,13 @@
     "schedule_advanced": [
       "boq",
       "construction_control",
+      "notifications",
+      "procurement",
       "projects",
       "resources",
+      "rfi",
       "schedule",
+      "subcontractors",
       "users",
       "variations"
     ],
@@ -280608,6 +283625,7 @@
       "contacts",
       "contracts",
       "finance",
+      "notifications",
       "projects",
       "tax_withholding",
       "users"
@@ -280722,17 +283740,17 @@
     ]
   },
   "statistics": {
-    "backend_modules": 215,
-    "modules_with_manifests": 213,
-    "total_models": 794,
-    "total_columns": 9236,
-    "total_relationships": 240,
-    "total_routes": 4655,
-    "total_schemas": 4142,
-    "total_python_files": 2824,
-    "frontend_features": 210,
-    "frontend_ts_files": 3636,
-    "frontend_backend_mapped": 187
+    "backend_modules": 216,
+    "modules_with_manifests": 214,
+    "total_models": 803,
+    "total_columns": 9359,
+    "total_relationships": 244,
+    "total_routes": 4696,
+    "total_schemas": 4177,
+    "total_python_files": 2853,
+    "frontend_features": 211,
+    "frontend_ts_files": 3682,
+    "frontend_backend_mapped": 188
   },
   "frontend_backend_mapping": {
     "about": null,
@@ -280836,6 +283854,7 @@
     "geo-hub": "geo_hub",
     "global_presence": "global_presence",
     "governance": "project_governance",
+    "guarantees": "guarantees",
     "help": null,
     "hse-advanced": "hse_advanced",
     "hse_frame": "hse_frame",
