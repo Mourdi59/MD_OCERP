@@ -52390,6 +52390,7 @@ const resource = {
     "boq.filter_drawing_revised_zero": "On revised drawings ({{count}})",
     "boq.filter_drawing_revised_two": "On revised drawings ({{count}})",
     "boq.filter_drawing_revised_many": "On revised drawings ({{count}})",
+    "boq.filter_drawing_revised_few": "On revised drawings ({{count}})",
     "guide.cost_control.title": "Cost control",
     "guide.cost_control.intro": "Cost control answers one question: what will the project cost in the end, and why. It reads the budget, the estimate, contracts, changes, measured work and invoices that already live in their own modules, so nothing is typed in twice.",
     "guide.cost_control.methods.title": "Four ways to read the forecast",

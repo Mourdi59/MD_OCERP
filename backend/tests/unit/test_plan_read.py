@@ -27,6 +27,11 @@ A1_W_PT = 594.0 * 72.0 / 25.4
 A1_H_PT = 841.0 * 72.0 / 25.4
 
 
+async def _no_row(*_a: Any, **_k: Any) -> None:
+    """Session.get stub: the drawing lookup finds no register row."""
+    return
+
+
 # ---------------------------------------------------------------------------
 # Vision capability
 # ---------------------------------------------------------------------------
@@ -365,7 +370,7 @@ def _make_service(*, run_repo, meas_repo, doc_repo):
     from app.modules.takeoff.service import TakeoffService
 
     svc = object.__new__(TakeoffService)
-    svc.session = SimpleNamespace()
+    svc.session = SimpleNamespace(get=_no_row)
     svc.repo = doc_repo
     svc.measurement_repo = meas_repo
     svc.plan_read_repo = run_repo
@@ -602,7 +607,7 @@ class TestGracefulDegradation:
         monkeypatch.setattr(_ac, "resolve_provider_key_model", _no_key)
 
         svc = object.__new__(TakeoffService)
-        svc.session = SimpleNamespace()
+        svc.session = SimpleNamespace(get=_no_row)
 
         async def _get_by_user_id(_uid):  # noqa: ANN001, ANN202
             return None
@@ -629,7 +634,7 @@ class TestGracefulDegradation:
         monkeypatch.setattr(_ac, "resolve_provider_key_model", _ollama)
 
         svc = object.__new__(TakeoffService)
-        svc.session = SimpleNamespace()
+        svc.session = SimpleNamespace(get=_no_row)
 
         async def _get_by_user_id(_uid):  # noqa: ANN001, ANN202
             return None
@@ -657,7 +662,7 @@ class TestGracefulDegradation:
 
         run_repo = _FakeRunRepo()
         svc = object.__new__(TakeoffService)
-        svc.session = SimpleNamespace()
+        svc.session = SimpleNamespace(get=_no_row)
         svc.plan_read_repo = run_repo
 
         meta = await svc.plan_read_meta(str(uuid.uuid4()))

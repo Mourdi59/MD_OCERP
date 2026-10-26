@@ -58812,6 +58812,7 @@ const resource = {
     "boq.drawing_ref.measurements_n_other": "{{count}} mätningar",
     "boq.filter_drawing_revised_one": "På reviderad ritning ({{count}})",
     "boq.filter_drawing_revised_other": "På reviderade ritningar ({{count}})",
+    "boq.filter_drawing_revised_few": "På reviderade ritningar ({{count}})",
     "guide.cost_control.title": "Kostnadsstyrning",
     "guide.cost_control.intro": "Kostnadsstyrningen svarar på en fråga: vad kommer projektet att kosta till slut, och varför. Den läser budget, kalkyl, kontrakt, ändringar, uppmätt arbete och fakturor som redan finns i sina egna moduler, så ingenting skrivs in två gånger.",
     "guide.cost_control.methods.title": "Fyra sätt att läsa prognosen",

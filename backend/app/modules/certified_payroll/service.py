@@ -671,7 +671,17 @@ class CertifiedPayrollService:
             week.fringe_exception_note = data.fringe_exception_note
 
         findings = await self.validate_week(week)
-        blocking = [f for f in findings if not f.passed and str(f.severity) == "error" and not f.is_engine_error]
+        # The statement of compliance is the signature being given now, so its absence on the
+        # unsigned week is not a reason to refuse; a request without a signatory still is.
+        signing = bool(data.signatory_name.strip() and data.signatory_title.strip())
+        blocking = [
+            f
+            for f in findings
+            if not f.passed
+            and str(f.severity) == "error"
+            and not f.is_engine_error
+            and not (signing and f.rule_id == "certified_payroll.statement_of_compliance_missing")
+        ]
         if blocking:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,

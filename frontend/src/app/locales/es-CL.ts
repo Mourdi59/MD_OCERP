@@ -49124,8 +49124,10 @@ const resource = {
     "boq.drawing_ref.show_column": "Mostrar columna de planos",
     "boq.drawing_ref.measurements_n_one": "{{count}} medición",
     "boq.drawing_ref.measurements_n_other": "{{count}} mediciones",
+    "boq.drawing_ref.measurements_n_many": "{{count}} mediciones",
     "boq.filter_drawing_revised_one": "En plano revisado ({{count}})",
     "boq.filter_drawing_revised_other": "En planos revisados ({{count}})",
+    "boq.filter_drawing_revised_many": "En planos revisados ({{count}})",
     // --- /Learn ---
     "schedule.calendar.week_fallback": "La semana laboral regional no está disponible. Se utiliza una semana de planificación estándar.",
     "schedule.calendar.holidays_missing": "No hay datos de días festivos para {{years}}. Revise el calendario antes de basarse en estas fechas.",

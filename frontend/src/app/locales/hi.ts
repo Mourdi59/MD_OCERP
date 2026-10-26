@@ -58200,6 +58200,7 @@ const resource = {
     "boq.drawing_ref.measurements_n_other": "{{count}} माप",
     "boq.filter_drawing_revised_one": "संशोधित ड्रॉइंग पर ({{count}})",
     "boq.filter_drawing_revised_other": "संशोधित ड्रॉइंग्स पर ({{count}})",
+    "boq.filter_drawing_revised_few": "संशोधित ड्रॉइंग्स पर ({{count}})",
     "guide.cost_control.title": "लागत नियंत्रण",
     "guide.cost_control.intro": "लागत नियंत्रण एक सवाल का जवाब देता है: अंत में प्रोजेक्ट की लागत क्या होगी, और क्यों। यह बजट, अनुमान, अनुबंध, बदलाव, मापा गया काम और चालान पढ़ता है जो पहले से अपने-अपने मॉड्यूल में हैं, इसलिए कुछ भी दो बार नहीं भरना पड़ता।",
     "guide.cost_control.methods.title": "पूर्वानुमान पढ़ने के चार तरीके",

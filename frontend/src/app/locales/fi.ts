@@ -58201,6 +58201,7 @@ const resource = {
     "boq.drawing_ref.measurements_n_other": "{{count}} mittausta",
     "boq.filter_drawing_revised_one": "Revisoidulla piirustuksella ({{count}})",
     "boq.filter_drawing_revised_other": "Revisoiduilla piirustuksilla ({{count}})",
+    "boq.filter_drawing_revised_few": "Revisoiduilla piirustuksilla ({{count}})",
     "guide.cost_control.title": "Kustannusseuranta",
     "guide.cost_control.intro": "Kustannusseuranta vastaa yhteen kysymykseen: paljonko hanke maksaa lopulta ja miksi. Se lukee budjetin, kustannusarvion, sopimukset, muutokset, mitatun työn ja laskut, jotka ovat jo omissa moduuleissaan, joten mitään ei kirjata kahdesti.",
     "guide.cost_control.methods.title": "Neljä tapaa lukea ennuste",

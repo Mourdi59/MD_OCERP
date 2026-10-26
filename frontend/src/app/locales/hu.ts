@@ -60762,6 +60762,7 @@ const resource = {
     "boq.drawing_ref.measurements_n_other": "{{count}} mérés",
     "boq.filter_drawing_revised_one": "Módosított rajzon ({{count}})",
     "boq.filter_drawing_revised_other": "Módosított rajzokon ({{count}})",
+    "boq.filter_drawing_revised_few": "Módosított rajzokon ({{count}})",
     "guide.cost_control.title": "Költségkövetés",
     "guide.cost_control.intro": "A költségkövetés egy kérdésre válaszol: mennyibe fog kerülni a projekt a végén, és miért. A költségvetést, a költségbecslést, a szerződéseket, a módosításokat, a felmért munkát és a számlákat olvassa, amelyek már a saját moduljukban vannak, így semmit nem kell kétszer beírni.",
     "guide.cost_control.methods.title": "Az előrejelzés négy olvasata",

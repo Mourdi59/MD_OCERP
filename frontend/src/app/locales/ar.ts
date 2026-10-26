@@ -61259,6 +61259,7 @@ const resource = {
     "boq.filter_drawing_revised_zero": "على مخططات مُعدَّلة ({{count}})",
     "boq.filter_drawing_revised_two": "على مخططين مُعدَّلين ({{count}})",
     "boq.filter_drawing_revised_many": "على مخططات مُعدَّلة ({{count}})",
+    "boq.filter_drawing_revised_few": "على مخططات مُعدَّلة ({{count}})",
     "guide.cost_control.title": "ضبط التكاليف",
     "guide.cost_control.intro": "يجيب ضبط التكاليف عن سؤال واحد: كم سيكلّف المشروع في النهاية، ولماذا. يقرأ الميزانية والتقدير والعقود والتغييرات والأعمال المقاسة والفواتير الموجودة أصلًا في وحداتها، فلا يُدخل شيء مرتين.",
     "guide.cost_control.methods.title": "أربع طرق لقراءة التوقع",

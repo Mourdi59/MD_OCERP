@@ -59078,6 +59078,7 @@ const resource = {
     "boq.drawing_ref.measurements_n_other": "{{count}} metingen",
     "boq.filter_drawing_revised_one": "Op gewijzigde tekening ({{count}})",
     "boq.filter_drawing_revised_other": "Op gewijzigde tekeningen ({{count}})",
+    "boq.filter_drawing_revised_few": "Op gewijzigde tekeningen ({{count}})",
     "guide.cost_control.title": "Kostenbeheersing",
     "guide.cost_control.intro": "Kostenbeheersing beantwoordt één vraag: wat gaat het project uiteindelijk kosten, en waarom. Het leest budget, raming, contracten, wijzigingen, opgemeten werk en facturen uit de modules waar ze al staan, dus niets wordt dubbel ingevoerd.",
     "guide.cost_control.methods.title": "Vier manieren om de prognose te lezen",

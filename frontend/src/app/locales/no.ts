@@ -58197,6 +58197,7 @@ const resource = {
     "boq.drawing_ref.measurements_n_other": "{{count}} målinger",
     "boq.filter_drawing_revised_one": "På revidert tegning ({{count}})",
     "boq.filter_drawing_revised_other": "På reviderte tegninger ({{count}})",
+    "boq.filter_drawing_revised_few": "På reviderte tegninger ({{count}})",
     "guide.cost_control.title": "Kostnadsstyring",
     "guide.cost_control.intro": "Kostnadsstyring svarer på ett spørsmål: hva kommer prosjektet til å koste til slutt, og hvorfor. Den leser budsjett, kalkyle, kontrakter, endringer, målt arbeid og fakturaer som allerede ligger i sine egne moduler, så ingenting skrives inn to ganger.",
     "guide.cost_control.methods.title": "Fire måter å lese prognosen på",

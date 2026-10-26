@@ -60272,6 +60272,7 @@ const resource = {
     "boq.filter_drawing_revised_one": "На зміненому кресленні ({{count}})",
     "boq.filter_drawing_revised_many": "На змінених кресленнях ({{count}})",
     "boq.filter_drawing_revised_other": "На змінених кресленнях ({{count}})",
+    "boq.filter_drawing_revised_few": "На змінених кресленнях ({{count}})",
     "guide.cost_control.title": "Контроль витрат",
     "guide.cost_control.intro": "Контроль витрат відповідає на одне питання: скільки проєкт коштуватиме в підсумку і чому. Він бере бюджет, кошторис, договори, зміни, виконані за обмірами роботи та рахунки з тих модулів, де вони вже є, тож нічого не вводиться двічі.",
     "guide.cost_control.methods.title": "Чотири способи читати прогноз",

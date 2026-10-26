@@ -58163,6 +58163,7 @@ const resource = {
     "boq.drawing_ref.measurements_n_other": "{{count}} پیمائشیں",
     "boq.filter_drawing_revised_one": "نظرثانی شدہ ڈرائنگ پر ({{count}})",
     "boq.filter_drawing_revised_other": "نظرثانی شدہ ڈرائنگز پر ({{count}})",
+    "boq.filter_drawing_revised_few": "نظرثانی شدہ ڈرائنگز پر ({{count}})",
     "guide.cost_control.title": "لاگت کنٹرول",
     "guide.cost_control.intro": "لاگت کنٹرول ایک سوال کا جواب دیتا ہے: پروجیکٹ کی آخر میں لاگت کیا ہوگی، اور کیوں۔ یہ بجٹ، تخمینہ، کنٹریکٹس، تبدیلیاں، ناپا ہوا کام اور انوائسز پڑھتا ہے جو پہلے ہی اپنے ماڈیولز میں موجود ہیں، اس لیے کچھ دو بار نہیں لکھنا پڑتا۔",
     "guide.cost_control.methods.title": "پیش گوئی پڑھنے کے چار طریقے",

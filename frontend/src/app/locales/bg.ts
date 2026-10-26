@@ -58201,6 +58201,7 @@ const resource = {
     "boq.drawing_ref.measurements_n_other": "{{count}} измервания",
     "boq.filter_drawing_revised_one": "При ревизиран чертеж ({{count}})",
     "boq.filter_drawing_revised_other": "При ревизирани чертежи ({{count}})",
+    "boq.filter_drawing_revised_few": "При ревизирани чертежи ({{count}})",
     "guide.cost_control.title": "Контрол на разходите",
     "guide.cost_control.intro": "Контролът на разходите отговаря на един въпрос: колко ще струва проектът накрая и защо. Чете бюджета, количествено-стойностната сметка, договорите, промените, измерените работи и фактурите, които вече са в своите модули, така че нищо не се въвежда два пъти.",
     "guide.cost_control.methods.title": "Четири начина да се чете прогнозата",

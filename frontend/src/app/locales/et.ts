@@ -58147,6 +58147,7 @@ const resource = {
     "boq.drawing_ref.measurements_n_other": "{{count}} mõõtmist",
     "boq.filter_drawing_revised_one": "Revideeritud joonisel ({{count}})",
     "boq.filter_drawing_revised_other": "Revideeritud joonistel ({{count}})",
+    "boq.filter_drawing_revised_few": "Revideeritud joonistel ({{count}})",
     "guide.cost_control.title": "Kuluseire",
     "guide.cost_control.intro": "Kuluseire vastab ühele küsimusele: mis saab projekt lõpuks maksma ja miks. See loeb eelarvet, hinnangut, lepinguid, muudatusi, mõõdetud tööd ja arveid, mis juba asuvad oma moodulites, nii et midagi ei sisestata kaks korda.",
     "guide.cost_control.methods.title": "Neli viisi prognoosi lugeda",

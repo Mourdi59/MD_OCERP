@@ -59129,6 +59129,7 @@ const resource = {
     "boq.drawing_ref.measurements_n_other": "{{count}} ta o‘lchov",
     "boq.filter_drawing_revised_one": "Qayta ishlangan chizmada ({{count}})",
     "boq.filter_drawing_revised_other": "Qayta ishlangan chizmalarda ({{count}})",
+    "boq.filter_drawing_revised_few": "Qayta ishlangan chizmalarda ({{count}})",
     "guide.cost_control.title": "Xarajatlarni nazorat qilish",
     "guide.cost_control.intro": "Xarajatlarni nazorat qilish bitta savolga javob beradi: loyiha oxirida qancha turadi va nima uchun. U oʻz modullarida allaqachon turgan byudjet, smeta, shartnomalar, oʻzgartirishlar, oʻlchangan ish va hisob-fakturalarni oʻqiydi, shuning uchun hech narsa ikki marta kiritilmaydi.",
     "guide.cost_control.methods.title": "Prognozni oʻqishning toʻrt usuli",

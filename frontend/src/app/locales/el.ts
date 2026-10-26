@@ -58157,6 +58157,7 @@ const resource = {
     "boq.drawing_ref.measurements_n_other": "{{count}} μετρήσεις",
     "boq.filter_drawing_revised_one": "Σε αναθεωρημένο σχέδιο ({{count}})",
     "boq.filter_drawing_revised_other": "Σε αναθεωρημένα σχέδια ({{count}})",
+    "boq.filter_drawing_revised_few": "Σε αναθεωρημένα σχέδια ({{count}})",
     "guide.cost_control.title": "Έλεγχος κόστους",
     "guide.cost_control.intro": "Ο έλεγχος κόστους απαντά σε ένα ερώτημα: πόσο θα κοστίσει τελικά το έργο και γιατί. Διαβάζει τον προϋπολογισμό, την εκτίμηση, τις συμβάσεις, τις αλλαγές, τις επιμετρημένες εργασίες και τα τιμολόγια που ήδη υπάρχουν στις δικές τους ενότητες, ώστε τίποτα να μην καταχωρείται δύο φορές.",
     "guide.cost_control.methods.title": "Τέσσερις τρόποι ανάγνωσης της πρόβλεψης",

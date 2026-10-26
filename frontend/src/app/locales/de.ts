@@ -60832,6 +60832,7 @@ const resource = {
     "boq.drawing_ref.measurements_n_other": "{{count}} Messungen",
     "boq.filter_drawing_revised_one": "Bei überarbeiteter Zeichnung ({{count}})",
     "boq.filter_drawing_revised_other": "Bei überarbeiteten Zeichnungen ({{count}})",
+    "boq.filter_drawing_revised_few": "Bei überarbeiteten Zeichnungen ({{count}})",
     "guide.cost_control.title": "Kostenkontrolle",
     "guide.cost_control.intro": "Die Kostenkontrolle beantwortet eine Frage: Was kostet das Projekt am Ende, und warum. Sie liest Budget, Kostenschätzung, Verträge, Änderungen, aufgemessene Leistungen und Rechnungen aus den Modulen, in denen sie ohnehin liegen. Nichts wird doppelt erfasst.",
     "guide.cost_control.methods.title": "Vier Arten, die Prognose zu lesen",

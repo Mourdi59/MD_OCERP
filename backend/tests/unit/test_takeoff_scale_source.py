@@ -33,6 +33,11 @@ from app.modules.takeoff.service import TakeoffService, clear_stale_scale_source
 # ---------------------------------------------------------------------------
 
 
+async def _no_row(*_a: Any, **_k: Any) -> None:
+    """Session.get stub: the drawing lookup finds no register row."""
+    return
+
+
 @pytest.mark.parametrize(
     "source",
     ["page_text", "recovered_text", "vision_read", "manual_calibration", "preset", "inherited"],
@@ -77,7 +82,7 @@ def _service_with_stub_repo() -> tuple[TakeoffService, list[Any]]:
     """A service whose repository records the rows it was asked to persist."""
     saved: list[Any] = []
     svc = object.__new__(TakeoffService)
-    svc.session = SimpleNamespace()
+    svc.session = SimpleNamespace(get=_no_row)
 
     async def _create(row: Any) -> Any:
         saved.append(row)
@@ -159,7 +164,7 @@ async def test_a_bulk_import_carries_the_source_per_row() -> None:
 def _service() -> TakeoffService:
     """A service instance with no session, for the pure builder paths."""
     svc = object.__new__(TakeoffService)
-    svc.session = SimpleNamespace()
+    svc.session = SimpleNamespace(get=_no_row)
     return svc
 
 

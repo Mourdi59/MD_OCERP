@@ -58158,6 +58158,7 @@ const resource = {
     "boq.drawing_ref.measurements_n_other": "{{count}} өлшеу",
     "boq.filter_drawing_revised_one": "Түзетілген суретте ({{count}})",
     "boq.filter_drawing_revised_other": "Түзетілген суреттерде ({{count}})",
+    "boq.filter_drawing_revised_few": "Түзетілген суреттерде ({{count}})",
     "guide.cost_control.title": "Шығындарды бақылау",
     "guide.cost_control.intro": "Шығындарды бақылау бір сұраққа жауап береді: жоба соңында қанша тұрады және неліктен. Ол өз модульдерінде бұрыннан тұрған бюджетті, сметаны, шарттарды, өзгерістерді, өлшенген жұмысты және шот-фактураларды оқиды, сондықтан ештеңе екі рет енгізілмейді.",
     "guide.cost_control.methods.title": "Болжамды оқудың төрт тәсілі",

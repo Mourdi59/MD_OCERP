@@ -58467,6 +58467,7 @@ const resource = {
     "boq.drawing_ref.measurements_n_other": "{{count}}টি পরিমাপ",
     "boq.filter_drawing_revised_one": "সংশোধিত একটি ড্রইংয়ে ({{count}})",
     "boq.filter_drawing_revised_other": "সংশোধিত ড্রইংগুলোতে ({{count}})",
+    "boq.filter_drawing_revised_few": "সংশোধিত ড্রইংগুলোতে ({{count}})",
     "guide.cost_control.title": "খরচ নিয়ন্ত্রণ",
     "guide.cost_control.intro": "খরচ নিয়ন্ত্রণ একটি প্রশ্নের উত্তর দেয়: শেষে প্রকল্পের খরচ কত হবে, এবং কেন। এটি বাজেট, প্রাক্কলন, চুক্তি, পরিবর্তন, মাপা কাজ ও চালান পড়ে, যা আগে থেকেই নিজ নিজ মডিউলে আছে, তাই কিছু দুবার লিখতে হয় না।",
     "guide.cost_control.methods.title": "পূর্বাভাস পড়ার চারটি উপায়",

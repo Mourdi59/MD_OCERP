@@ -57949,6 +57949,7 @@ const resource = {
     "boq.drawing_ref.show_column": "Tampilkan kolom gambar",
     "boq.drawing_ref.measurements_n_other": "{{count}} pengukuran",
     "boq.filter_drawing_revised_other": "Pada gambar yang direvisi ({{count}})",
+    "boq.filter_drawing_revised_few": "Pada gambar yang direvisi ({{count}})",
     "guide.cost_control.title": "Pengendalian biaya",
     "guide.cost_control.intro": "Pengendalian biaya menjawab satu pertanyaan: berapa biaya proyek pada akhirnya, dan mengapa. Modul ini membaca anggaran, estimasi, kontrak, perubahan, pekerjaan terukur, dan faktur yang sudah ada di modulnya masing-masing, sehingga tidak ada yang diketik dua kali.",
     "guide.cost_control.methods.title": "Empat cara membaca prakiraan",

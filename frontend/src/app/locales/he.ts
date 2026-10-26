@@ -58482,6 +58482,7 @@ const resource = {
     "boq.filter_drawing_revised_two": "בשרטוטים מעודכנים ({{count}})",
     "boq.filter_drawing_revised_many": "בשרטוטים מעודכנים ({{count}})",
     "boq.filter_drawing_revised_other": "בשרטוטים מעודכנים ({{count}})",
+    "boq.filter_drawing_revised_few": "בשרטוטים מעודכנים ({{count}})",
     "guide.cost_control.title": "בקרת עלויות",
     "guide.cost_control.intro": "בקרת עלויות עונה על שאלה אחת: כמה הפרויקט יעלה בסוף, ולמה. היא קוראת את התקציב, האומדן, החוזים, השינויים, העבודה שנמדדה והחשבוניות שכבר נמצאים במודולים שלהם, כך שאין הקלדה כפולה.",
     "guide.cost_control.methods.title": "ארבע דרכים לקרוא את התחזית",

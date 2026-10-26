@@ -57950,6 +57950,7 @@ const resource = {
     "boq.drawing_ref.show_column": "แสดงคอลัมน์แบบ",
     "boq.drawing_ref.measurements_n_other": "{{count}} รายการที่วัดปริมาณ",
     "boq.filter_drawing_revised_other": "ในแบบที่แก้ไขแล้ว ({{count}})",
+    "boq.filter_drawing_revised_few": "ในแบบที่แก้ไขแล้ว ({{count}})",
     "guide.cost_control.title": "การควบคุมต้นทุน",
     "guide.cost_control.intro": "การควบคุมต้นทุนตอบคำถามเดียวว่าโครงการจะมีต้นทุนเท่าไรในที่สุด และเพราะอะไร โดยอ่านงบประมาณ ประมาณการ สัญญา การเปลี่ยนแปลง งานที่วัดแล้ว และใบแจ้งหนี้ที่อยู่ในโมดูลของตัวเองอยู่แล้ว จึงไม่ต้องกรอกซ้ำ",
     "guide.cost_control.methods.title": "สี่วิธีอ่านค่าคาดการณ์",

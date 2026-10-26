@@ -58314,6 +58314,7 @@ const resource = {
     "boq.drawing_ref.measurements_n_other": "{{count}} өлчөө",
     "boq.filter_drawing_revised_one": "Түзөтүлгөн чиймеде ({{count}})",
     "boq.filter_drawing_revised_other": "Түзөтүлгөн чиймелерде ({{count}})",
+    "boq.filter_drawing_revised_few": "Түзөтүлгөн чиймелерде ({{count}})",
     "guide.cost_control.title": "Чыгымдарды көзөмөлдөө",
     "guide.cost_control.intro": "Чыгымдарды көзөмөлдөө бир суроого жооп берет: долбоор акырында канча турат жана эмне үчүн. Ал өз модулдарында мурунтан турган бюджетти, сметаны, келишимдерди, өзгөртүүлөрдү, өлчөнгөн ишти жана эсеп-фактураларды окуйт, ошондуктан эч нерсе эки жолу киргизилбейт.",
     "guide.cost_control.methods.title": "Божомолду окуунун төрт жолу",

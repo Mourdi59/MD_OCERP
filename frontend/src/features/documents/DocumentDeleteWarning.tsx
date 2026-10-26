@@ -61,6 +61,7 @@ const MODULE_LABEL_KEYS: Record<string, string> = {
   qms: 'nav.qms',
   // No page and no nav entry of its own - it is the chunked-upload bookkeeping.
   resumable_uploads: 'documents.references.module_resumable_uploads',
+  supplier_catalogs: 'nav.supplier_catalogs',
   takeoff: 'takeoff.title',
   tax_withholding: 'nav.tax_withholding',
   temporary_works: 'temporary_works.title',

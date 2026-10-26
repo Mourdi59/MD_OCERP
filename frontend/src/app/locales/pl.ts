@@ -59725,6 +59725,7 @@ const resource = {
     "boq.filter_drawing_revised_one": "Na zmienionym rysunku ({{count}})",
     "boq.filter_drawing_revised_many": "Na zmienionych rysunkach ({{count}})",
     "boq.filter_drawing_revised_other": "Na zmienionych rysunkach ({{count}})",
+    "boq.filter_drawing_revised_few": "Na zmienionych rysunkach ({{count}})",
     "guide.cost_control.title": "Kontrola kosztów",
     "guide.cost_control.intro": "Kontrola kosztów odpowiada na jedno pytanie: ile projekt będzie kosztował na koniec i dlaczego. Czyta budżet, kosztorys, umowy, zmiany, roboty obmierzone i faktury, które już są w swoich modułach, więc nic nie jest wpisywane dwa razy.",
     "guide.cost_control.methods.title": "Cztery sposoby odczytu prognozy",

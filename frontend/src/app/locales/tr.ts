@@ -59078,6 +59078,7 @@ const resource = {
     "boq.drawing_ref.measurements_n_other": "{{count}} ölçüm",
     "boq.filter_drawing_revised_one": "Revize çizimde ({{count}})",
     "boq.filter_drawing_revised_other": "Revize çizimlerde ({{count}})",
+    "boq.filter_drawing_revised_few": "Revize çizimlerde ({{count}})",
     "guide.cost_control.title": "Maliyet kontrolü",
     "guide.cost_control.intro": "Maliyet kontrolü tek bir soruya cevap verir: proje sonunda neye mal olacak ve neden. Bütçeyi, keşfi, sözleşmeleri, değişiklikleri, ölçülen işi ve faturaları, zaten kendi modüllerinde durdukları yerden okur; böylece hiçbir şey iki kez girilmez.",
     "guide.cost_control.methods.title": "Tahmini okumanın dört yolu",

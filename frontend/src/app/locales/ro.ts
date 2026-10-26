@@ -58523,6 +58523,7 @@ const resource = {
     "boq.drawing_ref.measurements_n_other": "{{count}} de măsurători",
     "boq.filter_drawing_revised_one": "Pe planul revizuit ({{count}})",
     "boq.filter_drawing_revised_other": "Pe planurile revizuite ({{count}})",
+    "boq.filter_drawing_revised_few": "Pe planurile revizuite ({{count}})",
     "guide.cost_control.title": "Controlul costurilor",
     "guide.cost_control.intro": "Controlul costurilor răspunde la o singură întrebare: cât va costa proiectul la final și de ce. Citește bugetul, devizul, contractele, modificările, lucrările măsurate și facturile care există deja în modulele lor, așa că nimic nu se introduce de două ori.",
     "guide.cost_control.methods.title": "Patru moduri de a citi prognoza",

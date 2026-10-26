@@ -57875,6 +57875,7 @@ const resource = {
     "boq.drawing_ref.measurements_n_other": "{{count}} хэмжилт",
     "boq.filter_drawing_revised_one": "Засвар орсон зураг дээр ({{count}})",
     "boq.filter_drawing_revised_other": "Засвар орсон зургууд дээр ({{count}})",
+    "boq.filter_drawing_revised_few": "Засвар орсон зургууд дээр ({{count}})",
     "guide.cost_control.title": "Зардлын хяналт",
     "guide.cost_control.intro": "Зардлын хяналт нэг асуултад хариулна: төсөл эцэст нь хэдэд өртөх вэ, яагаад. Энэ нь төсөв, тооцоо, гэрээ, өөрчлөлт, хэмжсэн ажил, нэхэмжлэхийг өөрсдийн модуль дээрээс нь уншдаг тул юу ч хоёр удаа оруулахгүй.",
     "guide.cost_control.methods.title": "Таамаглалыг унших дөрвөн арга",

@@ -58533,6 +58533,7 @@ const resource = {
     "boq.drawing_ref.measurements_n_other": "{{count}} mjerenja",
     "boq.filter_drawing_revised_one": "Na revidiranom crtežu ({{count}})",
     "boq.filter_drawing_revised_other": "Na revidiranim crtežima ({{count}})",
+    "boq.filter_drawing_revised_few": "Na revidiranim crtežima ({{count}})",
     "guide.cost_control.title": "Kontrola troškova",
     "guide.cost_control.intro": "Kontrola troškova odgovara na jedno pitanje: koliko će projekt na kraju koštati i zašto. Čita proračun, troškovnik, ugovore, izmjene, izmjerene radove i račune koji već postoje u svojim modulima, pa se ništa ne unosi dvaput.",
     "guide.cost_control.methods.title": "Četiri načina čitanja prognoze",

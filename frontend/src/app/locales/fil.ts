@@ -58155,6 +58155,7 @@ const resource = {
     "boq.drawing_ref.measurements_n_other": "{{count}} na sukat",
     "boq.filter_drawing_revised_one": "Sa binagong drowing ({{count}})",
     "boq.filter_drawing_revised_other": "Sa mga binagong drowing ({{count}})",
+    "boq.filter_drawing_revised_few": "Sa mga binagong drowing ({{count}})",
     "guide.cost_control.title": "Cost control",
     "guide.cost_control.intro": "Isang tanong ang sinasagot ng cost control: magkano ang aabutin ng proyekto sa huli, at bakit. Binabasa nito ang budget, estimate, mga kontrata, mga pagbabago, nasukat na trabaho at mga invoice na nasa sarili nilang module na, kaya walang tina-type nang dalawang beses.",
     "guide.cost_control.methods.title": "Apat na paraan ng pagbasa sa forecast",

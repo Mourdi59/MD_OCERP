@@ -59482,6 +59482,7 @@ const resource = {
     "boq.drawing_ref.show_column": "図面列を表示",
     "boq.drawing_ref.measurements_n_other": "{{count}}件の積算",
     "boq.filter_drawing_revised_other": "改訂済みの図面上 ({{count}})",
+    "boq.filter_drawing_revised_few": "改訂済みの図面上 ({{count}})",
     "guide.cost_control.title": "原価管理",
     "guide.cost_control.intro": "原価管理が答えるのは一つの問いです。最終的にプロジェクトはいくらかかるのか、そしてなぜか。予算、見積、契約、変更、実測した出来高、請求書は、それぞれのモジュールにすでにあるものを読み込むので、二重に入力する必要はありません。",
     "guide.cost_control.methods.title": "予測の見方は4通り",

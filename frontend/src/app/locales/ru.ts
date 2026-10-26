@@ -61393,6 +61393,7 @@ const resource = {
     "boq.filter_drawing_revised_one": "На изменённом чертеже ({{count}})",
     "boq.filter_drawing_revised_many": "На изменённых чертежах ({{count}})",
     "boq.filter_drawing_revised_other": "На изменённых чертежах ({{count}})",
+    "boq.filter_drawing_revised_few": "На изменённых чертежах ({{count}})",
     "guide.cost_control.title": "Контроль затрат",
     "guide.cost_control.intro": "Контроль затрат отвечает на один вопрос: во сколько проект обойдётся в итоге и почему. Он берёт бюджет, смету, договоры, изменения, выполненные по обмерам работы и счета из тех модулей, где они уже есть, поэтому ничего не вводится дважды.",
     "guide.cost_control.methods.title": "Четыре способа читать прогноз",
