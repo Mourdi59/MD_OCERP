@@ -1401,5 +1401,15 @@
       "started_without_start": "Række {row}: fremdrift er angivet uden faktisk start.",
       "suggestion": "Tjek rækken med pladsen, før den anvendes."
     }
+  },
+  "boq_branch": {
+    "diverged_from_main": {
+      "fail": "Denne variant har været åben i {days} dage, og hovedoverslaget er ændret i {changes} positioner, siden den blev oprettet",
+      "suggestion": "Overfør hovedoverslagets ændringer til varianten, flet varianten eller arkivér den"
+    },
+    "unresolved_conflicts": {
+      "fail": "Position {ordinal} \"{description}\" er ændret både i denne variant og i hovedoverslaget",
+      "suggestion": "Åbn dialogen til fletning og afgør, hvilken version af positionen der beholdes"
+    }
   }
 }

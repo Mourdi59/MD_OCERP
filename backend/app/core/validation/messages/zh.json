@@ -1401,5 +1401,15 @@
       "started_without_start": "第 {row} 行：填写了进度，但没有实际开始。",
       "suggestion": "应用之前请与现场核对此行。"
     }
+  },
+  "boq_branch": {
+    "diverged_from_main": {
+      "fail": "此分支已开启 {days} 天，自创建以来主估算已有 {changes} 个清单项发生变更",
+      "suggestion": "将主估算的变更带入分支、合并该分支，或将其归档"
+    },
+    "unresolved_conflicts": {
+      "fail": "清单项 {ordinal}“{description}”在此分支和主估算中都被修改",
+      "suggestion": "打开合并对话框，决定保留该清单项的哪个版本"
+    }
   }
 }

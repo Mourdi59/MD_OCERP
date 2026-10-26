@@ -1401,5 +1401,15 @@
       "started_without_start": "Hanay {row}: may progreso pero walang aktwal na simula.",
       "suggestion": "Suriin ang hanay kasama ang site bago ipatupad."
     }
+  },
+  "boq_branch": {
+    "diverged_from_main": {
+      "fail": "{days} araw nang bukas ang branch na ito at {changes} item ang nabago sa pangunahing estimate mula nang likhain ito",
+      "suggestion": "Ilipat sa branch ang mga pagbabago ng pangunahing estimate, pagsamahin ang branch, o i-archive ito"
+    },
+    "unresolved_conflicts": {
+      "fail": "Ang item {ordinal} \"{description}\" ay binago sa branch na ito at sa pangunahing estimate",
+      "suggestion": "Buksan ang merge dialog at magpasya kung aling bersyon ng item ang itatago"
+    }
   }
 }

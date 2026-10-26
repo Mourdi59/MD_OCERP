@@ -1401,5 +1401,15 @@
       "started_without_start": "Rândul {row}: progresul este introdus fără început real.",
       "suggestion": "Verificați rândul cu șantierul înainte de a-l aplica."
     }
+  },
+  "boq_branch": {
+    "diverged_from_main": {
+      "fail": "Ramura este deschisă de {days} zile, iar devizul principal s-a modificat de la crearea ei în {changes} articole",
+      "suggestion": "Transferați modificările devizului principal în ramură, îmbinați ramura sau arhivați-o"
+    },
+    "unresolved_conflicts": {
+      "fail": "Articolul {ordinal} „{description}” a fost modificat atât în această ramură, cât și în devizul principal",
+      "suggestion": "Deschideți fereastra de îmbinare și decideți ce versiune a articolului se păstrează"
+    }
   }
 }

@@ -1401,5 +1401,15 @@
       "started_without_start": "Rivi {row}: edistyminen on annettu ilman toteutunutta alkua.",
       "suggestion": "Tarkista rivi työmaalta ennen käyttöönottoa."
     }
+  },
+  "boq_branch": {
+    "diverged_from_main": {
+      "fail": "Tämä variantti on ollut auki {days} päivää, ja pääarvio on muuttunut {changes} nimikkeessä sen luomisen jälkeen",
+      "suggestion": "Siirrä pääarvion muutokset varianttiin, yhdistä variantti tai arkistoi se"
+    },
+    "unresolved_conflicts": {
+      "fail": "Nimike {ordinal} \"{description}\" muutettiin sekä tässä variantissa että pääarviossa",
+      "suggestion": "Avaa yhdistämisikkuna ja päätä, kumpi nimikkeen versio säilytetään"
+    }
   }
 }

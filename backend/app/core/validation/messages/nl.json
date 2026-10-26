@@ -1401,5 +1401,15 @@
       "started_without_start": "Rij {row}: er is voortgang ingevuld zonder werkelijke start.",
       "suggestion": "Controleer de rij met de bouwplaats voordat u hem toepast."
     }
+  },
+  "boq_branch": {
+    "diverged_from_main": {
+      "fail": "Deze variant staat al {days} dagen open en de hoofdraming is sinds het aanmaken in {changes} posten gewijzigd",
+      "suggestion": "Neem de wijzigingen van de hoofdraming over in de variant, voeg de variant samen of archiveer hem"
+    },
+    "unresolved_conflicts": {
+      "fail": "Post {ordinal} \"{description}\" is zowel in deze variant als in de hoofdraming gewijzigd",
+      "suggestion": "Open het samenvoegvenster en bepaal welke versie van de post blijft"
+    }
   }
 }

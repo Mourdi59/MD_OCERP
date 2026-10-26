@@ -1401,5 +1401,15 @@
       "started_without_start": "Dòng {row}: đã nhập tiến độ nhưng không có ngày bắt đầu thực tế.",
       "suggestion": "Hãy kiểm tra dòng này với công trường trước khi áp dụng."
     }
+  },
+  "boq_branch": {
+    "diverged_from_main": {
+      "fail": "Nhánh này đã mở {days} ngày và dự toán chính đã thay đổi {changes} hạng mục kể từ khi nhánh được tạo",
+      "suggestion": "Mang thay đổi của dự toán chính vào nhánh, hợp nhất nhánh, hoặc lưu trữ nó"
+    },
+    "unresolved_conflicts": {
+      "fail": "Hạng mục {ordinal} \"{description}\" bị thay đổi ở cả nhánh này và dự toán chính",
+      "suggestion": "Mở hộp thoại hợp nhất và quyết định giữ phiên bản nào của hạng mục"
+    }
   }
 }

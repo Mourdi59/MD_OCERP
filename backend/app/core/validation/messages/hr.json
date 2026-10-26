@@ -1401,5 +1401,15 @@
       "started_without_start": "Redak {row}: unesen je napredak bez stvarnog početka.",
       "suggestion": "Provjerite redak s gradilištem prije primjene."
     }
+  },
+  "boq_branch": {
+    "diverged_from_main": {
+      "fail": "Grana je otvorena {days} dana, a glavni troškovnik se od njezina nastanka promijenio u {changes} stavki",
+      "suggestion": "Prenesite promjene glavnog troškovnika u granu, spojite granu ili je arhivirajte"
+    },
+    "unresolved_conflicts": {
+      "fail": "Stavka {ordinal} „{description}” promijenjena je i u ovoj grani i u glavnom troškovniku",
+      "suggestion": "Otvorite prozor za spajanje i odlučite koju verziju stavke zadržati"
+    }
   }
 }

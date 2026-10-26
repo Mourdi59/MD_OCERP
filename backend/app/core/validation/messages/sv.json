@@ -1401,5 +1401,15 @@
       "started_without_start": "Rad {row}: framsteg är angivet utan faktisk start.",
       "suggestion": "Kontrollera raden med arbetsplatsen innan du tillämpar den."
     }
+  },
+  "boq_branch": {
+    "diverged_from_main": {
+      "fail": "Den här varianten har varit öppen i {days} dagar och huvudkalkylen har ändrats i {changes} poster sedan den skapades",
+      "suggestion": "För över huvudkalkylens ändringar till varianten, slå samman varianten eller arkivera den"
+    },
+    "unresolved_conflicts": {
+      "fail": "Post {ordinal} \"{description}\" har ändrats både i den här varianten och i huvudkalkylen",
+      "suggestion": "Öppna dialogen för sammanslagning och avgör vilken version av posten som ska behållas"
+    }
   }
 }

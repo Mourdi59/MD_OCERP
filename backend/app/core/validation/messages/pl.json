@@ -1401,5 +1401,15 @@
       "started_without_start": "Wiersz {row}: podano postęp bez rzeczywistego rozpoczęcia.",
       "suggestion": "Sprawdź wiersz z budową przed jego zastosowaniem."
     }
+  },
+  "boq_branch": {
+    "diverged_from_main": {
+      "fail": "Gałąź jest otwarta od {days} dni, a kosztorys główny zmienił się od jej utworzenia w {changes} pozycjach",
+      "suggestion": "Przenieś zmiany kosztorysu głównego do gałęzi, scal gałąź albo ją zarchiwizuj"
+    },
+    "unresolved_conflicts": {
+      "fail": "Pozycja {ordinal} „{description}” została zmieniona zarówno w tej gałęzi, jak i w kosztorysie głównym",
+      "suggestion": "Otwórz okno scalania i zdecyduj, którą wersję pozycji zachować"
+    }
   }
 }

@@ -1401,5 +1401,15 @@
       "started_without_start": "Satır {row}: gerçekleşen başlangıç olmadan ilerleme girilmiş.",
       "suggestion": "Uygulamadan önce satırı şantiyeyle birlikte kontrol edin."
     }
+  },
+  "boq_branch": {
+    "diverged_from_main": {
+      "fail": "Dal {days} gündür açık ve ana keşif, dal oluşturulduğundan beri {changes} pozda değişti",
+      "suggestion": "Ana keşfin değişikliklerini dala aktarın, dalı birleştirin veya arşivleyin"
+    },
+    "unresolved_conflicts": {
+      "fail": "{ordinal} nolu \"{description}\" pozu hem bu dalda hem de ana keşifte değiştirildi",
+      "suggestion": "Birleştirme penceresini açın ve pozun hangi sürümünün korunacağına karar verin"
+    }
   }
 }
