@@ -2510,5 +2510,31 @@
       "followed_up_missing": "Change {seq} is marked relevant but has no comment, RFI, markup or re-measure flag.",
       "followed_up_hint": "Comment on the change, raise an RFI or markup, or flag the quantities inside it for re-measure."
     }
+  },
+  "cashflow_forecast": {
+    "export": {
+      "title": "Cash-flow forecast",
+      "portfolio_title": "Portfolio cash-flow forecast",
+      "empty": "No cash-flow forecast for this selection.",
+      "project": "Project",
+      "as_of": "As of",
+      "currency": "Currency",
+      "delay_days": "Receipts delayed by (days)",
+      "overrun_pct": "Cost overrun (%)",
+      "closing_position": "Closing position",
+      "peak_funding": "Peak funding requirement",
+      "peak_period": "Peak funding month",
+      "col": {
+        "period": "Month",
+        "planned_in": "Planned in",
+        "actual_in": "Actual in",
+        "expected_in": "Expected in",
+        "planned_out": "Planned out",
+        "actual_out": "Actual out",
+        "expected_out": "Expected out",
+        "net": "Net",
+        "cumulative": "Cumulative position"
+      }
+    }
   }
 }

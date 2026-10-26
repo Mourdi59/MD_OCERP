@@ -1411,5 +1411,19 @@
       "fail": "Ang item {ordinal} \"{description}\" ay binago sa branch na ito at sa pangunahing estimate",
       "suggestion": "Buksan ang merge dialog at magpasya kung aling bersyon ng item ang itatago"
     }
+  },
+  "cashflow_forecast": {
+    "negative_position": {
+      "fail": "Bababa ang posisyon ng salapi sa minus {amount} sa {period}, lampas sa limitasyon ng pondo na {threshold}.",
+      "suggestion": "Siguraduhin ang pondo bago ang {period}, i-advance ang mga koleksyon o ipagpaliban ang mga bayad."
+    },
+    "receipt_overdue": {
+      "fail": "{document}: {amount} ay dapat bayaran noong {due} at bukas pa rin ({days} araw na huli).",
+      "suggestion": "Singilin ang kliyente para sa bayad, o baguhin ang inaasahang petsa sa pagtataya."
+    },
+    "forecast_missing": {
+      "fail": "Aktibo ang {project} pero walang kontrata, invoice, order, subcontract o plano para pagtayahan ang cash flow.",
+      "suggestion": "Ilagay ang kontrata ng kliyente kasama ang payment plan nito, o planong cash flow sa cost model."
+    }
   }
 }

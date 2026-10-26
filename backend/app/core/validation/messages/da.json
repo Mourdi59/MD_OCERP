@@ -1411,5 +1411,19 @@
       "fail": "Position {ordinal} \"{description}\" er ændret både i denne variant og i hovedoverslaget",
       "suggestion": "Åbn dialogen til fletning og afgør, hvilken version af positionen der beholdes"
     }
+  },
+  "cashflow_forecast": {
+    "negative_position": {
+      "fail": "Likviditeten falder til minus {amount} i {period}, under finansieringsgrænsen på {threshold}.",
+      "suggestion": "Sikr finansiering før {period}, flyt indbetalinger frem eller udskyd betalinger."
+    },
+    "receipt_overdue": {
+      "fail": "{document}: {amount} skulle have været betalt den {due} og er stadig åben ({days} dage forfalden).",
+      "suggestion": "Purr kunden på betalingen, eller flyt den forventede dato i prognosen."
+    },
+    "forecast_missing": {
+      "fail": "{project} er aktiv, men har ingen kontrakt, faktura, ordre, underentreprise eller plan at prognosticere likviditet ud fra.",
+      "suggestion": "Indtast kundekontrakten med betalingsplanen, eller en planlagt cashflow i omkostningsmodellen."
+    }
   }
 }

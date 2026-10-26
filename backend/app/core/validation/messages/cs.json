@@ -1411,5 +1411,19 @@
       "fail": "Položka {ordinal} „{description}“ byla změněna ve větvi i v hlavním rozpočtu",
       "suggestion": "Otevřete dialog sloučení a rozhodněte, kterou verzi položky ponechat"
     }
+  },
+  "cashflow_forecast": {
+    "negative_position": {
+      "fail": "Zůstatek v {period} klesne na mínus {amount}, což překročí limit financování {threshold}.",
+      "suggestion": "Zajistěte financování před {period}, uhraďte příjmy dříve nebo odsuňte platby."
+    },
+    "receipt_overdue": {
+      "fail": "{document}: částka {amount} byla splatná {due} a je stále nezaplacena (po splatnosti {days} dní).",
+      "suggestion": "Urgujte platbu u klienta nebo upravte očekávané datum v předpovědi."
+    },
+    "forecast_missing": {
+      "fail": "{project} je aktivní, ale nemá smlouvu, fakturu, objednávku, subdodávku ani plán, ze kterého by šly předpovídat peněžní toky.",
+      "suggestion": "Zadejte smlouvu s klientem včetně platebního kalendáře nebo plánovaný cash flow v nákladovém modelu."
+    }
   }
 }

@@ -1411,5 +1411,19 @@
       "fail": "Pozycja {ordinal} „{description}” została zmieniona zarówno w tej gałęzi, jak i w kosztorysie głównym",
       "suggestion": "Otwórz okno scalania i zdecyduj, którą wersję pozycji zachować"
     }
+  },
+  "cashflow_forecast": {
+    "negative_position": {
+      "fail": "Pozycja gotówkowa spada w {period} do minus {amount}, poniżej progu finansowania {threshold}.",
+      "suggestion": "Zapewnij finansowanie przed {period}, przesuń wpływy wcześniej lub odrocz płatności."
+    },
+    "receipt_overdue": {
+      "fail": "{document}: kwota {amount} była wymagalna {due} i nadal jest nieopłacona (zaległość {days} dni).",
+      "suggestion": "Upomnij klienta o płatność lub zmień oczekiwaną datę w prognozie."
+    },
+    "forecast_missing": {
+      "fail": "{project} jest aktywny, ale nie ma umowy, faktury, zamówienia, umowy podwykonawczej ani planu, na podstawie których można prognozować przepływy.",
+      "suggestion": "Wprowadź umowę z klientem wraz z harmonogramem płatności lub planowany przepływ pieniężny w modelu kosztów."
+    }
   }
 }

@@ -1411,5 +1411,19 @@
       "fail": "A(z) {ordinal} tétel („{description}”) az ágban és a fő költségvetésben is módosult",
       "suggestion": "Nyissa meg az egyesítési ablakot, és döntse el, a tétel melyik verzióját tartja meg"
     }
+  },
+  "cashflow_forecast": {
+    "negative_position": {
+      "fail": "A pénzügyi pozíció {period}-ben mínusz {amount}-ra csökken, a {threshold} finanszírozási küszöb alá.",
+      "suggestion": "Biztosítsa a finanszírozást {period} előtt, hozza előre a bevételeket vagy halassza el a kifizetéseket."
+    },
+    "receipt_overdue": {
+      "fail": "{document}: {amount} esedékes volt {due}-án, és még nyitott ({days} napja késik).",
+      "suggestion": "Sürgesse a fizetést az ügyfélnél, vagy módosítsa a várható dátumot az előrejelzésben."
+    },
+    "forecast_missing": {
+      "fail": "A {project} aktív, de nincs szerződése, számlája, megrendelése, alvállalkozói szerződése vagy terve, amelyből a cash flow előrejelezhető lenne.",
+      "suggestion": "Rögzítse az ügyfél szerződését a fizetési ütemezésével, vagy adjon meg tervezett cash flow-t a költségmodellben."
+    }
   }
 }

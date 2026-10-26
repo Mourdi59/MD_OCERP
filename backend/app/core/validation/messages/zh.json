@@ -1411,5 +1411,19 @@
       "fail": "清单项 {ordinal}“{description}”在此分支和主估算中都被修改",
       "suggestion": "打开合并对话框，决定保留该清单项的哪个版本"
     }
+  },
+  "cashflow_forecast": {
+    "negative_position": {
+      "fail": "{period} 现金头寸将降至负 {amount}，低于 {threshold} 的资金阈值。",
+      "suggestion": "请在 {period} 前安排资金，提前回款或推迟付款。"
+    },
+    "receipt_overdue": {
+      "fail": "{document}：{amount} 应于 {due} 到期，目前仍未收回（逾期 {days} 天）。",
+      "suggestion": "向客户催收款项，或在预测中调整预计日期。"
+    },
+    "forecast_missing": {
+      "fail": "{project} 已启动，但没有合同、发票、采购订单、分包合同或计划，无法据此预测现金流。",
+      "suggestion": "录入客户合同及其付款计划，或在成本模型中录入计划现金流。"
+    }
   }
 }
