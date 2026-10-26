@@ -46,6 +46,8 @@ import {
   MapPin,
   // Validation across projects (2026-10-04)
   ShieldCheck,
+  // Geofenced time clock
+  Users,
 } from 'lucide-react';
 
 export interface DashboardWidgetMeta {
@@ -327,6 +329,15 @@ export const DASHBOARD_WIDGETS: readonly DashboardWidgetMeta[] = [
     descKey: 'dashboard.layout.w_guarantees_summary_desc',
     descDefault: 'Live bank guarantees, expiries and total exposure',
     icon: Landmark,
+    defaultSpan: 2,
+  },
+  {
+    id: 'on_site_now',
+    labelKey: 'field_clock.widget_title',
+    labelDefault: 'On site now',
+    descKey: 'field_clock.widget_desc',
+    descDefault: 'People clocked in, clock taps awaiting approval and missing clock-outs',
+    icon: Users,
     defaultSpan: 2,
   },
 
