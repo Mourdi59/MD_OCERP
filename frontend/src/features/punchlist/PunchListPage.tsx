@@ -90,6 +90,12 @@ import { formatReworkCost, parseReworkCostInput, projectCurrencyCode } from './r
 import { VoiceEntry, getField } from '@/features/voice';
 import { fmtDate } from '@/shared/lib/formatters';
 import { PunchContractField } from './PunchContractField';
+import {
+  PunchAreaField,
+  PunchAssetField,
+  locationOptions,
+  type PunchAssetLink,
+} from './PunchLocationFields';
 import { PunchBcfButtons } from './PunchBcfButtons';
 import { hasValidPin, type MapPin as FieldMapPin } from '@/shared/lib/photoEvidence';
 
@@ -454,7 +460,9 @@ interface PunchFormData {
   assigned_to: string;
   due_date: string;
   document_id: string;
+  /** Zone, floor or room; sent as `area`. */
   location: string;
+  asset: PunchAssetLink | null;
   /** Sheet page the pin sits on (1-based). Empty string when no pin. */
   page: string;
   /** Normalised pin coordinates on the sheet (0..1), as entered text. */
@@ -474,6 +482,7 @@ const EMPTY_FORM: PunchFormData = {
   due_date: '',
   document_id: '',
   location: '',
+  asset: null,
   page: '',
   location_x: '',
   location_y: '',
@@ -516,6 +525,7 @@ function AddPunchModal({
   teamMembers,
   drawings,
   currency,
+  areaSuggestions,
 }: {
   projectId: string;
   onClose: () => void;
@@ -525,6 +535,8 @@ function AddPunchModal({
   drawings: PunchDrawingOption[];
   /** The project's ISO currency, '' when the project has none set. */
   currency: string;
+  /** Areas already used on the project's items. */
+  areaSuggestions: string[];
 }) {
   const { t } = useTranslation();
   const [form, setForm] = useState<PunchFormData>(EMPTY_FORM);
@@ -739,20 +751,18 @@ function AddPunchModal({
           />
         </WideModalField>
 
-        <WideModalField
+        <PunchAreaField
           label={t('punch.field_location', { defaultValue: 'Location' })}
-          htmlFor="punch-location"
-        >
-          <input
-            id="punch-location"
-            value={form.location}
-            onChange={(e) => set('location', e.target.value)}
-            placeholder={t('punch.location_placeholder', {
-              defaultValue: 'e.g. Building A, Level 3, Room 305',
-            })}
-            className={inputCls}
-          />
-        </WideModalField>
+          value={form.location}
+          onChange={(value) => set('location', value)}
+          suggestions={areaSuggestions}
+          disabled={isPending}
+          placeholder={t('punch.location_placeholder', {
+            defaultValue: 'e.g. Building A, Level 3, Room 305',
+          })}
+        />
+        <PunchAssetField projectId={projectId} value={form.asset}
+          onChange={(value) => set('asset', value)} disabled={isPending} />
 
         {/* Without a project currency there is nothing honest to record the
             amount in: the API would stamp USD on it. */}
@@ -1105,6 +1115,8 @@ export function PunchListPage() {
   const [filterStatus, setFilterStatus] = useState<PunchStatus | ''>('');
   const [filterCategory, setFilterCategory] = useState<PunchCategory | ''>('');
   const [filterAssignee, setFilterAssignee] = useState('');
+  const [filterArea, setFilterArea] = useState('');
+  const [filterAsset, setFilterAsset] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   // Item detail drawer (opened from a list row, a kanban card, or a pin).
@@ -1133,13 +1145,15 @@ export function PunchListPage() {
   const projectCurrency = projectCurrencyCode(projects.find((p) => p.id === projectId)?.currency);
 
   const { data: punchPage, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['punchlist', projectId, filterPriority, filterStatus, filterCategory, filterAssignee],
+    queryKey: ['punchlist', projectId, filterPriority, filterStatus, filterCategory, filterAssignee, filterArea, filterAsset],
     queryFn: () =>
       fetchPunchItems(projectId, {
         priority: filterPriority || undefined,
         status: filterStatus || undefined,
         category: filterCategory || undefined,
         assigned_to: filterAssignee || undefined,
+        area: filterArea || undefined,
+        asset_ref: filterAsset || undefined,
       }),
     enabled: !!projectId,
     refetchOnWindowFocus: true,
@@ -1195,6 +1209,17 @@ export function PunchListPage() {
   const showListTruncation =
     !!projectId && !isLoading && !isError && viewMode !== 'pins' && punchItems.length > 0;
 
+  // Areas and assets to offer: those on the project's items, plus whatever is
+  // filtered on now so the control never shows a value it cannot list.
+  // A filtered page only holds its own matches, so the options are accumulated
+  // per project: narrowing by one area must not make the others unselectable.
+  const seenLocations = useRef<{ projectId: string; items: Map<string, PunchItem> }>({ projectId, items: new Map() });
+  const filterOptions = useMemo(() => {
+    if (seenLocations.current.projectId !== projectId) seenLocations.current = { projectId, items: new Map() };
+    for (const it of [...(pinPage?.items ?? []), ...punchItems]) seenLocations.current.items.set(it.id, it);
+    return locationOptions([...seenLocations.current.items.values()], filterArea, filterAsset);
+  }, [projectId, pinPage, punchItems, filterArea, filterAsset]);
+
   // Client-side search
   const filteredItems = useMemo(() => {
     if (!searchQuery.trim()) return punchItems;
@@ -1206,6 +1231,8 @@ export function PunchListPage() {
         // Search the owner by the name that is on the screen, not only by the
         // id underneath it - typing the name you can see must find the row.
         (item.assigned_to_name && item.assigned_to_name.toLowerCase().includes(q)) ||
+        (item.area && item.area.toLowerCase().includes(q)) ||
+        (item.asset_label && item.asset_label.toLowerCase().includes(q)) ||
         (item.assigned_to && item.assigned_to.toLowerCase().includes(q)),
     );
   }, [punchItems, searchQuery]);
@@ -1463,6 +1490,8 @@ export function PunchListPage() {
         priority: formData.priority,
         category: formData.category,
         assigned_to: formData.assigned_to || undefined,
+        area: formData.location.trim() || undefined,
+        ...(formData.asset ?? {}),
         due_date: formData.due_date || undefined,
         document_id: formData.document_id || undefined,
         // Pin is only meaningful when tied to a drawing.
@@ -1843,6 +1872,30 @@ export function PunchListPage() {
           </select>
 
           <select
+            value={filterArea}
+            onChange={(e) => setFilterArea(e.target.value)}
+            aria-label={t('punch.all_areas', { defaultValue: 'All Areas' })}
+            className={inputCls + ' max-w-[180px]'}
+          >
+            <option value="">{t('punch.all_areas', { defaultValue: 'All Areas' })}</option>
+            {filterOptions.areas.map((area) => (
+              <option key={area} value={area}>{area}</option>
+            ))}
+          </select>
+
+          <select
+            value={filterAsset}
+            onChange={(e) => setFilterAsset(e.target.value)}
+            aria-label={t('punch.all_assets', { defaultValue: 'All Assets' })}
+            className={inputCls + ' max-w-[180px]'}
+          >
+            <option value="">{t('punch.all_assets', { defaultValue: 'All Assets' })}</option>
+            {filterOptions.assets.map((asset) => (
+              <option key={asset.ref} value={asset.ref}>{asset.label}</option>
+            ))}
+          </select>
+
+          <select
             value={filterAssignee}
             onChange={(e) => setFilterAssignee(e.target.value)}
             aria-label={t('punch.all_assignees', { defaultValue: 'All Assignees' })}
@@ -1920,12 +1973,12 @@ export function PunchListPage() {
           <EmptyState
             icon={<ListChecks size={28} strokeWidth={1.5} />}
             title={
-              searchQuery || filterPriority || filterStatus || filterCategory || filterAssignee
+              searchQuery || filterPriority || filterStatus || filterCategory || filterAssignee || filterArea || filterAsset
                 ? t('punch.no_results_title', { defaultValue: 'No matching items' })
                 : t('punch.empty_title', { defaultValue: 'No punch list items' })
             }
             description={
-              searchQuery || filterPriority || filterStatus || filterCategory || filterAssignee
+              searchQuery || filterPriority || filterStatus || filterCategory || filterAssignee || filterArea || filterAsset
                 ? t('punch.no_results_desc', {
                     defaultValue: 'Try adjusting your search or filter criteria.',
                   })
@@ -1935,7 +1988,7 @@ export function PunchListPage() {
                   })
             }
             action={
-              !(searchQuery || filterPriority || filterStatus || filterCategory || filterAssignee)
+              !(searchQuery || filterPriority || filterStatus || filterCategory || filterAssignee || filterArea || filterAsset)
                 ? {
                     label: t('punch.new_item', { defaultValue: 'New Item' }),
                     onClick: () => setShowAddModal(true),
@@ -2068,6 +2121,7 @@ export function PunchListPage() {
           teamMembers={teamMembers}
           drawings={drawings}
           currency={projectCurrency}
+          areaSuggestions={filterOptions.areas}
         />
       )}
 
@@ -2187,6 +2241,12 @@ const PunchTableRow = React.memo(function PunchTableRow({
           </button>
           <SavedOnDeviceBadge flag={(item as { _offline?: 'new' | 'edited' })._offline} />
         </div>
+        {(item.area || item.asset_label) && (
+          <div className="mt-0.5 flex max-w-[250px] items-center gap-1 truncate text-xs text-content-tertiary">
+            <MapPin size={11} className="shrink-0" />
+            <span className="truncate">{[item.area, item.asset_label].filter(Boolean).join(' · ')}</span>
+          </div>
+        )}
         {/* The pin's normalised sheet coordinates used to print here as raw
             floats. They are how the pin is stored, not something a foreman
             standing at the defect can act on, and the button below already

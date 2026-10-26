@@ -36,6 +36,7 @@ import { updateOrQueue } from '@/features/field/offlineWrite';
 import { isLocalId } from '@/shared/lib/offline/offlineStore';
 import { overlayRecords } from '@/shared/lib/offline/recordSync';
 import { useOfflineRecords } from '@/shared/lib/offline/useOfflineSync';
+import { PunchLocationAssignment } from './PunchLocationFields';
 import { AssigneeLabel } from './assignee';
 import {
   formatReworkCost,
@@ -402,6 +403,7 @@ export function PunchDetailDrawer({
         </section>
 
         {/* ── Rework cost ─────────────────────────────────────────────── */}
+        <PunchLocationAssignment key={`loc-${item.id}`} item={item} onSaved={refresh} />
         <PunchContractAssignment item={item} onSaved={refresh} />
         <ReworkCostSection
           key={item.id}
