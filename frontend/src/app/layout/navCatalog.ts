@@ -756,6 +756,7 @@ export const navGroups: NavGroup[] = [
       { labelKey: 'closeout.title', to: '/closeout', icon: PackageCheck },
       { labelKey: 'defects_liability.title', to: '/defects-liability', icon: FileWarning },
       { labelKey: 'guarantees.title', to: '/portfolio/guarantees/register', icon: Landmark },
+      { labelKey: 'condition.title', to: '/condition', icon: Gauge },
       { labelKey: 'nav.forms', to: '/forms', icon: ClipboardList },
     ],
   },

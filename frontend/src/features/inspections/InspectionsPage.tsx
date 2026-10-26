@@ -34,6 +34,7 @@ import {
   MinusCircle,
   Network,
   ArrowRight,
+  Gauge,
 } from 'lucide-react';
 import { Button, Card, Badge, EmptyState, Breadcrumb, ConfirmDialog, RecoveryCard, SkeletonTable, IntroRichText, ModuleGuideButton, CollapsibleSection } from '@/shared/ui';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
@@ -71,6 +72,7 @@ import {
 import { inspectionsGuide } from './inspectionsGuide';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { buildInspectionsInsights } from './inspectionsInsights';
+import { AssessmentModal } from '@/features/condition/AssessmentModal';
 
 /* -- Constants ------------------------------------------------------------- */
 
@@ -774,9 +776,11 @@ const InspectionRow = React.memo(function InspectionRow({
   onCreateNcr,
   onEdit,
   onDelete,
+  onRecordCondition,
   highlight,
 }: {
   inspection: Inspection;
+  onRecordCondition: (inspection: Inspection) => void;
   onComplete: (id: string) => void;
   onStart: (id: string) => void;
   onCreateDefect: (id: string) => void;
@@ -1035,6 +1039,21 @@ const InspectionRow = React.memo(function InspectionRow({
 
             {/* Edit / Delete — always available (Delete is unguarded). */}
             <div className="ml-auto flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRecordCondition(inspection);
+                }}
+                icon={<Gauge size={14} />}
+                data-testid={`inspection-record-condition-${inspection.id}`}
+                title={t('condition.record_from_inspection', {
+                  defaultValue: 'Rate the condition of an asset or element seen in this inspection',
+                })}
+              >
+                {t('condition.new_rating', { defaultValue: 'Record condition' })}
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
@@ -1599,6 +1618,8 @@ export function InspectionsPage() {
       }),
   });
 
+  const [conditionFor, setConditionFor] = useState<Inspection | null>(null);
+
   const handleCreateNcr = useCallback(
     (id: string) => {
       createNcrMut.mutate(id);
@@ -1956,6 +1977,7 @@ export function InspectionsPage() {
                   onCreateNcr={handleCreateNcr}
                   onEdit={handleEditInspection}
                   onDelete={handleDeleteInspection}
+                  onRecordCondition={setConditionFor}
                   highlight={highlightId === inspection.id}
                 />
               ))}
@@ -2000,6 +2022,15 @@ export function InspectionsPage() {
 
       {/* Confirm Dialog */}
       <ConfirmDialog {...confirmProps} />
+      {conditionFor && projectId && (
+        <AssessmentModal
+          projectId={projectId}
+          inspectionId={conditionFor.id}
+          defaultArea={conditionFor.location || null}
+          onClose={() => setConditionFor(null)}
+          onSaved={() => setConditionFor(null)}
+        />
+      )}
     </div>
   );
 }

@@ -296,6 +296,9 @@ const InterfaceManagementPage = lazy(() =>
     default: m.InterfaceManagementPage,
   }))
 );
+const ConditionPage = lazy(() =>
+  import('@/features/condition').then((m) => ({ default: m.ConditionPage }))
+);
 const DefectsLiabilityPage = lazy(() =>
   import('@/features/defects-liability/DefectsLiabilityPage').then((m) => ({
     default: m.DefectsLiabilityPage,
@@ -1566,6 +1569,7 @@ export default function App() {
         <Route path="/projects/:projectId/guarantees/:guaranteeId" element={<P title="Guarantee"><GuaranteeDetailPage /></P>} />
         <Route path="/portfolio/guarantees/register" element={<P title="Guarantees"><GuaranteesPage /></P>} />
         <Route path="/portfolio/guarantees" element={<P title="Guarantee exposure"><GuaranteesExposurePage /></P>} />
+        <Route path="/condition" element={<P title="Condition & Maintenance Plan"><ConditionPage /></P>} />
         <Route path="/projects/:projectId/moc" element={<P title="Management of Change"><MoCPage /></P>} />
         <Route path="/moc" element={<P title="Management of Change"><MoCPage /></P>} />
         {/* Construction Control (QA/QC) - acceptance criteria, inspections,
