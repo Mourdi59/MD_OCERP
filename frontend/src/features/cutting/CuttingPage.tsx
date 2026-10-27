@@ -43,7 +43,7 @@ import {
 } from '@/shared/ui';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
 import { getErrorMessage } from '@/shared/lib/api';
-import { fmtCurrency, fmtNumber } from '@/shared/lib/formatters';
+import { fmtCurrency, fmtList, fmtNumber } from '@/shared/lib/formatters';
 import { normalizeRole, ROLE_RANK } from '@/shared/lib/roles';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
@@ -561,7 +561,7 @@ function JobEditor({ jobId, projectId, canEdit }: { jobId: string; projectId: st
             <AlertTriangle size={13} />
             {t('cutting.oversize_hint', {
               defaultValue: 'These pieces fit no stock entry: {{refs}}',
-              refs: oversize.join(', '),
+              refs: fmtList(oversize),
             })}
           </p>
         )}
@@ -1440,7 +1440,7 @@ function PlanPanel({
           {t('cutting.unplaced_hint', {
             defaultValue: 'Pieces not placed ({{n}}): {{refs}}',
             n: plan.pieces_unplaced,
-            refs: plan.unplaced.map((u) => `${u.ref} x${u.quantity}`).join(', '),
+            refs: fmtList(plan.unplaced.map((u) => `${u.ref} x${u.quantity}`)),
           })}
         </p>
       )}

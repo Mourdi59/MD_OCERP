@@ -5,6 +5,7 @@
  * conflict bookkeeping. No React, no network, so every rule is unit-tested.
  */
 import type { BranchCompareRow, BranchNode, PlanItem, Resolution } from './branchApi';
+import { fmtList } from '@/shared/lib/formatters';
 
 export interface TreeRow {
   node: BranchNode;
@@ -104,7 +105,7 @@ export function planValueText(value: unknown): string {
   if (value === null || value === undefined || value === '') return '-';
   if (typeof value === 'object') {
     const entries = Object.entries(value as Record<string, unknown>).filter(([, v]) => v !== '' && v != null);
-    return entries.length ? entries.map(([k, v]) => `${k}: ${String(v)}`).join(', ') : '-';
+    return entries.length ? fmtList(entries.map(([k, v]) => `${k}: ${String(v)}`)) : '-';
   }
   return String(value);
 }

@@ -15,7 +15,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Lock, Scale, X } from 'lucide-react';
 import { Badge, Button } from '@/shared/ui';
-import { fmtNumber } from '@/shared/lib/formatters';
+import { fmtList, fmtNumber } from '@/shared/lib/formatters';
 import { useToastStore } from '@/stores/useToastStore';
 import { boqApi } from './api';
 import {
@@ -188,7 +188,7 @@ export function ResourceScalingDialog({
   const unitLabel = useMemo(() => {
     if (metric === 'cost') return '';
     if (metric === 'hours') return t('boq.scaling.unit_hours', { defaultValue: 'h' });
-    return (measure?.units ?? []).join(', ');
+    return fmtList(measure?.units ?? []);
   }, [metric, measure, t]);
 
   if (!open || !scope) return null;

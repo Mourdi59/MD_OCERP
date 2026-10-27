@@ -5,6 +5,7 @@
 // and the import source panel. Kept free of React so they are unit-tested
 // directly.
 
+import { compareNames } from '@/shared/lib/collator';
 import type {
   ChangeCause,
   ProfileSettings,
@@ -27,7 +28,7 @@ export function wbsPrefixes(activities: ScopeActivity[]): string[] {
     if (!code) continue;
     out.add(code.split('.')[0] ?? code);
   }
-  return [...out].sort((x, y) => x.localeCompare(y, undefined, { numeric: true }));
+  return [...out].sort((x, y) => compareNames(x, y));
 }
 
 /** Responsible people named on the activities, sorted by name. */
@@ -36,7 +37,7 @@ export function assigneeOptions(activities: ScopeActivity[]): { id: string; name
   for (const a of activities) {
     if (a.assignee_id && !byId.has(a.assignee_id)) byId.set(a.assignee_id, a.assignee_name || a.assignee_id);
   }
-  return [...byId.entries()].map(([id, name]) => ({ id, name })).sort((x, y) => x.name.localeCompare(y.name));
+  return [...byId.entries()].map(([id, name]) => ({ id, name })).sort((x, y) => compareNames(x.name, y.name));
 }
 
 /**

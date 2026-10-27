@@ -2,6 +2,7 @@ import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { listAssets } from '@/features/assets/api';
+import { compareNames } from '@/shared/lib/collator';
 import { useHasPermission } from '@/shared/lib/permissionGates';
 import { useToastStore } from '@/stores/useToastStore';
 import { updatePunchItem, type PunchAssetKind, type PunchItem } from './api';
@@ -120,7 +121,7 @@ export function locationOptions(
   if (selectedArea) areas.add(selectedArea);
   if (selectedAsset && !assets.has(selectedAsset)) assets.set(selectedAsset, selectedAsset);
   return {
-    areas: [...areas].sort((a, b) => a.localeCompare(b)),
-    assets: [...assets].map(([ref, label]) => ({ ref, label })).sort((a, b) => a.label.localeCompare(b.label)),
+    areas: [...areas].sort((a, b) => compareNames(a, b)),
+    assets: [...assets].map(([ref, label]) => ({ ref, label })).sort((a, b) => compareNames(a.label, b.label)),
   };
 }

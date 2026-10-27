@@ -276,6 +276,8 @@ export const TITLE_I18N_MAP: Record<string, string> = {
   'Commissioning': 'nav.commissioning',
   'Handover & Closeout': 'closeout.title',
   'Defects Liability': 'defects_liability.title',
+  'Condition & Maintenance Plan': 'condition.title',
+  'Cutting Optimisation': 'cutting.title',
   'ESG Site Performance': 'nav.esg',
   // Communication & documentation
   'Inbox': 'inbox.title',

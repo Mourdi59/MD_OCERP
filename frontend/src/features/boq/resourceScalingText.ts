@@ -2,6 +2,8 @@
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 /** The reader-language wording of proportional scaling refusals and warnings. */
 
+import { fmtList } from '@/shared/lib/formatters';
+
 type Translate = (key: string, opts?: Record<string, unknown>) => string;
 
 export function scalingErrorText(t: Translate, code: string): string {
@@ -34,7 +36,7 @@ export function scalingWarningText(t: Translate, warning: { code: string; count?
     case 'mixed_units':
       return t('boq.scaling.warning_mixed_units', {
         defaultValue: 'The scaled norms are in different units ({{units}}); their total adds unlike quantities.',
-        units: (warning.units ?? []).join(', '),
+        units: fmtList(warning.units ?? []),
       });
     case 'unconverted_currency':
       return t('boq.scaling.warning_unconverted_currency', {

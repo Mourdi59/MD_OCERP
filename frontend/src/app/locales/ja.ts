@@ -52162,7 +52162,7 @@ const resource = {
     "property_dev.doc_appearance.margin_preset_normal": "標準",
     "property_dev.doc_appearance.margin_preset_wide": "広い",
     "property_dev.doc_appearance.header_show_contact": "ヘッダーに会社の住所と連絡先を表示",
-    "property_dev.doc_appearance.header_show_contact_hint": "数量明細書(内訳書)など、ヘッダー帯のあるページでロゴの反対側に小さく表示します。1ページ目にはレターヘッドが表示されます。",
+    "property_dev.doc_appearance.header_show_contact_hint": "内訳書など、ヘッダー帯のあるページでロゴの反対側に小さく表示します。1ページ目にはレターヘッドが表示されます。",
     "property_dev.doc_appearance.header_rule": "ヘッダー下の罫線",
     "property_dev.doc_appearance.page_number_format": "ページ番号の形式",
     "property_dev.doc_appearance.page_number_format_hint": "共通のページフッターで使用されます。独自に翻訳されたフッターを持つフォームは、その表記を維持します。",

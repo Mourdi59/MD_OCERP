@@ -21,7 +21,7 @@ import { Badge, EmptyState, Skeleton } from '@/shared/ui';
 import { CollapsibleSection } from '@/shared/ui/CollapsibleSection';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { Breadcrumb } from '@/shared/ui/Breadcrumb';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { fmtDate } from '@/shared/lib/formatters';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { drawingCompareApi, type Comparison } from './api';
@@ -34,7 +34,7 @@ const WRITE_ROLES = new Set(['admin', 'manager', 'editor', 'estimator', 'quantit
 const DELETE_ROLES = new Set(['admin', 'manager', 'superuser', 'owner']);
 
 export function DrawingComparePage() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -82,12 +82,6 @@ export function DrawingComparePage() {
     void qc.invalidateQueries({ queryKey: ['drawing-compare', 'list', projectId] });
     open(cmp.id);
   };
-
-  const dateFmt = useMemo(
-    () => new Intl.DateTimeFormat(getIntlLocale(), { dateStyle: 'medium' }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [i18n.language],
-  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -182,7 +176,7 @@ export function DrawingComparePage() {
                   {t('drawing_compare.list_meta', {
                     defaultValue: 'Changes: {{n}} · {{date}}',
                     n: c.summary.total ?? 0,
-                    date: dateFmt.format(new Date(c.created_at)),
+                    date: fmtDate(c.created_at, { dateStyle: 'medium' }),
                   })}
                 </div>
               </button>

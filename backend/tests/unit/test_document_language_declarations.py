@@ -49,7 +49,7 @@ RENDERING_ROUTES: dict[str, set[str]] = {
     # the search below finds it through a comment that mentions the PDF export.
     # Listing it here rather than narrowing the search keeps the search broad.
     "modules/boq/branch_router.py": {"export_branch_compare"},
-    "modules/boq/router.py": {"export_boq_pdf", "_build_excel_export"},
+    "modules/boq/router.py": {"export_boq_pdf", "export_boq_excel"},
     "modules/commitment_release/router.py": {"export_matrix"},
     "modules/contracts/router.py": {"export_aia_application_pdf", "export_claim_hakedis_pdf"},
     "modules/costmodel/router.py": {"export_cost_control"},
@@ -101,6 +101,11 @@ RENDERING_ROUTES: dict[str, set[str]] = {
 #: uploaded, and its language is a property of the stored file rather than of
 #: this request. Listed so the discovery test below can tell "classified as not
 #: ours" apart from "nobody has looked at it yet".
+# Routes whose headers come from a builder in the same file; the builder is read with the route.
+HEADERS_BUILT_BY: dict[str, str] = {
+    "modules/boq/router.py::export_boq_excel": "_build_excel_export",
+}
+
 SERVES_STORED_ROUTES: dict[str, set[str]] = {
     "modules/bi_dashboards/router.py": {"download_report_file"},
     "modules/documents/router.py": {"download_document"},
@@ -128,6 +133,9 @@ def _function_source(path: pathlib.Path, name: str) -> str:
 )
 def test_a_rendering_route_declares_the_language_it_produced(rel: str, func: str) -> None:
     source = _function_source(APP_ROOT / rel, func)
+    builder = HEADERS_BUILT_BY.get(f"{rel}::{func}")
+    if builder:
+        source += _function_source(APP_ROOT / rel, builder)
     assert "Content-Language" in source, (
         f"{rel}::{func} renders a document and sets no Content-Language, so the "
         "Accept-Language middleware will label its bytes with the language the "
@@ -170,7 +178,8 @@ def test_no_pdf_route_escapes_classification() -> None:
         "elsewhere. A route that renders must declare its language."
     )
 
-    stale = {name for name in known if name not in found}
+    # A route that hands its response to a builder no longer matches the search; its builder is checked above.
+    stale = {name for name in known if name not in found and name not in HEADERS_BUILT_BY}
     assert not stale, (
         "these routes are listed but the search no longer finds them, so either "
         "they were removed or the search stopped seeing them: " + ", ".join(sorted(stale))
