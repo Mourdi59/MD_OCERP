@@ -322,7 +322,10 @@ class ClockService:
         await self.purge(data.project_id, settings=settings)
 
         payload = self._payload(event, hit)
-        ft_events.publish_clock_event(ft_events.CLOCK_IN if data.kind == gm.KIND_IN else ft_events.CLOCK_OUT, payload)
+        if data.kind == gm.KIND_IN:
+            ft_events.publish_clock_event(ft_events.CLOCK_IN, payload)
+        else:
+            ft_events.publish_clock_event(ft_events.CLOCK_OUT, payload)
         if approval == gm.APPROVAL_PENDING:
             ft_events.publish_clock_event(ft_events.CLOCK_FLAGGED, payload)
             await self._notify_supervisors(event, hit)

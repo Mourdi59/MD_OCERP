@@ -477,7 +477,7 @@ async def seed_carbon_demo(
     }
 
 
-DEMO_EPD_IDS = ("DEMO-EPD-C30-CEM-I", "DEMO-EPD-C30-CEM-III")
+DEMO_EPD_IDS = ("EPD-C30-CEM-I-2025", "EPD-C30-CEM-III-2025")
 DEMO_COMPANY = "Demo Construction Group"
 
 
@@ -544,7 +544,7 @@ async def seed_lifecycle_demo(session: AsyncSession, project_ids: list[uuid.UUID
             confidence="high",
             factor_set="Demo EPD set",
             factor_set_year=2025,
-            notes=f"lifecycle demo {e.epd_id}",
+            notes=f"Life-cycle factors from {e.epd_id}",
         )
         for e in (cem1, cem3)
     )

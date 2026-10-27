@@ -192,6 +192,8 @@ class PunchListService:
         # a payload object from another module that carries fewer fields.
         if "rework_cost_currency" in getattr(data, "model_fields_set", ()):
             return getattr(data, "rework_cost_currency", "USD") or "USD"
+        if not callable(getattr(self.session, "get", None)):
+            return "USD"  # a unit-test stub session has no identity map to read
         try:
             # Lazy import: punchlist must stay loadable without the projects
             # module in a minimal fixture, as QMS does for the reverse read.

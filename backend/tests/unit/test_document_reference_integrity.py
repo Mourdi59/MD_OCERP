@@ -55,6 +55,7 @@ UNCONSTRAINED_DOCUMENT_REFERENCES: dict[str, tuple[str, ...]] = {
     "cde": ("DocumentRevision.document_id",),
     "closeout": ("CloseoutBinding.document_id", "CloseoutDossier.document_id"),
     "engineering_brief": ("SpecificationIssue.document_id", "Study.document_id"),
+    "guarantees": ("GuaranteeDocument.document_id",),
     "hse_frame": ("HseFrame.plan_document_id", "HseRole.appointment_document_id"),
     "construction_control": ("MaterialRecord.cert_document_id",),
     "contracts": (

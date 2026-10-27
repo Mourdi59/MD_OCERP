@@ -151,6 +151,16 @@ _TYPE_DISTRIBUTION: list[str] = [
 ]
 
 
+# Contracts another module's demo seeds complete on their own (the cash-flow forecast demo
+# writes its own invoices); backfilling them would grow on every reinstall.
+_OTHER_MODULE_SEEDS = frozenset({"cashflow_forecast_demo"})
+
+
+def _seeded_by_another_module(contract: object) -> bool:
+    meta = getattr(contract, "metadata_", None)
+    return isinstance(meta, dict) and meta.get("demo_seed") in _OTHER_MODULE_SEEDS
+
+
 async def seed_type_configurations(session: AsyncSession) -> int:
     """Insert ContractTypeConfiguration catalog rows if missing."""
     from sqlalchemy import select
@@ -270,6 +280,7 @@ async def seed_progress_claims_demo(
         .scalars()
         .all()
     )
+    contracts = [c for c in contracts if not _seeded_by_another_module(c)]
     if not contracts:
         return {"claims_backfilled": 0, "contracts_backfilled": 0}
 
@@ -969,6 +980,7 @@ async def _backfill_schedules(
         .scalars()
         .all()
     )
+    contracts = [c for c in contracts if not _seeded_by_another_module(c)]
     if not contracts:
         return _no_schedules()
 
@@ -1111,6 +1123,7 @@ async def seed_progress_claim_lines_demo(
         .scalars()
         .all()
     )
+    contracts = [c for c in contracts if not _seeded_by_another_module(c)]
     if not contracts:
         return {"claim_lines_backfilled": 0, "claims_broken_down": 0, "claims_over_schedule": 0}
 

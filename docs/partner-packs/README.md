@@ -456,6 +456,7 @@ teach identifiers that were never rule sets at all.
 | `classification_nudge` | Suggests a classification when none is set |
 | `ai_estimator` | Guards on machine-produced estimate lines |
 | `field_time` | Site time capture |
+| `offline_sync` | Records captured offline and merged on sync: every conflict resolved before the merge completes |
 | `procurement` | Purchase orders and reconciliation |
 | `invoice_po_match` | Supplier invoice against its order: net within what is still open, quantity and value within what was received |
 | `procurement_requisition` | Material requisition on submit: positive quantities, line unit equal to its BOQ source unit, needed-by date not past |

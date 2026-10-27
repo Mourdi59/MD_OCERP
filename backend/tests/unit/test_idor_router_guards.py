@@ -452,6 +452,8 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
     ],
     "inspections": [
         "get_inspection",
+        "merge_inspection",
+        "inspection_merge_audit",
         "update_inspection",
         "delete_inspection",
         # Route census (test_object_scoped_routes_are_all_pinned)
@@ -488,6 +490,8 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
     ],
     "punchlist": [
         "get_item",
+        "merge_item",
+        "item_merge_audit",
         "update_item",
         "delete_item",
         # Route census (test_object_scoped_routes_are_all_pinned)

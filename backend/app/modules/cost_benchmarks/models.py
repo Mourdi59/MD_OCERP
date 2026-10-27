@@ -74,4 +74,4 @@ class BenchmarkElement(Base):
     label: Mapped[str] = mapped_column(String(255), nullable=False, default="", server_default="")
     amount: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False, default=Decimal("0"), server_default="0")
 
-    record: Mapped[BenchmarkRecord] = relationship(back_populates="elements")
+    record: Mapped[BenchmarkRecord] = relationship(back_populates="elements", lazy="raise_on_sql")
