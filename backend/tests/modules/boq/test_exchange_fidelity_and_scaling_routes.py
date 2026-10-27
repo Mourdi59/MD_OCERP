@@ -403,7 +403,7 @@ async def test_apply_rewrites_norms_rederives_rates_logs_and_restores_from_the_s
     )
     assert result["updated"] == 2
     resources, rate, total = await _resources(session, pos["01.0010"].id)
-    assert resources[0]["quantity"] == 1.0
+    assert resources[0]["quantity"] == "1.000"
     assert Decimal(rate) == Decimal(40)
     assert Decimal(total) == Decimal(400)
 

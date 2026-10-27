@@ -172,7 +172,7 @@ def test_measuring_without_a_target_changes_nothing() -> None:
 
 def test_resource_total_is_recomputed_when_the_row_carries_one() -> None:
     plan = _plan([_line("a", "1", [_labour(2.0, rate=40.0, total=80.0)])], 1)
-    assert plan.changed_lines[0].resources[0]["total"] == 40.0
+    assert plan.changed_lines[0].resources[0]["total"] == "40.00"
 
 
 def test_scope_walks_every_level_under_a_section_and_skips_section_rows() -> None:

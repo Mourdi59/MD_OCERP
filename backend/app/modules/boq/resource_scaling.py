@@ -349,9 +349,9 @@ def plan_scaling(
             contribution = _contribution(res, line, metric, new_q, convert) or Decimal(0)
             new_value += contribution
             if new_q != old_q:
-                res["quantity"] = float(new_q)
+                res["quantity"] = str(new_q)
                 if res.get("total") is not None:
-                    res["total"] = float((new_q * to_decimal(res.get("unit_rate"))).quantize(Decimal("0.01")))
+                    res["total"] = str((new_q * to_decimal(res.get("unit_rate"))).quantize(Decimal("0.01")))
                 changes.append(
                     ResourceChange(
                         index=idx,
