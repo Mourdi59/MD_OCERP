@@ -7,6 +7,7 @@
  */
 
 import { apiGet, apiPost, downloadWithAuth, fetchWithAuth, getErrorMessage } from '@/shared/lib/api';
+import { fetchAllPages } from '@/shared/lib/apiHelpers';
 
 export type DataQuality = 'measured' | 'calculated' | 'estimated';
 export type ClassificationSystem = 'din276' | 'nrm' | 'masterformat';
@@ -65,8 +66,13 @@ export interface EpdImportResult {
   errors: string[];
 }
 
-export function getHotspots(inventoryId: string, system: ClassificationSystem): Promise<Hotspot[]> {
-  return apiGet<Hotspot[]>(`/v1/carbon/inventories/${inventoryId}/hotspots?system=${system}`);
+export async function getHotspots(inventoryId: string, system: ClassificationSystem): Promise<Hotspot[]> {
+  const { items } = await fetchAllPages<Hotspot>((offset, limit) =>
+    apiGet<{ items: Hotspot[] }>(
+      `/v1/carbon/inventories/${inventoryId}/hotspots?system=${system}&offset=${offset}&limit=${limit}`,
+    ),
+  );
+  return items;
 }
 
 export function getBudget(projectId: string): Promise<CarbonBudget> {
@@ -101,8 +107,11 @@ export async function importEpdFile(file: File, materialClass = 'other'): Promis
   return body as EpdImportResult;
 }
 
-export function listCompanyReports(): Promise<CompanyReport[]> {
-  return apiGet<CompanyReport[]>('/v1/carbon/company/reports');
+export async function listCompanyReports(): Promise<CompanyReport[]> {
+  const { items } = await fetchAllPages<CompanyReport>((offset, limit) =>
+    apiGet<{ items: CompanyReport[] }>(`/v1/carbon/company/reports?offset=${offset}&limit=${limit}`),
+  );
+  return items;
 }
 
 export function generateCompanyReport(body: {

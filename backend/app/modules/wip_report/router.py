@@ -27,6 +27,7 @@ from app.modules.wip_report.schemas import (
     ForecastRequest,
     ForecastResponse,
     PortfolioResponse,
+    WipPeriodListResponse,
     WipPeriodResponse,
     WipRow,
 )
@@ -73,7 +74,7 @@ async def export_portfolio(
     return Response(
         content=body,
         media_type=media,
-        headers={"Content-Disposition": f'attachment; filename="wip-schedule-{stamp}.{fmt}"'},
+        headers={"Content-Disposition": f'attachment; filename="wip-schedule-{stamp}.{fmt}"', "Content-Language": "en"},
     )
 
 
@@ -86,11 +87,18 @@ async def live_row(
     return WipRow.model_validate(await WipReportService(session).row(project_id, as_of))
 
 
-@router.get("/projects/{project_id}/periods", response_model=list[WipPeriodResponse], dependencies=[_READ])
-async def list_periods(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> list[WipPeriodResponse]:
+@router.get("/projects/{project_id}/periods", response_model=WipPeriodListResponse, dependencies=[_READ])
+async def list_periods(
+    project_id: uuid.UUID,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=100),
+) -> WipPeriodListResponse:
     await verify_project_access(project_id, user_id, session)
     rows = await WipReportService(session).list_periods(project_id)
-    return [WipPeriodResponse.model_validate(r) for r in rows]
+    page = [WipPeriodResponse.model_validate(r) for r in rows[offset : offset + limit]]
+    return WipPeriodListResponse(items=page, total=len(rows), offset=offset, limit=limit)
 
 
 @router.post("/projects/{project_id}/periods", response_model=WipPeriodResponse, status_code=201, dependencies=[_WRITE])

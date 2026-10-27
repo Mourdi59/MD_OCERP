@@ -150,6 +150,29 @@ class ReportOut(BaseModel):
     audit: dict[str, Any]
 
 
+class ActivityListResponse(BaseModel):
+    items: list[ActivityOut]
+    total: int
+    offset: int = 0
+    limit: int = 50
+
+
+class ReportListResponse(BaseModel):
+    items: list[ReportOut]
+    total: int
+    offset: int = 0
+    limit: int = 50
+
+
+class DictListResponse(BaseModel):
+    """Page of computed rows (EPD attachments, hotspot groups)."""
+
+    items: list[dict[str, Any]]
+    total: int
+    offset: int = 0
+    limit: int = 50
+
+
 # ── EPD ──────────────────────────────────────────────────────────────────
 
 
@@ -178,10 +201,12 @@ async def import_epd(
 async def epds_for_item(
     item_id: uuid.UUID,
     user_id: CurrentUserId,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=100),
     svc: CarbonLifecycleService = Depends(_svc),
-) -> list[dict[str, Any]]:
+) -> DictListResponse:
     """EPDs attached to a supplier catalogue product."""
-    return [
+    rows = [
         {
             "id": str(r.id),
             "epd_id": r.epd_id,
@@ -192,6 +217,7 @@ async def epds_for_item(
         }
         for r in await svc.epds_for_catalog_item(item_id)
     ]
+    return DictListResponse(items=rows[offset : offset + limit], total=len(rows), offset=offset, limit=limit)
 
 
 # ── Stage lines ──────────────────────────────────────────────────────────
@@ -261,10 +287,13 @@ async def hotspots(
     user_id: CurrentUserId,
     session: SessionDep,
     system: str = Query(default="din276", pattern=r"^(din276|nrm|masterformat)$"),
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=100),
     svc: CarbonLifecycleService = Depends(_svc),
-) -> list[dict[str, Any]]:
+) -> DictListResponse:
     await _inv_access(svc, inventory_id, user_id, session)
-    return await svc.hotspots(inventory_id, system)
+    rows = await svc.hotspots(inventory_id, system)
+    return DictListResponse(items=rows[offset : offset + limit], total=len(rows), offset=offset, limit=limit)
 
 
 @router.get("/projects/{project_id}/budget")
@@ -350,15 +379,18 @@ async def _admin(session: Any, user_id: str) -> tuple[set[uuid.UUID] | None, boo
     return ids, ids is None
 
 
-@router.get("/company/activities", response_model=list[ActivityOut])
+@router.get("/company/activities", response_model=ActivityListResponse)
 async def list_activities(
     user_id: CurrentUserId,
     session: SessionDep,
     year: int = Query(..., ge=1990, le=2100),
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=100),
     svc: CarbonLifecycleService = Depends(_svc),
 ) -> Any:
     _, admin = await _admin(session, user_id)
-    return await svc.list_activities(year, user_id, admin)
+    rows = await svc.list_activities(year, user_id, admin)
+    return {"items": rows[offset : offset + limit], "total": len(rows), "offset": offset, "limit": limit}
 
 
 @router.post("/company/activities", response_model=ActivityOut, status_code=201)
@@ -399,14 +431,17 @@ async def templates(user_id: CurrentUserId) -> dict[str, Any]:
     return csrd.report_templates()
 
 
-@router.get("/company/reports", response_model=list[ReportOut])
+@router.get("/company/reports", response_model=ReportListResponse)
 async def list_reports(
     user_id: CurrentUserId,
     session: SessionDep,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=100),
     svc: CarbonLifecycleService = Depends(_svc),
 ) -> Any:
     _, admin = await _admin(session, user_id)
-    return await svc.list_company_reports(user_id, admin)
+    rows = await svc.list_company_reports(user_id, admin)
+    return {"items": rows[offset : offset + limit], "total": len(rows), "offset": offset, "limit": limit}
 
 
 @router.post("/company/reports", response_model=ReportOut, status_code=201)
@@ -453,5 +488,7 @@ async def export_report(
     else:
         body, media, ext = csrd.to_xbrl_csv(data).encode("utf-8"), "text/csv", "csv"
     return Response(
-        content=body, media_type=media, headers={"Content-Disposition": f'attachment; filename="{stem}.{ext}"'}
+        content=body,
+        media_type=media,
+        headers={"Content-Disposition": f'attachment; filename="{stem}.{ext}"', "Content-Language": "en"},
     )

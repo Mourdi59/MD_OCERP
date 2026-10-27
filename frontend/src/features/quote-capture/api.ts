@@ -17,6 +17,7 @@ import {
   extractErrorMessageFromBody,
   fetchWithAuth,
 } from '@/shared/lib/api';
+import { fetchAllPages } from '@/shared/lib/apiHelpers';
 
 export type ConfirmTarget = 'bid' | 'price_list' | 'po_draft';
 export const CONFIRM_TARGETS: ConfirmTarget[] = ['bid', 'price_list', 'po_draft'];
@@ -173,10 +174,14 @@ export interface PackageOption {
 
 export const listPackages = (projectId: string) =>
   apiGet<PackageOption[]>(`/v1/tendering/packages/?project_id=${projectId}`);
-export const listQuotes = (projectId: string, packageId?: string) =>
-  apiGet<QuoteSummary[]>(
-    `/v1/quote-capture/projects/${projectId}/quotes${packageId ? `?package_id=${packageId}` : ''}`,
+export const listQuotes = async (projectId: string, packageId?: string) => {
+  const { items } = await fetchAllPages<QuoteSummary>((offset, limit) =>
+    apiGet<{ items: QuoteSummary[] }>(
+      `/v1/quote-capture/projects/${projectId}/quotes?${packageId ? `package_id=${packageId}&` : ''}offset=${offset}&limit=${limit}`,
+    ),
   );
+  return items;
+};
 export const getQuote = (id: string) => apiGet<Quote>(`/v1/quote-capture/quotes/${id}`);
 export const updateQuote = (id: string, body: unknown) => apiPatch<Quote>(`/v1/quote-capture/quotes/${id}`, body);
 export const updateLine = (id: string, lineId: string, body: unknown) =>

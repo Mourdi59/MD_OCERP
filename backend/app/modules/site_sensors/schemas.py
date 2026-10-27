@@ -181,3 +181,39 @@ class StripResponse(BaseModel):
     struck_at: datetime | None = None
     strength_at_strike_mpa: Decimal | None = None
     status: str
+
+
+class AlertListResponse(BaseModel):
+    """Page of AlertResponse."""
+
+    items: list[AlertResponse]
+    total: int
+    offset: int = 0
+    limit: int = 50
+
+
+class DeviceListResponse(BaseModel):
+    """Page of DeviceResponse."""
+
+    items: list[DeviceResponse]
+    total: int
+    offset: int = 0
+    limit: int = 50
+
+
+class MixListResponse(BaseModel):
+    """Page of MixResponse."""
+
+    items: list[MixResponse]
+    total: int
+    offset: int = 0
+    limit: int = 50
+
+
+class StripListResponse(BaseModel):
+    """Page of StripResponse."""
+
+    items: list[StripResponse]
+    total: int
+    offset: int = 0
+    limit: int = 50

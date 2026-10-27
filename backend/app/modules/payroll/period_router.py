@@ -143,11 +143,28 @@ async def create_period(
     return await _detail(service, period.id)
 
 
-@router.get("/projects/{project_id}/periods/", dependencies=[_READ])
-async def list_periods(project_id: uuid.UUID, user_id: CurrentUserId, session: SessionDep) -> list[dict[str, Any]]:
+class PeriodListResponse(BaseModel):
+    """Page of period headers."""
+
+    items: list[dict[str, Any]]
+    total: int
+    offset: int = 0
+    limit: int = 50
+
+
+@router.get("/projects/{project_id}/periods/", response_model=PeriodListResponse, dependencies=[_READ])
+async def list_periods(
+    project_id: uuid.UUID,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=100),
+) -> PeriodListResponse:
     await verify_project_access(project_id, user_id, session)
     service = PayrollPeriodService(session)
-    return [service.header(p) for p in await service.list_for_project(project_id)]
+    rows = await service.list_for_project(project_id)
+    page = [service.header(p) for p in rows[offset : offset + limit]]
+    return PeriodListResponse(items=page, total=len(rows), offset=offset, limit=limit)
 
 
 @router.get("/periods/{period_id}", dependencies=[_READ])

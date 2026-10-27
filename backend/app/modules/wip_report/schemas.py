@@ -119,3 +119,12 @@ class Finding(BaseModel):
 
 class FindingsResponse(BaseModel):
     findings: list[Finding]
+
+
+class WipPeriodListResponse(BaseModel):
+    """Page of WipPeriodResponse."""
+
+    items: list[WipPeriodResponse]
+    total: int
+    offset: int = 0
+    limit: int = 50

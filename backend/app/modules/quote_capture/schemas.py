@@ -105,3 +105,12 @@ class LevellingOut(BaseModel):
     rows: list[dict[str, Any]]
     quotes: list[dict[str, Any]]
     excluded_off_currency: list[str] = Field(default_factory=list)
+
+
+class QuoteSummaryListResponse(BaseModel):
+    """Page of QuoteSummaryOut."""
+
+    items: list[QuoteSummaryOut]
+    total: int
+    offset: int = 0
+    limit: int = 50

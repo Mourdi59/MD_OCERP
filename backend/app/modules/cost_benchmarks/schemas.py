@@ -96,3 +96,12 @@ class CompareRequest(BaseModel):
     measure: Literal["gfa", "unit"] = "gfa"
     min_projects: int = Field(default=5, ge=1, le=100)
     stale_months: int = Field(default=12, ge=1, le=120)
+
+
+class RecordListResponse(BaseModel):
+    """Page of RecordOut."""
+
+    items: list[RecordOut]
+    total: int
+    offset: int = 0
+    limit: int = 50

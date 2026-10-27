@@ -22,6 +22,7 @@ from app.modules.quote_capture.schemas import (
     LevellingOut,
     LineUpdate,
     QuoteOut,
+    QuoteSummaryListResponse,
     QuoteSummaryOut,
     QuoteTextCreate,
     QuoteUpdate,
@@ -62,16 +63,19 @@ async def _detail(svc: QuoteCaptureService, row: CapturedQuote) -> QuoteOut:
     )
 
 
-@router.get("/projects/{project_id}/quotes", response_model=list[QuoteSummaryOut], dependencies=[_READ])
+@router.get("/projects/{project_id}/quotes", response_model=QuoteSummaryListResponse, dependencies=[_READ])
 async def list_quotes(
     project_id: uuid.UUID,
     session: SessionDep,
     user_id: CurrentUserId,
     package_id: uuid.UUID | None = Query(default=None),
-) -> list[QuoteSummaryOut]:
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=100),
+) -> QuoteSummaryListResponse:
     await verify_project_access(project_id, user_id, session)
     rows = await QuoteCaptureService(session).list(project_id, package_id)
-    return [_summary(r) for r in rows]
+    page = [_summary(r) for r in rows[offset : offset + limit]]
+    return QuoteSummaryListResponse(items=page, total=len(rows), offset=offset, limit=limit)
 
 
 @router.post("/projects/{project_id}/quotes/upload", response_model=QuoteOut, status_code=201, dependencies=[_WRITE])

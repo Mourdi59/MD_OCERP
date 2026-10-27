@@ -1564,3 +1564,12 @@ class LpsValidationResponse(BaseModel):
     errors: int
     warnings: int
     results: list[LpsValidationResult]
+
+
+class LpsConstraintListResponse(BaseModel):
+    """Page of LpsConstraintRow."""
+
+    items: list[LpsConstraintRow]
+    total: int
+    offset: int = 0
+    limit: int = 50

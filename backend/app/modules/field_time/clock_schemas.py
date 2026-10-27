@@ -222,3 +222,12 @@ class ClockLabourCost(BaseModel):
     currency: str
     timesheets: int
     from_clock_hours: str
+
+
+class GeofenceListResponse(BaseModel):
+    """Page of GeofenceResponse."""
+
+    items: list[GeofenceResponse]
+    total: int
+    offset: int = 0
+    limit: int = 50

@@ -34,15 +34,19 @@ from app.dependencies import CurrentUserId, RequirePermission, SessionDep, verif
 from app.modules.site_sensors.schemas import (
     AcknowledgeIn,
     AlertLinksIn,
+    AlertListResponse,
     AlertResponse,
     DeviceCreate,
+    DeviceListResponse,
     DeviceResponse,
     DeviceUpdate,
     MixCreate,
+    MixListResponse,
     MixResponse,
     ReadingsIn,
     StrikeIn,
     StripCreate,
+    StripListResponse,
     StripResponse,
     TokenResponse,
 )
@@ -61,17 +65,20 @@ async def _device_for_user(service: SiteSensorsService, device_id: uuid.UUID, us
     return device
 
 
-@router.get("/devices/", response_model=list[DeviceResponse])
+@router.get("/devices/", response_model=DeviceListResponse)
 async def list_devices(
     project_id: uuid.UUID,
     user_id: CurrentUserId,
     session: SessionDep,
     kind: str | None = Query(default=None),
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=100),
     _perm: None = Depends(RequirePermission("site_sensors.read")),
-) -> list[DeviceResponse]:
+) -> DeviceListResponse:
     await verify_project_access(project_id, user_id, session)
     devices = await SiteSensorsService(session).repo.devices(project_id, kind)
-    return [DeviceResponse.model_validate(d) for d in devices]
+    page = [DeviceResponse.model_validate(d) for d in devices[offset : offset + limit]]
+    return DeviceListResponse(items=page, total=len(devices), offset=offset, limit=limit)
 
 
 @router.post("/devices/", response_model=DeviceResponse, status_code=201)
@@ -168,16 +175,20 @@ async def device_ingest(
     return await service.ingest(device, [(r.recorded_at, r.value) for r in data.readings])
 
 
-@router.get("/mixes/", response_model=list[MixResponse])
+@router.get("/mixes/", response_model=MixListResponse)
 async def list_mixes(
     session: SessionDep,
     user_id: CurrentUserId,
     project_id: uuid.UUID | None = Query(default=None),
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=100),
     _perm: None = Depends(RequirePermission("site_sensors.read")),
-) -> list[MixResponse]:
+) -> MixListResponse:
     if project_id is not None:
         await verify_project_access(project_id, user_id, session)
-    return [MixResponse.model_validate(m) for m in await SiteSensorsService(session).list_mixes(project_id)]
+    rows = await SiteSensorsService(session).list_mixes(project_id)
+    page = [MixResponse.model_validate(m) for m in rows[offset : offset + limit]]
+    return MixListResponse(items=page, total=len(rows), offset=offset, limit=limit)
 
 
 @router.post("/mixes/", response_model=MixResponse, status_code=201)
@@ -192,18 +203,22 @@ async def create_mix(
     return MixResponse.model_validate(await SiteSensorsService(session).create_mix(data))
 
 
-@router.get("/alerts/", response_model=list[AlertResponse])
+@router.get("/alerts/", response_model=AlertListResponse)
 async def list_alerts(
     project_id: uuid.UUID,
     user_id: CurrentUserId,
     session: SessionDep,
     status: str | None = Query(default=None),
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=100),
     _perm: None = Depends(RequirePermission("site_sensors.read")),
-) -> list[AlertResponse]:
+) -> AlertListResponse:
     await verify_project_access(project_id, user_id, session)
     service = SiteSensorsService(session)
     await service.sweep_offline(project_id)
-    return [AlertResponse.model_validate(a) for a in await service.repo.alerts(project_id, status)]
+    rows = await service.repo.alerts(project_id, status)
+    page = [AlertResponse.model_validate(a) for a in rows[offset : offset + limit]]
+    return AlertListResponse(items=page, total=len(rows), offset=offset, limit=limit)
 
 
 async def _alert_for_user(service: SiteSensorsService, alert_id: uuid.UUID, user_id: str) -> None:
@@ -241,15 +256,19 @@ async def link_alert(
     return AlertResponse.model_validate(await service.link(alert_id, data.model_dump()))
 
 
-@router.get("/strips/", response_model=list[StripResponse])
+@router.get("/strips/", response_model=StripListResponse)
 async def list_strips(
     project_id: uuid.UUID,
     user_id: CurrentUserId,
     session: SessionDep,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=100),
     _perm: None = Depends(RequirePermission("site_sensors.read")),
-) -> list[StripResponse]:
+) -> StripListResponse:
     await verify_project_access(project_id, user_id, session)
-    return [StripResponse.model_validate(s) for s in await SiteSensorsService(session).list_strips(project_id)]
+    rows = await SiteSensorsService(session).list_strips(project_id)
+    page = [StripResponse.model_validate(s) for s in rows[offset : offset + limit]]
+    return StripListResponse(items=page, total=len(rows), offset=offset, limit=limit)
 
 
 @router.post("/strips/", response_model=StripResponse, status_code=201)

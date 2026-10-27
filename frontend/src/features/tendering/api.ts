@@ -15,6 +15,7 @@ import {
   extractErrorMessageFromBody,
   fetchWithAuth,
 } from '@/shared/lib/api';
+import { fetchAllPages } from '@/shared/lib/apiHelpers';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -201,8 +202,13 @@ export interface Clarification {
 }
 
 
-export function listClarifications(packageId: string): Promise<Clarification[]> {
-  return apiGet<Clarification[]>(`/v1/tendering/packages/${packageId}/clarifications/`);
+export async function listClarifications(packageId: string): Promise<Clarification[]> {
+  const { items } = await fetchAllPages<Clarification>((offset, limit) =>
+    apiGet<{ items: Clarification[] }>(
+      `/v1/tendering/packages/${packageId}/clarifications/?offset=${offset}&limit=${limit}`,
+    ),
+  );
+  return items;
 }
 
 export function createClarification(

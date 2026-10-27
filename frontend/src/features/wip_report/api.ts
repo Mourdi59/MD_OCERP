@@ -11,6 +11,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiGet, apiPost, apiPut, apiDelete, downloadWithAuth } from '@/shared/lib/api';
+import { fetchAllPages } from '@/shared/lib/apiHelpers';
 
 export interface WipRow {
   project_id: string;
@@ -262,8 +263,11 @@ export function fetchLive(projectId: string, asOf?: string): Promise<WipRow> {
   return apiGet<WipRow>(`/v1/wip-report/projects/${projectId}/live${qs({ as_of: asOf })}`);
 }
 
-export function fetchPeriods(projectId: string): Promise<WipPeriod[]> {
-  return apiGet<WipPeriod[]>(`/v1/wip-report/projects/${projectId}/periods`);
+export async function fetchPeriods(projectId: string): Promise<WipPeriod[]> {
+  const { items } = await fetchAllPages<WipPeriod>((offset, limit) =>
+    apiGet<{ items: WipPeriod[] }>(`/v1/wip-report/projects/${projectId}/periods?offset=${offset}&limit=${limit}`),
+  );
+  return items;
 }
 
 export function closePeriod(projectId: string, body: { period: string; notes?: string }): Promise<WipPeriod> {

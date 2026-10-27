@@ -9,6 +9,7 @@
  */
 
 import { apiDelete, apiGet, apiPost, fetchWithAuth, triggerDownload } from '@/shared/lib/api';
+import { fetchAllPages } from '@/shared/lib/apiHelpers';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -162,8 +163,10 @@ export async function fetchRecords(filters: RecordFilters): Promise<BenchmarkRec
   const q = new URLSearchParams({ kind: filters.kind });
   if (filters.project_type) q.set('project_type', filters.project_type);
   if (filters.country) q.set('country', filters.country);
-  const res = await apiGet<BenchmarkRecord[]>(`/v1/cost_benchmarks/records/?${q.toString()}`);
-  return Array.isArray(res) ? res : [];
+  const { items } = await fetchAllPages<BenchmarkRecord>((offset, limit) =>
+    apiGet<{ items: BenchmarkRecord[] }>(`/v1/cost_benchmarks/records/?${q.toString()}&offset=${offset}&limit=${limit}`),
+  );
+  return items;
 }
 
 export async function createRecord(payload: CreateRecordPayload): Promise<BenchmarkRecord> {

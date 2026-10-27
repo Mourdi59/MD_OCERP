@@ -8,6 +8,7 @@
  */
 
 import { API_BASE, ApiError, apiGet, apiPost, fetchWithAuth } from '@/shared/lib/api';
+import { fetchAllPages } from '@/shared/lib/apiHelpers';
 import type { RuleResult } from '@/shared/lib/ruleResults';
 import type { ImportKind } from './telematicsFormat';
 
@@ -97,8 +98,11 @@ export function fetchTelematicsValidation(projectId?: string): Promise<Telematic
   return apiGet<TelematicsValidation>(`/v1/equipment/telematics/validation/?${projectQuery(projectId).slice(1)}`);
 }
 
-export function fetchTelematicsDevices(): Promise<TelematicsDevice[]> {
-  return apiGet<TelematicsDevice[]>(`/v1/equipment/telematics/devices/`);
+export async function fetchTelematicsDevices(): Promise<TelematicsDevice[]> {
+  const { items } = await fetchAllPages<TelematicsDevice>((offset, limit) =>
+    apiGet<{ items: TelematicsDevice[] }>(`/v1/equipment/telematics/devices/?offset=${offset}&limit=${limit}`),
+  );
+  return items;
 }
 
 export function createTelematicsDevice(equipmentId: string, label: string): Promise<TelematicsDevice> {
