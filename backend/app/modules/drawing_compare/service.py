@@ -654,7 +654,13 @@ class DrawingCompareService:
         return list((await self.session.execute(stmt)).scalars().all())
 
     async def remeasure(
-        self, change: DrawingChange, cmp: DrawingComparison, user_id: str, *, dry_run: bool
+        self,
+        change: DrawingChange,
+        cmp: DrawingComparison,
+        user_id: str,
+        *,
+        dry_run: bool,
+        can_flag_boq: bool = True,
     ) -> RemeasureResponse:
         """List (and unless ``dry_run``, flag) what sits inside a change.
 
@@ -672,6 +678,19 @@ class DrawingCompareService:
         ]
         if dry_run:
             return RemeasureResponse(change_id=change.id, dry_run=True, items=items, positions=pos_out)
+        if positions:
+            # Flagging writes position metadata, so it needs the BOQ's own write right and an open bill.
+            if not can_flag_boq:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Missing permission: boq.update")
+            from app.modules.boq.models import BOQ
+
+            locked = (
+                await self.session.execute(
+                    select(BOQ.id).where(BOQ.id.in_({p.boq_id for p in positions}), BOQ.is_locked.is_(True))
+                )
+            ).first()
+            if locked is not None:
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=t("errors.boq_locked"))
 
         now = datetime.now(UTC)
         flag = {

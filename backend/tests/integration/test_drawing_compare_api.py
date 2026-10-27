@@ -310,6 +310,33 @@ async def test_remeasure_dry_run_flag_and_clear(http_client, world):
 
 
 @pytest.mark.asyncio
+async def test_remeasure_leaves_a_locked_bill_alone(http_client, world):
+    from app.database import async_session_factory
+    from app.modules.boq.models import BOQ, Position
+
+    a = world["a"]
+    cmp = await _create(http_client, a)
+    change = cmp["changes"][0]
+    async with async_session_factory() as s:
+        pos = await s.get(Position, uuid.UUID(a["pos"]))
+        boq = await s.get(BOQ, pos.boq_id)
+        boq.is_locked = True
+        await s.commit()
+    try:
+        flag = await http_client.post(
+            f"{_BASE}/changes/{change['id']}/remeasure/", params={"dry_run": "false"}, headers=a["headers"]
+        )
+        assert flag.status_code == 409, flag.text
+        async with async_session_factory() as s:
+            assert "needs_remeasure" not in ((await s.get(Position, uuid.UUID(a["pos"]))).metadata_ or {})
+    finally:
+        async with async_session_factory() as s:
+            boq = await s.get(BOQ, (await s.get(Position, uuid.UUID(a["pos"]))).boq_id)
+            boq.is_locked = False
+            await s.commit()
+
+
+@pytest.mark.asyncio
 async def test_rfi_and_markup_from_change(http_client, world):
     a = world["a"]
     cmp = await _create(http_client, a)

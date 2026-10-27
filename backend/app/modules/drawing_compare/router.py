@@ -28,12 +28,12 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 
 from app.core.document_locale import normalize_document_locale
 from app.core.i18n import SUPPORTED_LOCALES, get_locale
-from app.dependencies import CurrentUserId, RequirePermission, SessionDep, verify_project_access
+from app.dependencies import CurrentUserId, CurrentUserPayload, RequirePermission, SessionDep, verify_project_access
 from app.modules.drawing_compare.models import DrawingChange, DrawingComparison
 from app.modules.drawing_compare.schemas import (
     ChangeMarkupCreate,
@@ -267,13 +267,20 @@ async def create_markup_from_change(
 async def remeasure_change(
     change_id: uuid.UUID,
     user_id: CurrentUserId,
+    payload: CurrentUserPayload,
     session: SessionDep,
     dry_run: bool = Query(default=True),
     service: DrawingCompareService = Depends(_service),
 ) -> RemeasureResponse:
     """What sits inside a change; with ``dry_run=false`` flag it all for re-measure."""
     change, cmp = await _change(change_id, user_id, session, service)
-    out = await service.remeasure(change, cmp, user_id, dry_run=dry_run)
+    can_flag_boq = True
+    if not dry_run:
+        try:
+            await RequirePermission("boq.update")(payload)
+        except HTTPException:
+            can_flag_boq = False
+    out = await service.remeasure(change, cmp, user_id, dry_run=dry_run, can_flag_boq=can_flag_boq)
     if not dry_run:
         await session.commit()
     return out
