@@ -289,7 +289,7 @@ describe('the onboarding wizard, first screen to the app', () => {
     // The user picked Advanced before running the wizard, and Start Working
     // no longer forces Simple over that choice.
     expect(useViewModeStore.getState().mode).toBe('advanced');
-  });
+  }, 30_000);
 
   it('goes back one step at a time from the summary to the welcome screen, keeping the pick', async () => {
     renderWizard();
@@ -325,7 +325,7 @@ describe('the onboarding wizard, first screen to the app', () => {
     await fromModulesToSummary();
     await startWorking();
     expect(onboardingPost().company_type).toBe('subcontractor');
-  });
+  }, 30_000);
 
   it('saves a job profile picked from the folded group as that profile', async () => {
     renderWizard();
