@@ -47,7 +47,17 @@
         "attestation_revenu_quebec": "Revenu Québecin todistus",
         "construction_tax_exemption": "rakennusveron vapautustodistus",
         "social_security_clearance": "sosiaaliturvamaksujen selvitystodistus",
-        "employers_liability_clearance": "työnantajan vastuun selvitystodistus"
+        "employers_liability_clearance": "työnantajan vastuun selvitystodistus",
+        "public_liability": "yleisen vastuuvakuutuksen vakuutustodistus",
+        "employers_liability": "työnantajan vastuuvakuutuksen vakuutustodistus",
+        "professional_indemnity": "ammatillisen vastuuvakuutuksen vakuutustodistus",
+        "contractors_all_risk": "urakoitsijan all risks -vakuutuksen vakuutustodistus",
+        "workers_compensation": "työntekijöiden tapaturmavakuutuksen vakuutustodistus",
+        "motor_vehicle": "ajoneuvovakuutuksen vakuutustodistus",
+        "product_liability": "tuotevastuuvakuutuksen vakuutustodistus",
+        "plant_equipment": "työkone- ja kalustovakuutuksen vakuutustodistus",
+        "environmental_liability": "ympäristövastuuvakuutuksen vakuutustodistus",
+        "cyber_liability": "kyberriskivakuutuksen vakuutustodistus"
       }
     },
     "sub_certificate_payment_date": {

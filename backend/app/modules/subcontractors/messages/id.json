@@ -47,7 +47,17 @@
         "attestation_revenu_quebec": "attestation Revenu Québec",
         "construction_tax_exemption": "sertifikat pembebasan pajak konstruksi",
         "social_security_clearance": "sertifikat clearance jaminan sosial",
-        "employers_liability_clearance": "sertifikat clearance tanggung jawab pemberi kerja"
+        "employers_liability_clearance": "sertifikat clearance tanggung jawab pemberi kerja",
+        "public_liability": "sertifikat asuransi tanggung gugat publik",
+        "employers_liability": "sertifikat asuransi tanggung jawab pemberi kerja",
+        "professional_indemnity": "sertifikat asuransi ganti rugi profesi",
+        "contractors_all_risk": "sertifikat asuransi semua risiko kontraktor (CAR)",
+        "workers_compensation": "sertifikat asuransi kompensasi pekerja",
+        "motor_vehicle": "sertifikat asuransi kendaraan bermotor",
+        "product_liability": "sertifikat asuransi tanggung gugat produk",
+        "plant_equipment": "sertifikat asuransi peralatan dan mesin konstruksi",
+        "environmental_liability": "sertifikat asuransi tanggung jawab lingkungan",
+        "cyber_liability": "sertifikat asuransi risiko siber"
       }
     },
     "sub_certificate_payment_date": {

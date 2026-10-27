@@ -47,7 +47,17 @@
         "attestation_revenu_quebec": "شهادة Revenu Québec",
         "construction_tax_exemption": "شهادة إعفاء ضريبة البناء",
         "social_security_clearance": "شهادة براءة الذمة من الضمان الاجتماعي",
-        "employers_liability_clearance": "شهادة براءة ذمة مسؤولية أرباب العمل"
+        "employers_liability_clearance": "شهادة براءة ذمة مسؤولية أرباب العمل",
+        "public_liability": "شهادة تأمين المسؤولية العامة",
+        "employers_liability": "شهادة تأمين مسؤولية أرباب العمل",
+        "professional_indemnity": "شهادة تأمين المسؤولية المهنية",
+        "contractors_all_risk": "شهادة تأمين جميع أخطار المقاولين",
+        "workers_compensation": "شهادة تأمين تعويضات العمال",
+        "motor_vehicle": "شهادة تأمين المركبات",
+        "product_liability": "شهادة تأمين مسؤولية المنتجات",
+        "plant_equipment": "شهادة تأمين الآلات والمعدات",
+        "environmental_liability": "شهادة تأمين المسؤولية البيئية",
+        "cyber_liability": "شهادة تأمين المسؤولية السيبرانية"
       }
     },
     "sub_certificate_payment_date": {

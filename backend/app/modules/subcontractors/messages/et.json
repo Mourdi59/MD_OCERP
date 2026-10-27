@@ -47,7 +47,17 @@
         "attestation_revenu_quebec": "Revenu Québec tõend",
         "construction_tax_exemption": "ehitusmaksu vabastuse tõend",
         "social_security_clearance": "sotsiaalkindlustuse võlgnevuse puudumise tõend",
-        "employers_liability_clearance": "tööandja vastutuse nõuetele vastavuse tõend"
+        "employers_liability_clearance": "tööandja vastutuse nõuetele vastavuse tõend",
+        "public_liability": "üldise vastutuse kindlustustõend",
+        "employers_liability": "tööandja vastutuse kindlustustõend",
+        "professional_indemnity": "kutsealase vastutuse kindlustustõend",
+        "contractors_all_risk": "ehitaja kõigi riskide kindlustustõend",
+        "workers_compensation": "töötajate tööõnnetuskindlustuse tõend",
+        "motor_vehicle": "mootorsõidukite kindlustustõend",
+        "product_liability": "tootevastutuse kindlustustõend",
+        "plant_equipment": "masinate ja seadmete kindlustustõend",
+        "environmental_liability": "keskkonnavastutuse kindlustustõend",
+        "cyber_liability": "küberriskide kindlustustõend"
       }
     },
     "sub_certificate_payment_date": {

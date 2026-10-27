@@ -47,7 +47,17 @@
         "attestation_revenu_quebec": "Revenu Québec belgesi",
         "construction_tax_exemption": "inşaat vergisi muafiyet belgesi",
         "social_security_clearance": "sosyal güvenlik prim borcu yoktur belgesi",
-        "employers_liability_clearance": "işveren sorumluluğu uygunluk belgesi"
+        "employers_liability_clearance": "işveren sorumluluğu uygunluk belgesi",
+        "public_liability": "genel sorumluluk sigorta belgesi",
+        "employers_liability": "işveren sorumluluk sigorta belgesi",
+        "professional_indemnity": "mesleki sorumluluk sigorta belgesi",
+        "contractors_all_risk": "inşaat all risk sigorta belgesi",
+        "workers_compensation": "iş kazası sigorta belgesi",
+        "motor_vehicle": "motorlu taşıt sigorta belgesi",
+        "product_liability": "ürün sorumluluk sigorta belgesi",
+        "plant_equipment": "makine ve ekipman sigorta belgesi",
+        "environmental_liability": "çevre sorumluluk sigorta belgesi",
+        "cyber_liability": "siber sorumluluk sigorta belgesi"
       }
     },
     "sub_certificate_payment_date": {

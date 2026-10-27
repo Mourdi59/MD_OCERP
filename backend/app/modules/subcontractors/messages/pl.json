@@ -47,7 +47,17 @@
         "attestation_revenu_quebec": "zaświadczenie Revenu Québec",
         "construction_tax_exemption": "zaświadczenie o zwolnieniu z podatku budowlanego",
         "social_security_clearance": "zaświadczenie o niezaleganiu w składkach na ubezpieczenia społeczne",
-        "employers_liability_clearance": "zaświadczenie o rozliczeniu odpowiedzialności pracodawcy"
+        "employers_liability_clearance": "zaświadczenie o rozliczeniu odpowiedzialności pracodawcy",
+        "public_liability": "polisa ubezpieczenia odpowiedzialności cywilnej",
+        "employers_liability": "polisa ubezpieczenia odpowiedzialności cywilnej pracodawcy",
+        "professional_indemnity": "polisa ubezpieczenia odpowiedzialności zawodowej",
+        "contractors_all_risk": "polisa ubezpieczenia wszystkich ryzyk budowlanych (CAR)",
+        "workers_compensation": "polisa ubezpieczenia od następstw nieszczęśliwych wypadków pracowników",
+        "motor_vehicle": "polisa ubezpieczenia pojazdów mechanicznych",
+        "product_liability": "polisa ubezpieczenia odpowiedzialności za produkt",
+        "plant_equipment": "polisa ubezpieczenia sprzętu i maszyn budowlanych",
+        "environmental_liability": "polisa ubezpieczenia odpowiedzialności środowiskowej",
+        "cyber_liability": "polisa ubezpieczenia od ryzyk cybernetycznych"
       }
     },
     "sub_certificate_payment_date": {

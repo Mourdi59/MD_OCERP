@@ -47,7 +47,17 @@
         "attestation_revenu_quebec": "گواهی Revenu Québec",
         "construction_tax_exemption": "گواهی معافیت مالیات ساختمانی",
         "social_security_clearance": "گواهی تسویه حساب تأمین اجتماعی",
-        "employers_liability_clearance": "گواهی تسویه مسئولیت کارفرما"
+        "employers_liability_clearance": "گواهی تسویه مسئولیت کارفرما",
+        "public_liability": "گواهی بیمه مسئولیت عمومی",
+        "employers_liability": "گواهی بیمه مسئولیت کارفرما",
+        "professional_indemnity": "گواهی بیمه مسئولیت حرفه‌ای",
+        "contractors_all_risk": "گواهی بیمه تمام خطرات پیمانکار",
+        "workers_compensation": "گواهی بیمه حوادث کار کارگران",
+        "motor_vehicle": "گواهی بیمه وسایل نقلیه موتوری",
+        "product_liability": "گواهی بیمه مسئولیت محصول",
+        "plant_equipment": "گواهی بیمه ماشین‌آلات و تجهیزات",
+        "environmental_liability": "گواهی بیمه مسئولیت زیست‌محیطی",
+        "cyber_liability": "گواهی بیمه مسئولیت سایبری"
       }
     },
     "sub_certificate_payment_date": {

@@ -47,7 +47,17 @@
         "attestation_revenu_quebec": "Bescheinigung von Revenu Quebec",
         "construction_tax_exemption": "Freistellungsbescheinigung für Bauleistungen",
         "social_security_clearance": "Unbedenklichkeitsbescheinigung der Sozialversicherung",
-        "employers_liability_clearance": "Unbedenklichkeitsbescheinigung der Berufsgenossenschaft"
+        "employers_liability_clearance": "Unbedenklichkeitsbescheinigung der Berufsgenossenschaft",
+        "public_liability": "Versicherungsnachweis Betriebshaftpflicht",
+        "employers_liability": "Versicherungsnachweis Arbeitgeberhaftpflicht",
+        "professional_indemnity": "Versicherungsnachweis Berufshaftpflicht",
+        "contractors_all_risk": "Versicherungsnachweis Bauleistungsversicherung",
+        "workers_compensation": "Versicherungsnachweis gesetzliche Unfallversicherung",
+        "motor_vehicle": "Versicherungsnachweis Kfz-Haftpflicht",
+        "product_liability": "Versicherungsnachweis Produkthaftpflicht",
+        "plant_equipment": "Versicherungsnachweis Maschinen- und Geräteversicherung",
+        "environmental_liability": "Versicherungsnachweis Umwelthaftpflicht",
+        "cyber_liability": "Versicherungsnachweis Cyberversicherung"
       }
     },
     "sub_certificate_payment_date": {

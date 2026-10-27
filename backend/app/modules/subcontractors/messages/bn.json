@@ -47,7 +47,17 @@
         "attestation_revenu_quebec": "Revenu Québec প্রত্যয়নপত্র",
         "construction_tax_exemption": "নির্মাণ কর অব্যাহতি সার্টিফিকেট",
         "social_security_clearance": "সামাজিক নিরাপত্তা ছাড়পত্র সার্টিফিকেট",
-        "employers_liability_clearance": "নিয়োগকর্তার দায় ছাড়পত্র সার্টিফিকেট"
+        "employers_liability_clearance": "নিয়োগকর্তার দায় ছাড়পত্র সার্টিফিকেট",
+        "public_liability": "সাধারণ দায় বীমা সার্টিফিকেট",
+        "employers_liability": "নিয়োগকর্তার দায় বীমা সার্টিফিকেট",
+        "professional_indemnity": "পেশাগত ক্ষতিপূরণ বীমা সার্টিফিকেট",
+        "contractors_all_risk": "ঠিকাদারের সর্বঝুঁকি বীমা সার্টিফিকেট",
+        "workers_compensation": "শ্রমিক ক্ষতিপূরণ বীমা সার্টিফিকেট",
+        "motor_vehicle": "মোটর যানবাহন বীমা সার্টিফিকেট",
+        "product_liability": "পণ্য দায় বীমা সার্টিফিকেট",
+        "plant_equipment": "যন্ত্রপাতি ও সরঞ্জাম বীমা সার্টিফিকেট",
+        "environmental_liability": "পরিবেশগত দায় বীমা সার্টিফিকেট",
+        "cyber_liability": "সাইবার দায় বীমা সার্টিফিকেট"
       }
     },
     "sub_certificate_payment_date": {

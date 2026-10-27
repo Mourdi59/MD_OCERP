@@ -47,7 +47,17 @@
         "attestation_revenu_quebec": "Revenu Québec 证明",
         "construction_tax_exemption": "建筑税免税证明",
         "social_security_clearance": "社保缴纳无欠费证明",
-        "employers_liability_clearance": "雇主责任合规证明"
+        "employers_liability_clearance": "雇主责任合规证明",
+        "public_liability": "公众责任保险证书",
+        "employers_liability": "雇主责任保险证书",
+        "professional_indemnity": "职业责任保险证书",
+        "contractors_all_risk": "建筑工程一切险保险证书",
+        "workers_compensation": "工伤赔偿保险证书",
+        "motor_vehicle": "机动车保险证书",
+        "product_liability": "产品责任保险证书",
+        "plant_equipment": "机械设备保险证书",
+        "environmental_liability": "环境责任保险证书",
+        "cyber_liability": "网络责任保险证书"
       }
     },
     "sub_certificate_payment_date": {

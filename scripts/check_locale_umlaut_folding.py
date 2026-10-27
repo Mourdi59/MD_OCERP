@@ -71,6 +71,16 @@ _ALLOWED_PAIRS = {
         "an umlaut is the pronoun 'he or she'. Two unrelated words that happen "
         "to fold onto each other."
     ),
+    ("et.ts", "Lae"): (
+        "Estonian. Lä is the compass abbreviation for west (lääs), beside L for "
+        "south and I for east; Lae is the imperative 'load', as in 'Lae üles'. "
+        "Two unrelated words that fold onto each other."
+    ),
+    ("hu.ts", "fuel"): (
+        "Hungarian. fül is 'tab' (or ear); fuel appears twice, only inside the "
+        "telematics import hint, as the literal CSV column names fuel_used_l and "
+        "fuel_level_pct, which are identifiers and are not translated."
+    ),
     ("de.ts", "Masse"): (
         "Masse is mass and Masse-with-sz is dimensions. Both are real words and "
         "both are used correctly here: 'Masse pro Meter' prices a steel profile "

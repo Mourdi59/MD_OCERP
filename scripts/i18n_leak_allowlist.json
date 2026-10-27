@@ -1876,32 +1876,262 @@
   },
   "boq.fidelity.format_excel": {
     "en_value": "Excel",
-    "note": "Excel is a product name; every locale writes it in Latin script",
+    "note": "Microsoft Excel product name on an export button, written the same way in every script and locale; en-GB and en-US do not carry the key",
     "reason_category": "product_name"
   },
   "closeout.dossier.channel_webhook": {
     "en_value": "Webhook",
-    "note": "technical term for an HTTP callback; ru, uk, bg, ko, hi, ar, he, th, ja transliterate it, the other locales carry the English loanword unchanged",
+    "note": "technical term kept as Webhook in the Latin-script locales; the Cyrillic, Indic, Arabic-script, Hangul and Mongolian locales already carry a transliteration",
     "reason_category": "cognate_loanword"
   },
   "cutting.diagram_repeat": {
     "en_value": "{{n}} x",
     "note": "repeat count and a multiplication sign, no word to translate",
-    "reason_category": "template_placeholder"
+    "reason_category": "template_only"
   },
   "field_evidence.accuracy_short": {
     "en_value": "±{{meters}} m",
-    "note": "SI unit symbol for metre; locales with their own symbol (ru, uk, bg, ar, he, el, hi, th, zh and others) already differ, the rest use m",
+    "note": "plus-minus accuracy in metres; the m symbol is already replaced in the locales whose script or convention has its own abbreviation",
     "reason_category": "abbreviation"
   },
   "mcp.duration_ms": {
     "en_value": "{{ms}} ms",
-    "note": "SI unit symbol for millisecond; locales with their own symbol (ru, uk, bg, kk, ky, mn, ar, he, th, ja, zh and others) differ, the rest use ms",
+    "note": "millisecond symbol (ms); the Cyrillic, Arabic-script and Hebrew locales already carry their own abbreviation",
     "reason_category": "abbreviation"
   },
   "schedule.progress_sheet.filter_wbs": {
     "en_value": "WBS",
-    "note": "work breakdown structure acronym; de PSP, es EDT, pt EAP, ru ISR, uk ISR, kk, el, he and zh are localised, the other locales keep the international acronym",
+    "note": "WBS (work breakdown structure) filter label; es translates it as EDT, every other locale keeps the standard acronym",
     "reason_category": "acronym"
+  },
+  "carbon.lc.export_xlsx": {
+    "en_value": "Excel",
+    "note": "Microsoft Excel product name on an export button, written the same way in every script and locale; en-GB and en-US do not carry the key",
+    "reason_category": "product_name"
+  },
+  "wip_report.export_xlsx": {
+    "en_value": "Excel",
+    "note": "Microsoft Excel product name on an export button, written the same way in every script and locale; en-GB and en-US do not carry the key",
+    "reason_category": "product_name"
+  },
+  "carbon.lc.export_pdf": {
+    "en_value": "PDF",
+    "note": "file format name on an export button (PDF), written the same way in every script and locale",
+    "reason_category": "abbreviation"
+  },
+  "wip_report.export_pdf": {
+    "en_value": "PDF",
+    "note": "file format name on an export button (PDF), written the same way in every script and locale",
+    "reason_category": "abbreviation"
+  },
+  "carbon.lc.export_xbrl_csv": {
+    "en_value": "XBRL CSV",
+    "note": "reporting format or regulation code (XBRL, CSRD / ESRS E1, UK SECR), a named standard written the same way in every locale",
+    "reason_category": "standard_code"
+  },
+  "carbon.lc.tpl_esrs_e1": {
+    "en_value": "CSRD / ESRS E1",
+    "note": "reporting format or regulation code (XBRL, CSRD / ESRS E1, UK SECR), a named standard written the same way in every locale",
+    "reason_category": "standard_code"
+  },
+  "carbon.lc.tpl_uk_secr": {
+    "en_value": "UK SECR",
+    "note": "reporting format or regulation code (XBRL, CSRD / ESRS E1, UK SECR), a named standard written the same way in every locale",
+    "reason_category": "standard_code"
+  },
+  "cost_benchmarks.col_band": {
+    "en_value": "P10 - P50 - P90",
+    "note": "percentile band P10 - P50 - P90, statistical notation identical in every locale",
+    "reason_category": "abbreviation"
+  },
+  "cutting.mm_value": {
+    "en_value": "{{value}} mm",
+    "note": "millimetre symbol (mm) beside template values; the Cyrillic, Arabic, Indic, Thai, Hebrew and Greek locales already carry their own unit abbreviation, the Latin-script and CJK locales write mm",
+    "reason_category": "abbreviation"
+  },
+  "cutting.size_value": {
+    "en_value": "{{length}} x {{width}} mm",
+    "note": "millimetre symbol (mm) beside template values; the Cyrillic, Arabic, Indic, Thai, Hebrew and Greek locales already carry their own unit abbreviation, the Latin-script and CJK locales write mm",
+    "reason_category": "abbreviation"
+  },
+  "dashboard.fleet_util.co2": {
+    "en_value": "CO2 kg",
+    "note": "column heading CO2 kg: chemical formula plus the kg symbol; locales with their own kilogram abbreviation (Cyrillic, Arabic-script, Indic, Hebrew, Thai) already carry it",
+    "reason_category": "abbreviation"
+  },
+  "equipment.telematics.col_co2": {
+    "en_value": "CO2 kg",
+    "note": "column heading CO2 kg: chemical formula plus the kg symbol; locales with their own kilogram abbreviation (Cyrillic, Arabic-script, Indic, Hebrew, Thai) already carry it",
+    "reason_category": "abbreviation"
+  },
+  "drawing_compare.raise_rfi": {
+    "en_value": "RFI",
+    "note": "RFI (request for information), an industry acronym used as-is in construction in every market we ship",
+    "reason_category": "acronym"
+  },
+  "schedule_advanced.linked_type.rfi": {
+    "en_value": "RFI",
+    "note": "RFI (request for information), an industry acronym used as-is in construction in every market we ship",
+    "reason_category": "acronym"
+  },
+  "mcp.outcome.ok": {
+    "en_value": "OK",
+    "note": "OK status badge, written the same way in every locale",
+    "reason_category": "abbreviation"
+  },
+  "quote_capture.engine_demo": {
+    "en_value": "demo",
+    "note": "badge for demo data; demo/Demo/démo is the native word in the Latin-script locales, the locales with another script or form already translate it",
+    "reason_category": "cognate_loanword"
+  },
+  "quote_capture.tax_gst": {
+    "en_value": "GST",
+    "note": "GST (goods and services tax), the legal name of a tax regime; written the same way in every locale",
+    "reason_category": "standard_code"
+  },
+  "schedule_advanced.linked_type.submittal": {
+    "en_value": "Submittal",
+    "note": "Submittal is the construction-document term of art; de and the Cyrillic locales add their own gloss, the other locales keep the term as used on site",
+    "reason_category": "cognate_loanword"
+  },
+  "tendering.compare.carbonCol": {
+    "en_value": "CO2, t",
+    "note": "column heading CO2, t: chemical formula plus the tonne symbol; locales with their own tonne abbreviation already carry it",
+    "reason_category": "abbreviation"
+  },
+  "boq.drawing_ref.page_n": {
+    "en_value": "page {{page}}",
+    "note": "page, active, inactive, description and notes are ordinary French words; fr is the only non-English locale that keeps them, written exactly as in English",
+    "reason_category": "cognate_loanword"
+  },
+  "field_clock.fence_active": {
+    "en_value": "Active",
+    "note": "page, active, inactive, description and notes are ordinary French words; fr is the only non-English locale that keeps them, written exactly as in English",
+    "reason_category": "cognate_loanword"
+  },
+  "field_clock.fence_inactive": {
+    "en_value": "inactive",
+    "note": "page, active, inactive, description and notes are ordinary French words; fr is the only non-English locale that keeps them, written exactly as in English",
+    "reason_category": "cognate_loanword"
+  },
+  "offline_sync.field_description": {
+    "en_value": "Description",
+    "note": "page, active, inactive, description and notes are ordinary French words; fr is the only non-English locale that keeps them, written exactly as in English",
+    "reason_category": "cognate_loanword"
+  },
+  "offline_sync.field_notes": {
+    "en_value": "Notes",
+    "note": "page, active, inactive, description and notes are ordinary French words; fr is the only non-English locale that keeps them, written exactly as in English",
+    "reason_category": "cognate_loanword"
+  },
+  "supplier_catalogs.f_notes": {
+    "en_value": "Notes",
+    "note": "page, active, inactive, description and notes are ordinary French words; fr is the only non-English locale that keeps them, written exactly as in English",
+    "reason_category": "cognate_loanword"
+  },
+  "analytics.perf.drill_record": {
+    "en_value": "Record",
+    "note": "Record, Checklist and Asset are the everyday words in fil, it and nl construction software; every other locale translates them",
+    "reason_category": "cognate_loanword"
+  },
+  "closeout.dossier.edit_checklist": {
+    "en_value": "Checklist",
+    "note": "Record, Checklist and Asset are the everyday words in fil, it and nl construction software; every other locale translates them",
+    "reason_category": "cognate_loanword"
+  },
+  "delivery_model.ui.link.record": {
+    "en_value": "Record",
+    "note": "Record, Checklist and Asset are the everyday words in fil, it and nl construction software; every other locale translates them",
+    "reason_category": "cognate_loanword"
+  },
+  "punch.field_asset": {
+    "en_value": "Asset",
+    "note": "Record, Checklist and Asset are the everyday words in fil, it and nl construction software; every other locale translates them",
+    "reason_category": "cognate_loanword"
+  },
+  "drawing_compare.col_layer": {
+    "en_value": "Layer",
+    "note": "Layer is the CAD term of art kept as-is in de, fil, id and it; every other locale translates it",
+    "reason_category": "cognate_loanword"
+  },
+  "drawing_compare.on_layer": {
+    "en_value": "Layer {{layer}}",
+    "note": "Layer is the CAD term of art kept as-is in de, fil, id and it; every other locale translates it",
+    "reason_category": "cognate_loanword"
+  },
+  "supplier_catalogs.preset_sap": {
+    "en_value": "SAP condition export (MATNR, KBETR, KPEIN)",
+    "note": "SAP condition export with the MATNR, KBETR and KPEIN field names, system identifiers that are not translated in any locale",
+    "reason_category": "standard_code"
+  },
+  "clash.col_a": {
+    "en_value": "Element A",
+    "note": "Element A and Register are native words in da, de, et, nl, no and sv, written exactly as in English; every other locale translates them",
+    "reason_category": "cognate_loanword"
+  },
+  "guarantees.back": {
+    "en_value": "Register",
+    "note": "Element A and Register are native words in da, de, et, nl, no and sv, written exactly as in English; every other locale translates them",
+    "reason_category": "cognate_loanword"
+  },
+  "stakeholders.ui.tab_register": {
+    "en_value": "Register",
+    "note": "Element A and Register are native words in da, de, et, nl, no and sv, written exactly as in English; every other locale translates them",
+    "reason_category": "cognate_loanword"
+  },
+  "about.docs_pop_bim": {
+    "en_value": "Import BIM (RVT/IFC) → BOQ",
+    "note": "Import and Limit are the native words in cs and pl, written exactly as in English; every other locale translates them",
+    "reason_category": "cognate_loanword"
+  },
+  "schedule.interchange.import": {
+    "en_value": "Import",
+    "note": "Import and Limit are the native words in cs and pl, written exactly as in English; every other locale translates them",
+    "reason_category": "cognate_loanword"
+  },
+  "site_sensors.devices.limit": {
+    "en_value": "Limit {{limit}} {{unit}}",
+    "note": "Import and Limit are the native words in cs and pl, written exactly as in English; every other locale translates them",
+    "reason_category": "cognate_loanword"
+  },
+  "costmodel.import.file": {
+    "en_value": "File",
+    "note": "File and Area are native words in fil, id and it, written exactly as in English; every other locale translates them",
+    "reason_category": "cognate_loanword"
+  },
+  "governance.project.decision.condition_area": {
+    "en_value": "Area",
+    "note": "File and Area are native words in fil, id and it, written exactly as in English; every other locale translates them",
+    "reason_category": "cognate_loanword"
+  },
+  "mcp.col_tool": {
+    "en_value": "Tool",
+    "note": "Tool, Dashboard and Website are the everyday words in de, fil and nl; every other locale translates them",
+    "reason_category": "cognate_loanword"
+  },
+  "settings.work_landing_dashboard": {
+    "en_value": "Dashboard",
+    "note": "Tool, Dashboard and Website are the everyday words in de, fil and nl; every other locale translates them",
+    "reason_category": "cognate_loanword"
+  },
+  "stakeholders.catalogue.channel.website": {
+    "en_value": "Website",
+    "note": "Tool, Dashboard and Website are the everyday words in de, fil and nl; every other locale translates them",
+    "reason_category": "cognate_loanword"
+  },
+  "field_evidence.compass_e": {
+    "en_value": "E",
+    "note": "compass-point abbreviations E, NE and SE, identical in es, fr, it, pl and pt where east is also written E",
+    "reason_category": "abbreviation"
+  },
+  "field_evidence.compass_ne": {
+    "en_value": "NE",
+    "note": "compass-point abbreviations E, NE and SE, identical in es, fr, it, pl and pt where east is also written E",
+    "reason_category": "abbreviation"
+  },
+  "field_evidence.compass_se": {
+    "en_value": "SE",
+    "note": "compass-point abbreviations E, NE and SE, identical in es, fr, it, pl and pt where east is also written E",
+    "reason_category": "abbreviation"
   }
 }

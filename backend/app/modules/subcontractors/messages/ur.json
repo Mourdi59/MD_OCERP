@@ -47,7 +47,17 @@
         "attestation_revenu_quebec": "Revenu Québec کی تصدیق",
         "construction_tax_exemption": "تعمیراتی ٹیکس سے استثنا کا سرٹیفکیٹ",
         "social_security_clearance": "سماجی تحفظ کا کلیئرنس سرٹیفکیٹ",
-        "employers_liability_clearance": "آجر کی ذمہ داری کا کلیئرنس سرٹیفکیٹ"
+        "employers_liability_clearance": "آجر کی ذمہ داری کا کلیئرنس سرٹیفکیٹ",
+        "public_liability": "پبلک لائیبلٹی انشورنس سرٹیفکیٹ",
+        "employers_liability": "آجر کی ذمہ داری کا انشورنس سرٹیفکیٹ",
+        "professional_indemnity": "پروفیشنل انڈیمنٹی انشورنس سرٹیفکیٹ",
+        "contractors_all_risk": "ٹھیکیدار کے تمام خطرات کا انشورنس سرٹیفکیٹ",
+        "workers_compensation": "ورکرز کمپنسیشن انشورنس سرٹیفکیٹ",
+        "motor_vehicle": "موٹر گاڑی انشورنس سرٹیفکیٹ",
+        "product_liability": "پروڈکٹ لائیبلٹی انشورنس سرٹیفکیٹ",
+        "plant_equipment": "پلانٹ اور آلات کا انشورنس سرٹیفکیٹ",
+        "environmental_liability": "ماحولیاتی ذمہ داری کا انشورنس سرٹیفکیٹ",
+        "cyber_liability": "سائبر ذمہ داری کا انشورنس سرٹیفکیٹ"
       }
     },
     "sub_certificate_payment_date": {

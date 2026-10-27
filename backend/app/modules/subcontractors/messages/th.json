@@ -47,7 +47,17 @@
         "attestation_revenu_quebec": "หนังสือรับรอง Revenu Québec",
         "construction_tax_exemption": "ใบรับรองการยกเว้นภาษีก่อสร้าง",
         "social_security_clearance": "ใบรับรองการชำระเงินสมทบประกันสังคม",
-        "employers_liability_clearance": "ใบรับรองความรับผิดของนายจ้าง"
+        "employers_liability_clearance": "ใบรับรองความรับผิดของนายจ้าง",
+        "public_liability": "หนังสือรับรองการประกันภัยความรับผิดต่อบุคคลภายนอก",
+        "employers_liability": "หนังสือรับรองการประกันภัยความรับผิดของนายจ้าง",
+        "professional_indemnity": "หนังสือรับรองการประกันภัยความรับผิดทางวิชาชีพ",
+        "contractors_all_risk": "หนังสือรับรองการประกันภัยงานก่อสร้างทุกชนิด (CAR)",
+        "workers_compensation": "หนังสือรับรองการประกันภัยการชดเชยแก่ลูกจ้าง",
+        "motor_vehicle": "หนังสือรับรองการประกันภัยยานยนต์",
+        "product_liability": "หนังสือรับรองการประกันภัยความรับผิดต่อผลิตภัณฑ์",
+        "plant_equipment": "หนังสือรับรองการประกันภัยเครื่องจักรและอุปกรณ์",
+        "environmental_liability": "หนังสือรับรองการประกันภัยความรับผิดด้านสิ่งแวดล้อม",
+        "cyber_liability": "หนังสือรับรองการประกันภัยภัยไซเบอร์"
       }
     },
     "sub_certificate_payment_date": {

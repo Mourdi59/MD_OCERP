@@ -47,7 +47,17 @@
         "attestation_revenu_quebec": "Revenu Québec ma'lumotnomasi",
         "construction_tax_exemption": "qurilish solig'idan ozod etish sertifikati",
         "social_security_clearance": "ijtimoiy sug'urta bo'yicha qarzdorlik yo'qligi to'g'risidagi ma'lumotnoma",
-        "employers_liability_clearance": "ish beruvchi javobgarligi bo'yicha muvofiqlik sertifikati"
+        "employers_liability_clearance": "ish beruvchi javobgarligi bo'yicha muvofiqlik sertifikati",
+        "public_liability": "umumiy fuqarolik javobgarligi sug'urta sertifikati",
+        "employers_liability": "ish beruvchi javobgarligi sug'urta sertifikati",
+        "professional_indemnity": "kasbiy javobgarlik sug'urta sertifikati",
+        "contractors_all_risk": "pudratchining barcha xatarlari sug'urta sertifikati",
+        "workers_compensation": "ishchilarni baxtsiz hodisalardan sug'urta sertifikati",
+        "motor_vehicle": "avtotransport vositalari sug'urta sertifikati",
+        "product_liability": "mahsulot javobgarligi sug'urta sertifikati",
+        "plant_equipment": "texnika va uskunalar sug'urta sertifikati",
+        "environmental_liability": "ekologik javobgarlik sug'urta sertifikati",
+        "cyber_liability": "kiber xatarlar sug'urta sertifikati"
       }
     },
     "sub_certificate_payment_date": {

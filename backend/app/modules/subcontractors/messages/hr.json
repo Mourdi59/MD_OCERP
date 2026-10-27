@@ -47,7 +47,17 @@
         "attestation_revenu_quebec": "potvrda Revenu Québeca",
         "construction_tax_exemption": "potvrda o izuzeću od građevinskog poreza",
         "social_security_clearance": "potvrda o podmirenim doprinosima socijalnog osiguranja",
-        "employers_liability_clearance": "potvrda o podmirenju odgovornosti poslodavca"
+        "employers_liability_clearance": "potvrda o podmirenju odgovornosti poslodavca",
+        "public_liability": "potvrda o osiguranju od opće odgovornosti",
+        "employers_liability": "potvrda o osiguranju od odgovornosti poslodavca",
+        "professional_indemnity": "potvrda o osiguranju od profesionalne odgovornosti",
+        "contractors_all_risk": "potvrda o osiguranju svih rizika izvođača",
+        "workers_compensation": "potvrda o osiguranju radnika od posljedica nesreće na radu",
+        "motor_vehicle": "potvrda o osiguranju motornih vozila",
+        "product_liability": "potvrda o osiguranju od odgovornosti za proizvod",
+        "plant_equipment": "potvrda o osiguranju strojeva i opreme",
+        "environmental_liability": "potvrda o osiguranju od odgovornosti za štetu u okolišu",
+        "cyber_liability": "potvrda o osiguranju od kibernetičkih rizika"
       }
     },
     "sub_certificate_payment_date": {

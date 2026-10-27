@@ -47,7 +47,17 @@
         "attestation_revenu_quebec": "אישור של Revenu Québec",
         "construction_tax_exemption": "אישור פטור ממס בנייה",
         "social_security_clearance": "אישור היעדר חובות לביטוח הלאומי",
-        "employers_liability_clearance": "אישור סילוק אחריות מעבידים"
+        "employers_liability_clearance": "אישור סילוק אחריות מעבידים",
+        "public_liability": "אישור ביטוח אחריות כלפי צד שלישי",
+        "employers_liability": "אישור ביטוח חבות מעבידים",
+        "professional_indemnity": "אישור ביטוח אחריות מקצועית",
+        "contractors_all_risk": "אישור ביטוח עבודות קבלניות",
+        "workers_compensation": "אישור ביטוח תאונות עבודה לעובדים",
+        "motor_vehicle": "אישור ביטוח רכב מנועי",
+        "product_liability": "אישור ביטוח חבות מוצר",
+        "plant_equipment": "אישור ביטוח ציוד מכני הנדסי",
+        "environmental_liability": "אישור ביטוח אחריות סביבתית",
+        "cyber_liability": "אישור ביטוח סייבר"
       }
     },
     "sub_certificate_payment_date": {

@@ -47,7 +47,17 @@
         "attestation_revenu_quebec": "Revenu Québec 증명서",
         "construction_tax_exemption": "건설세 면제 증명서",
         "social_security_clearance": "사회보험료 완납 증명서",
-        "employers_liability_clearance": "사용자 책임 적합 증명서"
+        "employers_liability_clearance": "사용자 책임 적합 증명서",
+        "public_liability": "공중배상책임 보험 증권",
+        "employers_liability": "사용자배상책임 보험 증권",
+        "professional_indemnity": "전문직배상책임 보험 증권",
+        "contractors_all_risk": "건설공사 전위험(CAR) 보험 증권",
+        "workers_compensation": "근로자재해보상 보험 증권",
+        "motor_vehicle": "자동차 보험 증권",
+        "product_liability": "생산물배상책임 보험 증권",
+        "plant_equipment": "건설기계·장비 보험 증권",
+        "environmental_liability": "환경배상책임 보험 증권",
+        "cyber_liability": "사이버배상책임 보험 증권"
       }
     },
     "sub_certificate_payment_date": {

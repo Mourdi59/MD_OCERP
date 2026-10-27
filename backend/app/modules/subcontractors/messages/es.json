@@ -47,7 +47,17 @@
         "attestation_revenu_quebec": "attestation de Revenu Québec",
         "construction_tax_exemption": "certificado de exención del impuesto de construcción",
         "social_security_clearance": "certificado de estar al corriente con la seguridad social",
-        "employers_liability_clearance": "certificado de conformidad de responsabilidad del empleador"
+        "employers_liability_clearance": "certificado de conformidad de responsabilidad del empleador",
+        "public_liability": "certificado de seguro de responsabilidad civil general",
+        "employers_liability": "certificado de seguro de responsabilidad civil patronal",
+        "professional_indemnity": "certificado de seguro de responsabilidad civil profesional",
+        "contractors_all_risk": "certificado de seguro de todo riesgo construcción del contratista",
+        "workers_compensation": "certificado de seguro de accidentes de trabajo",
+        "motor_vehicle": "certificado de seguro de vehículos a motor",
+        "product_liability": "certificado de seguro de responsabilidad civil por productos",
+        "plant_equipment": "certificado de seguro de maquinaria y equipos",
+        "environmental_liability": "certificado de seguro de responsabilidad civil medioambiental",
+        "cyber_liability": "certificado de seguro de responsabilidad civil cibernética"
       }
     },
     "sub_certificate_payment_date": {

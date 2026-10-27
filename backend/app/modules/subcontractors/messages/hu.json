@@ -47,7 +47,17 @@
         "attestation_revenu_quebec": "Revenu Québec igazolás",
         "construction_tax_exemption": "építési adó alóli mentességi igazolás",
         "social_security_clearance": "társadalombiztosítási tartozásmentességi igazolás",
-        "employers_liability_clearance": "munkáltatói felelősségi megfelelőségi igazolás"
+        "employers_liability_clearance": "munkáltatói felelősségi megfelelőségi igazolás",
+        "public_liability": "általános felelősségbiztosítási igazolás",
+        "employers_liability": "munkáltatói felelősségbiztosítási igazolás",
+        "professional_indemnity": "szakmai felelősségbiztosítási igazolás",
+        "contractors_all_risk": "építési-szerelési (CAR) biztosítási igazolás",
+        "workers_compensation": "munkavállalói balesetbiztosítási igazolás",
+        "motor_vehicle": "gépjármű-biztosítási igazolás",
+        "product_liability": "termékfelelősség-biztosítási igazolás",
+        "plant_equipment": "gép- és berendezésbiztosítási igazolás",
+        "environmental_liability": "környezetszennyezési felelősségbiztosítási igazolás",
+        "cyber_liability": "kiberbiztosítási igazolás"
       }
     },
     "sub_certificate_payment_date": {

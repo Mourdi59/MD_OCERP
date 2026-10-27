@@ -47,7 +47,17 @@
         "attestation_revenu_quebec": "attestation från Revenu Québec",
         "construction_tax_exemption": "intyg om befrielse från byggskatt",
         "social_security_clearance": "intyg om reglerade socialavgifter",
-        "employers_liability_clearance": "clearancecertifikat för arbetsgivaransvar"
+        "employers_liability_clearance": "clearancecertifikat för arbetsgivaransvar",
+        "public_liability": "försäkringsbevis för allmänt ansvar",
+        "employers_liability": "försäkringsbevis för arbetsgivaransvar",
+        "professional_indemnity": "försäkringsbevis för yrkesansvar",
+        "contractors_all_risk": "försäkringsbevis för entreprenörens allriskförsäkring",
+        "workers_compensation": "försäkringsbevis för arbetsskada",
+        "motor_vehicle": "försäkringsbevis för motorfordon",
+        "product_liability": "försäkringsbevis för produktansvar",
+        "plant_equipment": "försäkringsbevis för maskiner och utrustning",
+        "environmental_liability": "försäkringsbevis för miljöansvar",
+        "cyber_liability": "försäkringsbevis för cyberansvar"
       }
     },
     "sub_certificate_payment_date": {

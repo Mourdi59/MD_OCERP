@@ -47,7 +47,17 @@
         "attestation_revenu_quebec": "Revenu Québec анықтамасы",
         "construction_tax_exemption": "құрылыс салығынан босату куәлігі",
         "social_security_clearance": "әлеуметтік сақтандыру бойынша берешегі жоқ екені туралы анықтама",
-        "employers_liability_clearance": "жұмыс берушінің жауапкершілігі бойынша сәйкестік куәлігі"
+        "employers_liability_clearance": "жұмыс берушінің жауапкершілігі бойынша сәйкестік куәлігі",
+        "public_liability": "жалпы жауапкершілікті сақтандыру куәлігі",
+        "employers_liability": "жұмыс берушінің жауапкершілігін сақтандыру куәлігі",
+        "professional_indemnity": "кәсіби жауапкершілікті сақтандыру куәлігі",
+        "contractors_all_risk": "мердігердің барлық тәуекелдерін сақтандыру куәлігі",
+        "workers_compensation": "жұмысшыларды жазатайым оқиғадан сақтандыру куәлігі",
+        "motor_vehicle": "автокөлік құралдарын сақтандыру куәлігі",
+        "product_liability": "өнім жауапкершілігін сақтандыру куәлігі",
+        "plant_equipment": "техника мен жабдықты сақтандыру куәлігі",
+        "environmental_liability": "экологиялық жауапкершілікті сақтандыру куәлігі",
+        "cyber_liability": "киберқауіптерді сақтандыру куәлігі"
       }
     },
     "sub_certificate_payment_date": {

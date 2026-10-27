@@ -47,7 +47,17 @@
         "attestation_revenu_quebec": "Revenu Québec-attest",
         "construction_tax_exemption": "certifikat for skattefritagelse for bygge- og anlægsarbejde",
         "social_security_clearance": "certifikat for socialsikringsgodkendelse",
-        "employers_liability_clearance": "certifikat for arbejdsgiveransvar"
+        "employers_liability_clearance": "certifikat for arbejdsgiveransvar",
+        "public_liability": "forsikringsbevis for erhvervsansvar",
+        "employers_liability": "forsikringsbevis for arbejdsgiveransvar",
+        "professional_indemnity": "forsikringsbevis for rådgiveransvar",
+        "contractors_all_risk": "forsikringsbevis for entreprenørens all risk",
+        "workers_compensation": "forsikringsbevis for arbejdsskade",
+        "motor_vehicle": "forsikringsbevis for motorkøretøjer",
+        "product_liability": "forsikringsbevis for produktansvar",
+        "plant_equipment": "forsikringsbevis for entreprenørmateriel og maskiner",
+        "environmental_liability": "forsikringsbevis for miljøansvar",
+        "cyber_liability": "forsikringsbevis for cyberansvar"
       }
     },
     "sub_certificate_payment_date": {

@@ -47,7 +47,17 @@
         "attestation_revenu_quebec": "potvrzení Revenu Québec",
         "construction_tax_exemption": "osvědčení o osvobození od daně ze stavebních prací",
         "social_security_clearance": "potvrzení o sociálním zabezpečení",
-        "employers_liability_clearance": "potvrzení o odpovědnosti zaměstnavatele"
+        "employers_liability_clearance": "potvrzení o odpovědnosti zaměstnavatele",
+        "public_liability": "pojistné osvědčení pojištění obecné odpovědnosti",
+        "employers_liability": "pojistné osvědčení pojištění odpovědnosti zaměstnavatele",
+        "professional_indemnity": "pojistné osvědčení pojištění profesní odpovědnosti",
+        "contractors_all_risk": "pojistné osvědčení pojištění all risks zhotovitele",
+        "workers_compensation": "pojistné osvědčení pojištění pracovních úrazů zaměstnanců",
+        "motor_vehicle": "pojistné osvědčení pojištění motorových vozidel",
+        "product_liability": "pojistné osvědčení pojištění odpovědnosti za výrobek",
+        "plant_equipment": "pojistné osvědčení pojištění strojů a zařízení",
+        "environmental_liability": "pojistné osvědčení pojištění odpovědnosti za ekologické škody",
+        "cyber_liability": "pojistné osvědčení pojištění kybernetických rizik"
       }
     },
     "sub_certificate_payment_date": {

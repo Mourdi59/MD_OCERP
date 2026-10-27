@@ -47,7 +47,17 @@
         "attestation_revenu_quebec": "attestation Revenu Québec",
         "construction_tax_exemption": "certificat de scutire de taxa de construcție",
         "social_security_clearance": "certificat de atestare fiscală privind asigurările sociale",
-        "employers_liability_clearance": "certificat de conformitate privind răspunderea angajatorului"
+        "employers_liability_clearance": "certificat de conformitate privind răspunderea angajatorului",
+        "public_liability": "certificat de asigurare de răspundere civilă generală",
+        "employers_liability": "certificat de asigurare de răspunderea angajatorului",
+        "professional_indemnity": "certificat de asigurare de răspundere profesională",
+        "contractors_all_risk": "certificat de asigurare toate riscurile constructorului (CAR)",
+        "workers_compensation": "certificat de asigurare de accidente de muncă ale angajaților",
+        "motor_vehicle": "certificat de asigurare pentru autovehicule",
+        "product_liability": "certificat de asigurare de răspundere pentru produs",
+        "plant_equipment": "certificat de asigurare pentru utilaje și echipamente",
+        "environmental_liability": "certificat de asigurare de răspundere pentru mediu",
+        "cyber_liability": "certificat de asigurare de riscuri cibernetice"
       }
     },
     "sub_certificate_payment_date": {

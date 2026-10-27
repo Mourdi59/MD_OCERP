@@ -47,7 +47,17 @@
         "attestation_revenu_quebec": "attestation ng Revenu Québec",
         "construction_tax_exemption": "sertipiko ng exemption sa buwis sa konstruksyon",
         "social_security_clearance": "sertipiko ng clearance sa social security",
-        "employers_liability_clearance": "sertipiko ng clearance sa employers' liability"
+        "employers_liability_clearance": "sertipiko ng clearance sa employers' liability",
+        "public_liability": "sertipiko ng public liability insurance",
+        "employers_liability": "sertipiko ng employers' liability insurance",
+        "professional_indemnity": "sertipiko ng professional indemnity insurance",
+        "contractors_all_risk": "sertipiko ng contractors' all risks insurance",
+        "workers_compensation": "sertipiko ng workers' compensation insurance",
+        "motor_vehicle": "sertipiko ng motor vehicle insurance",
+        "product_liability": "sertipiko ng product liability insurance",
+        "plant_equipment": "sertipiko ng plant and equipment insurance",
+        "environmental_liability": "sertipiko ng environmental liability insurance",
+        "cyber_liability": "sertipiko ng cyber liability insurance"
       }
     },
     "sub_certificate_payment_date": {

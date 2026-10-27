@@ -556,7 +556,8 @@ export const navGroups: NavGroup[] = [
         moduleKey: 'quote_capture',
         advancedOnly: true,
         helpKey: 'sidebar.help.quote_capture',
-        defaultHelp: 'Read supplier quotes, check them against the document, level and confirm.',
+        defaultHelp:
+          'Read supplier quotes, check them against the document, level and confirm.',
       },
       {
         labelKey: 'nav.supplier_catalogs',

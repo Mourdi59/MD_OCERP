@@ -47,7 +47,17 @@
         "attestation_revenu_quebec": "Revenu Quebec attestation",
         "construction_tax_exemption": "construction tax exemption certificate",
         "social_security_clearance": "social security clearance certificate",
-        "employers_liability_clearance": "employers' liability clearance certificate"
+        "employers_liability_clearance": "employers' liability clearance certificate",
+        "public_liability": "public liability insurance certificate",
+        "employers_liability": "employers' liability insurance certificate",
+        "professional_indemnity": "professional indemnity insurance certificate",
+        "contractors_all_risk": "contractors' all risks insurance certificate",
+        "workers_compensation": "workers' compensation insurance certificate",
+        "motor_vehicle": "motor vehicle insurance certificate",
+        "product_liability": "product liability insurance certificate",
+        "plant_equipment": "plant and equipment insurance certificate",
+        "environmental_liability": "environmental liability insurance certificate",
+        "cyber_liability": "cyber liability insurance certificate"
       }
     },
     "sub_certificate_payment_date": {

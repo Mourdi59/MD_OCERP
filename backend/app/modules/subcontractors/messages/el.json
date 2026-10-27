@@ -47,7 +47,17 @@
         "attestation_revenu_quebec": "βεβαίωση Revenu Québec",
         "construction_tax_exemption": "πιστοποιητικό απαλλαγής από φόρο κατασκευών",
         "social_security_clearance": "ασφαλιστική ενημερότητα",
-        "employers_liability_clearance": "πιστοποιητικό εκκαθάρισης ευθύνης εργοδότη"
+        "employers_liability_clearance": "πιστοποιητικό εκκαθάρισης ευθύνης εργοδότη",
+        "public_liability": "ασφαλιστήριο πιστοποιητικό αστικής ευθύνης προς τρίτους",
+        "employers_liability": "ασφαλιστήριο πιστοποιητικό ευθύνης εργοδότη",
+        "professional_indemnity": "ασφαλιστήριο πιστοποιητικό επαγγελματικής ευθύνης",
+        "contractors_all_risk": "ασφαλιστήριο πιστοποιητικό όλων των κινδύνων αναδόχου",
+        "workers_compensation": "ασφαλιστήριο πιστοποιητικό αποζημίωσης εργαζομένων",
+        "motor_vehicle": "ασφαλιστήριο πιστοποιητικό οχημάτων",
+        "product_liability": "ασφαλιστήριο πιστοποιητικό ευθύνης προϊόντος",
+        "plant_equipment": "ασφαλιστήριο πιστοποιητικό μηχανημάτων και εξοπλισμού",
+        "environmental_liability": "ασφαλιστήριο πιστοποιητικό περιβαλλοντικής ευθύνης",
+        "cyber_liability": "ασφαλιστήριο πιστοποιητικό κυβερνοκινδύνων"
       }
     },
     "sub_certificate_payment_date": {

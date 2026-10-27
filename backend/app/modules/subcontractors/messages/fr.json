@@ -47,7 +47,17 @@
         "attestation_revenu_quebec": "attestation de Revenu Québec",
         "construction_tax_exemption": "certificat d'exonération de la taxe de construction",
         "social_security_clearance": "attestation de régularité de situation en matière de sécurité sociale",
-        "employers_liability_clearance": "attestation de conformité en responsabilité de l'employeur"
+        "employers_liability_clearance": "attestation de conformité en responsabilité de l'employeur",
+        "public_liability": "attestation d'assurance responsabilité civile générale",
+        "employers_liability": "attestation d'assurance responsabilité civile employeur",
+        "professional_indemnity": "attestation d'assurance responsabilité civile professionnelle",
+        "contractors_all_risk": "attestation d'assurance tous risques chantier",
+        "workers_compensation": "attestation d'assurance accidents du travail",
+        "motor_vehicle": "attestation d'assurance véhicules à moteur",
+        "product_liability": "attestation d'assurance responsabilité civile produits",
+        "plant_equipment": "attestation d'assurance matériel et engins de chantier",
+        "environmental_liability": "attestation d'assurance responsabilité environnementale",
+        "cyber_liability": "attestation d'assurance risques cyber"
       }
     },
     "sub_certificate_payment_date": {

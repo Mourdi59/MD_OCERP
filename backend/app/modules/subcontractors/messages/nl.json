@@ -47,7 +47,17 @@
         "attestation_revenu_quebec": "attestation van Revenu Québec",
         "construction_tax_exemption": "vrijstellingscertificaat voor bouwbelasting",
         "social_security_clearance": "verklaring betalingsgedrag sociale zekerheid",
-        "employers_liability_clearance": "clearancecertificaat werkgeversaansprakelijkheid"
+        "employers_liability_clearance": "clearancecertificaat werkgeversaansprakelijkheid",
+        "public_liability": "verzekeringscertificaat algemene aansprakelijkheid",
+        "employers_liability": "verzekeringscertificaat werkgeversaansprakelijkheid",
+        "professional_indemnity": "verzekeringscertificaat beroepsaansprakelijkheid",
+        "contractors_all_risk": "verzekeringscertificaat construction all risks (CAR)",
+        "workers_compensation": "verzekeringscertificaat arbeidsongevallen werknemers",
+        "motor_vehicle": "verzekeringscertificaat motorvoertuigen",
+        "product_liability": "verzekeringscertificaat productaansprakelijkheid",
+        "plant_equipment": "verzekeringscertificaat materieel en machines",
+        "environmental_liability": "verzekeringscertificaat milieuaansprakelijkheid",
+        "cyber_liability": "verzekeringscertificaat cyberaansprakelijkheid"
       }
     },
     "sub_certificate_payment_date": {
