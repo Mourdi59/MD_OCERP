@@ -22,6 +22,7 @@ domain write defers to commit fire before the response is sent.
 """
 
 import uuid
+from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi import status as http_status
@@ -73,7 +74,7 @@ async def list_actions(
     status: str | None = Query(default=None, description="One status or a comma-separated list."),
     session_id: uuid.UUID | None = Query(default=None),
     batch_id: str | None = Query(default=None, max_length=64),
-    source: str | None = Query(default=None, max_length=16, description="chat or mcp"),
+    source: Annotated[str | None, Query(max_length=16, description="chat or mcp")] = None,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> ChatActionListResponse:

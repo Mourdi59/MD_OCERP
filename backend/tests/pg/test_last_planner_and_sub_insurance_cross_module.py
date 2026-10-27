@@ -34,7 +34,10 @@ pytestmark = pytest.mark.asyncio
 def captured_events(monkeypatch):
     """Record detached events instead of scheduling subscribers on a factory this lane never binds."""
     from app.core.events import event_bus
+    from app.modules.subcontractors import insurance
 
+    # insurance binds the bus at import; a test that first imports it under a swapped bus leaves it a stale one.
+    monkeypatch.setattr(insurance, "event_bus", event_bus)
     seen: list[tuple[str, dict]] = []
     monkeypatch.setattr(event_bus, "publish_detached", lambda name, data=None, **_kw: seen.append((name, data or {})))
     return seen

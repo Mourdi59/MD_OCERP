@@ -19,8 +19,8 @@ from app.modules.price_index.statssa_p0151 import ACKNOWLEDGEMENT, import_p0151_
 
 pytestmark = pytest.mark.asyncio
 
-_FIRST = b"Work group,Jan 2026,Feb 2026\n9910,Sample group,100.0,101.0\n"
-_SECOND = b"Work group,Jan 2026,Feb 2026,Mar 2026\n9910,Sample group,100.0,101.5,103.0\n"
+_FIRST = b"Work group,Description,Jan 2026,Feb 2026\n9910,Sample group,100.0,101.0\n"
+_SECOND = b"Work group,Description,Jan 2026,Feb 2026,Mar 2026\n9910,Sample group,100.0,101.5,103.0\n"
 
 
 async def test_second_release_extends_and_revises(pg_session) -> None:
