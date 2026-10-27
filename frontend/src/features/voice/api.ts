@@ -10,7 +10,6 @@
 import { getAuthToken } from '@/shared/lib/api';
 import type { VoiceDraft, VoiceTargetType } from './types';
 
-const BASE = '/v1/voice';
 
 export interface VoiceDraftOptions {
   /** Audio/video recording of the spoken note. Omit to structure typed text. */
@@ -26,7 +25,7 @@ export interface VoiceDraftOptions {
 /** List the target types the backend can structure a note into. */
 export async function fetchVoiceTargets(): Promise<string[]> {
   const token = getAuthToken();
-  const res = await fetch(`/api${BASE}/targets`, {
+  const res = await fetch(`/api/v1/voice/targets`, {
     headers: { 'X-DDC-Client': 'OE/1.0', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
   });
   if (!res.ok) throw new Error(`Could not load voice targets (${res.status})`);
@@ -55,7 +54,7 @@ export async function requestVoiceDraft(
   form.append('transcript', opts.transcript ?? '');
 
   const token = getAuthToken();
-  const res = await fetch(`/api${BASE}/draft?${params.toString()}`, {
+  const res = await fetch(`/api/v1/voice/draft?${params.toString()}`, {
     method: 'POST',
     headers: { 'X-DDC-Client': 'OE/1.0', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: form,

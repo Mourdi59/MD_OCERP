@@ -5,7 +5,7 @@
  *
  * Tracks operational site ESG metrics (energy, water, waste, site CO2e, local
  * labour, training, safety, governance) recorded per period against targets.
- * All endpoints live under BASE (apiGet/apiPost prepend /api).
+ * All endpoints live under /v1/esg (apiGet/apiPost prepend /api).
  *
  * Note: `value` / `target` figures are Decimal on the backend and therefore
  * arrive as JSON strings - parse with Number() (never do arithmetic on them as
@@ -14,7 +14,6 @@
 
 import { apiDelete, apiGet, apiPatch, apiPost } from '@/shared/lib/api';
 
-const BASE = '/v1/esg';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -95,7 +94,7 @@ export interface UpdateEsgEntryPayload {
 
 /** The fixed catalogue of ESG metric definitions. */
 export async function fetchEsgMetrics(): Promise<EsgMetricDefinition[]> {
-  return apiGet<EsgMetricDefinition[]>(`${BASE}/metrics/`);
+  return apiGet<EsgMetricDefinition[]>(`/v1/esg/metrics/`);
 }
 
 /** Per-metric KPI + short trend for a project, grouped by ESG pillar. */
@@ -105,7 +104,7 @@ export async function fetchEsgSummary(
 ): Promise<EsgSummary> {
   const params = new URLSearchParams({ project_id: projectId });
   if (trendPeriods) params.set('trend_periods', String(trendPeriods));
-  return apiGet<EsgSummary>(`${BASE}/summary/?${params.toString()}`);
+  return apiGet<EsgSummary>(`/v1/esg/summary/?${params.toString()}`);
 }
 
 /** List readings for a project, optionally filtered to a single metric. */
@@ -115,20 +114,20 @@ export async function fetchEsgEntries(
 ): Promise<EsgEntry[]> {
   const params = new URLSearchParams({ project_id: projectId });
   if (metricKey) params.set('metric', metricKey);
-  return apiGet<EsgEntry[]>(`${BASE}/entries/?${params.toString()}`);
+  return apiGet<EsgEntry[]>(`/v1/esg/entries/?${params.toString()}`);
 }
 
 export async function createEsgEntry(data: CreateEsgEntryPayload): Promise<EsgEntry> {
-  return apiPost<EsgEntry>(`${BASE}/entries/`, data);
+  return apiPost<EsgEntry>(`/v1/esg/entries/`, data);
 }
 
 export async function updateEsgEntry(
   id: string,
   data: UpdateEsgEntryPayload,
 ): Promise<EsgEntry> {
-  return apiPatch<EsgEntry>(`${BASE}/entries/${id}`, data);
+  return apiPatch<EsgEntry>(`/v1/esg/entries/${id}`, data);
 }
 
 export async function deleteEsgEntry(id: string): Promise<void> {
-  await apiDelete<void>(`${BASE}/entries/${id}`);
+  await apiDelete<void>(`/v1/esg/entries/${id}`);
 }

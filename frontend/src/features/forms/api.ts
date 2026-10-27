@@ -11,7 +11,6 @@
 
 import { apiGet, apiPost, apiPatch, apiDelete, API_BASE, getAuthToken, triggerDownload } from '@/shared/lib/api';
 
-const BASE = '/v1/forms';
 
 /* -- Field vocabulary (keep in lock-step with backend validation.FIELD_TYPES) - */
 
@@ -231,32 +230,32 @@ export function fetchTemplates(params?: TemplateListParams): Promise<TemplateSum
   if (params?.status) qs.set('status', params.status);
   if (params?.q?.trim()) qs.set('q', params.q.trim());
   const suffix = qs.toString();
-  return apiGet<TemplateSummary[]>(`${BASE}/templates${suffix ? `?${suffix}` : ''}`);
+  return apiGet<TemplateSummary[]>(`/v1/forms/templates${suffix ? `?${suffix}` : ''}`);
 }
 
 export function fetchCategories(projectId?: string | null): Promise<CategoryInfo[]> {
   const qs = projectId ? `?project_id=${encodeURIComponent(projectId)}` : '';
-  return apiGet<CategoryInfo[]>(`${BASE}/categories${qs}`);
+  return apiGet<CategoryInfo[]>(`/v1/forms/categories${qs}`);
 }
 
 export function fetchTemplate(id: string): Promise<TemplateDetail> {
-  return apiGet<TemplateDetail>(`${BASE}/templates/${id}`);
+  return apiGet<TemplateDetail>(`/v1/forms/templates/${id}`);
 }
 
 export function createTemplate(payload: TemplateCreatePayload): Promise<TemplateDetail> {
-  return apiPost<TemplateDetail, TemplateCreatePayload>(`${BASE}/templates`, payload);
+  return apiPost<TemplateDetail, TemplateCreatePayload>(`/v1/forms/templates`, payload);
 }
 
 export function updateTemplate(id: string, payload: TemplateUpdatePayload): Promise<TemplateDetail> {
-  return apiPatch<TemplateDetail, TemplateUpdatePayload>(`${BASE}/templates/${id}`, payload);
+  return apiPatch<TemplateDetail, TemplateUpdatePayload>(`/v1/forms/templates/${id}`, payload);
 }
 
 export function duplicateTemplate(id: string): Promise<TemplateDetail> {
-  return apiPost<TemplateDetail>(`${BASE}/templates/${id}/duplicate`, {});
+  return apiPost<TemplateDetail>(`/v1/forms/templates/${id}/duplicate`, {});
 }
 
 export function deleteTemplate(id: string): Promise<void> {
-  return apiDelete(`${BASE}/templates/${id}`);
+  return apiDelete(`/v1/forms/templates/${id}`);
 }
 
 /* -- Submission calls ------------------------------------------------------ */
@@ -274,27 +273,27 @@ export function fetchSubmissions(params: SubmissionListParams): Promise<Submissi
   if (params.status) qs.set('status', params.status);
   if (params.category) qs.set('category', params.category);
   if (params.templateId) qs.set('template_id', params.templateId);
-  return apiGet<SubmissionSummary[]>(`${BASE}/submissions?${qs.toString()}`);
+  return apiGet<SubmissionSummary[]>(`/v1/forms/submissions?${qs.toString()}`);
 }
 
 export function fetchSubmission(id: string): Promise<SubmissionDetail> {
-  return apiGet<SubmissionDetail>(`${BASE}/submissions/${id}`);
+  return apiGet<SubmissionDetail>(`/v1/forms/submissions/${id}`);
 }
 
 export function createSubmission(payload: SubmissionCreatePayload): Promise<SubmissionDetail> {
-  return apiPost<SubmissionDetail, SubmissionCreatePayload>(`${BASE}/submissions`, payload);
+  return apiPost<SubmissionDetail, SubmissionCreatePayload>(`/v1/forms/submissions`, payload);
 }
 
 export function updateSubmission(id: string, payload: SubmissionUpdatePayload): Promise<SubmissionDetail> {
-  return apiPatch<SubmissionDetail, SubmissionUpdatePayload>(`${BASE}/submissions/${id}`, payload);
+  return apiPatch<SubmissionDetail, SubmissionUpdatePayload>(`/v1/forms/submissions/${id}`, payload);
 }
 
 export function completeSubmission(id: string, answers?: AnswerMap): Promise<SubmissionDetail> {
-  return apiPost<SubmissionDetail>(`${BASE}/submissions/${id}/complete`, { answers: answers ?? null });
+  return apiPost<SubmissionDetail>(`/v1/forms/submissions/${id}/complete`, { answers: answers ?? null });
 }
 
 export function deleteSubmission(id: string): Promise<void> {
-  return apiDelete(`${BASE}/submissions/${id}`);
+  return apiDelete(`/v1/forms/submissions/${id}`);
 }
 
 export interface CreateInspectionResult {
@@ -305,7 +304,7 @@ export interface CreateInspectionResult {
 }
 
 export function createInspectionFromSubmission(id: string): Promise<CreateInspectionResult> {
-  return apiPost<CreateInspectionResult>(`${BASE}/submissions/${id}/create-inspection`, {});
+  return apiPost<CreateInspectionResult>(`/v1/forms/submissions/${id}/create-inspection`, {});
 }
 
 /**
@@ -315,7 +314,7 @@ export function createInspectionFromSubmission(id: string): Promise<CreateInspec
  */
 export async function downloadSubmissionPdf(id: string, filename: string): Promise<void> {
   const token = getAuthToken();
-  const res = await fetch(`${API_BASE}${BASE}/submissions/${id}/export/pdf`, {
+  const res = await fetch(`${API_BASE}/v1/forms/submissions/${id}/export/pdf`, {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
   if (!res.ok) {

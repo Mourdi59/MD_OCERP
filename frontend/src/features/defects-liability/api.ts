@@ -344,7 +344,6 @@ export interface LimitationReview {
 
 /* -- API functions --------------------------------------------------------- */
 
-const BASE = '/v1/defects-liability';
 
 /** List a project's warranty / DLP entries (optionally filtered server-side). */
 export async function fetchWarranties(
@@ -356,7 +355,7 @@ export async function fetchWarranties(
   if (filters?.warranty_type) params.set('warranty_type', filters.warranty_type);
   if (filters?.work_package) params.set('work_package', filters.work_package);
   const qs = params.toString();
-  return apiGet<Warranty[]>(`${BASE}/projects/${projectId}/warranties${qs ? `?${qs}` : ''}`);
+  return apiGet<Warranty[]>(`/v1/defects-liability/projects/${projectId}/warranties${qs ? `?${qs}` : ''}`);
 }
 
 /** Create a warranty / DLP entry on a project. */
@@ -365,7 +364,7 @@ export async function createWarranty(
   payload: WarrantyCreate,
 ): Promise<Warranty> {
   return apiPost<Warranty, WarrantyCreate>(
-    `${BASE}/projects/${projectId}/warranties`,
+    `/v1/defects-liability/projects/${projectId}/warranties`,
     payload,
   );
 }
@@ -377,14 +376,14 @@ export async function updateWarranty(
   payload: WarrantyUpdate,
 ): Promise<Warranty> {
   return apiPatch<Warranty, WarrantyUpdate>(
-    `${BASE}/projects/${projectId}/warranties/${warrantyId}`,
+    `/v1/defects-liability/projects/${projectId}/warranties/${warrantyId}`,
     payload,
   );
 }
 
 /** Delete a warranty / DLP entry and its defects. */
 export async function deleteWarranty(projectId: string, warrantyId: string): Promise<void> {
-  return apiDelete<void>(`${BASE}/projects/${projectId}/warranties/${warrantyId}`);
+  return apiDelete<void>(`/v1/defects-liability/projects/${projectId}/warranties/${warrantyId}`);
 }
 
 /** List a project's defect notices (optionally filtered server-side). */
@@ -397,7 +396,7 @@ export async function fetchDefects(
   if (filters?.status) params.set('status', filters.status);
   if (filters?.severity) params.set('severity', filters.severity);
   const qs = params.toString();
-  return apiGet<Defect[]>(`${BASE}/projects/${projectId}/defects${qs ? `?${qs}` : ''}`);
+  return apiGet<Defect[]>(`/v1/defects-liability/projects/${projectId}/defects${qs ? `?${qs}` : ''}`);
 }
 
 /** Raise a defect notice against a warranty (warranty is taken from the path). */
@@ -407,7 +406,7 @@ export async function createDefect(
   payload: DefectCreate,
 ): Promise<Defect> {
   return apiPost<Defect, DefectCreate>(
-    `${BASE}/projects/${projectId}/warranties/${warrantyId}/defects`,
+    `/v1/defects-liability/projects/${projectId}/warranties/${warrantyId}/defects`,
     payload,
   );
 }
@@ -419,7 +418,7 @@ export async function updateDefect(
   payload: DefectUpdate,
 ): Promise<Defect> {
   return apiPatch<Defect, DefectUpdate>(
-    `${BASE}/projects/${projectId}/defects/${defectId}`,
+    `/v1/defects-liability/projects/${projectId}/defects/${defectId}`,
     payload,
   );
 }
@@ -434,7 +433,7 @@ export async function uploadDefectPhoto(
   const form = new FormData();
   form.append('file', file);
   appendCaptureFields(form, capture);
-  const res = await fetchWithAuth(`${API_BASE}${BASE}/projects/${projectId}/defects/${defectId}/photos`, {
+  const res = await fetchWithAuth(`${API_BASE}/v1/defects-liability/projects/${projectId}/defects/${defectId}/photos`, {
     method: 'POST',
     body: form,
   });
@@ -444,7 +443,7 @@ export async function uploadDefectPhoto(
 
 /** Detach a photo from a defect (the gallery photo stays in Documents). */
 export async function removeDefectPhoto(projectId: string, defectId: string, index: number): Promise<Defect> {
-  return apiDelete<Defect>(`${BASE}/projects/${projectId}/defects/${defectId}/photos/${index}`);
+  return apiDelete<Defect>(`/v1/defects-liability/projects/${projectId}/defects/${defectId}/photos/${index}`);
 }
 
 /** Full defects-liability register rollup: counts, expiry, defect load, health. */
@@ -456,7 +455,7 @@ export async function fetchRegister(
   if (params?.as_of) q.set('as_of', params.as_of);
   if (params?.horizon_days != null) q.set('horizon_days', String(params.horizon_days));
   const qs = q.toString();
-  return apiGet<DlpRegister>(`${BASE}/projects/${projectId}/register${qs ? `?${qs}` : ''}`);
+  return apiGet<DlpRegister>(`/v1/defects-liability/projects/${projectId}/register${qs ? `?${qs}` : ''}`);
 }
 
 /** Entries whose DLP has ended clean, clear for final retention release. */
@@ -468,7 +467,7 @@ export async function fetchRetentionReadiness(
   if (asOf) q.set('as_of', asOf);
   const qs = q.toString();
   return apiGet<RetentionReleaseReadiness>(
-    `${BASE}/projects/${projectId}/retention-release-readiness${qs ? `?${qs}` : ''}`,
+    `/v1/defects-liability/projects/${projectId}/retention-release-readiness${qs ? `?${qs}` : ''}`,
   );
 }
 
@@ -480,5 +479,5 @@ export async function fetchRetentionReadiness(
  * request.
  */
 export async function fetchLimitationReview(projectId: string): Promise<LimitationReview> {
-  return apiGet<LimitationReview>(`${BASE}/projects/${projectId}/limitation-review`);
+  return apiGet<LimitationReview>(`/v1/defects-liability/projects/${projectId}/limitation-review`);
 }

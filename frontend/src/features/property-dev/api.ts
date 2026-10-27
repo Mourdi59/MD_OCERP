@@ -447,7 +447,6 @@ export const allowedBuyerTransitions: Record<BuyerStatus, BuyerStatus[]> = {
   cancelled: ['cancelled'],
 };
 
-const BASE = '/v1/property-dev';
 
 /* ── Developments ─────────────────────────────────────────────────────── */
 
@@ -459,28 +458,28 @@ export function listDevelopments(params?: {
   if (params?.offset !== undefined) qs.set('offset', String(params.offset));
   if (params?.limit !== undefined) qs.set('limit', String(params.limit));
   const q = qs.toString();
-  return apiGet<Development[]>(`${BASE}/developments/${q ? `?${q}` : ''}`);
+  return apiGet<Development[]>(`/v1/property-dev/developments/${q ? `?${q}` : ''}`);
 }
 
 export function createDevelopment(
   data: CreateDevelopmentPayload,
 ): Promise<Development> {
-  return apiPost<Development>(`${BASE}/developments/`, data);
+  return apiPost<Development>(`/v1/property-dev/developments/`, data);
 }
 
 export function updateDevelopment(
   id: string,
   data: Partial<CreateDevelopmentPayload>,
 ): Promise<Development> {
-  return apiPatch<Development>(`${BASE}/developments/${id}`, data);
+  return apiPatch<Development>(`/v1/property-dev/developments/${id}`, data);
 }
 
 export function deleteDevelopment(id: string): Promise<void> {
-  return apiDelete(`${BASE}/developments/${id}`);
+  return apiDelete(`/v1/property-dev/developments/${id}`);
 }
 
 export function getDevelopmentDashboard(id: string): Promise<DevelopmentDashboard> {
-  return apiGet<DevelopmentDashboard>(`${BASE}/developments/${id}/dashboard`);
+  return apiGet<DevelopmentDashboard>(`/v1/property-dev/developments/${id}/dashboard`);
 }
 
 /* ── Plots ────────────────────────────────────────────────────────────── */
@@ -496,19 +495,19 @@ export function listPlots(params: {
   if (params.status) qs.set('status', params.status);
   if (params.offset !== undefined) qs.set('offset', String(params.offset));
   if (params.limit !== undefined) qs.set('limit', String(params.limit));
-  return apiGet<Plot[]>(`${BASE}/plots/?${qs.toString()}`);
+  return apiGet<Plot[]>(`/v1/property-dev/plots/?${qs.toString()}`);
 }
 
 export function createPlot(data: CreatePlotPayload): Promise<Plot> {
-  return apiPost<Plot>(`${BASE}/plots/`, data);
+  return apiPost<Plot>(`/v1/property-dev/plots/`, data);
 }
 
 export function updatePlot(id: string, data: Partial<CreatePlotPayload>): Promise<Plot> {
-  return apiPatch<Plot>(`${BASE}/plots/${id}`, data);
+  return apiPatch<Plot>(`/v1/property-dev/plots/${id}`, data);
 }
 
 export function deletePlot(id: string): Promise<void> {
-  return apiDelete<void>(`${BASE}/plots/${id}`);
+  return apiDelete<void>(`/v1/property-dev/plots/${id}`);
 }
 
 export function reservePlot(
@@ -521,23 +520,23 @@ export function reservePlot(
     reservation_deadline?: string;
   },
 ): Promise<Plot> {
-  return apiPost<Plot>(`${BASE}/plots/${id}/reserve`, data);
+  return apiPost<Plot>(`/v1/property-dev/plots/${id}/reserve`, data);
 }
 
 /* ── House Types & Variants ───────────────────────────────────────────── */
 
 export function listHouseTypes(development_id: string): Promise<HouseType[]> {
   const qs = new URLSearchParams({ development_id });
-  return apiGet<HouseType[]>(`${BASE}/house-types/?${qs.toString()}`);
+  return apiGet<HouseType[]>(`/v1/property-dev/house-types/?${qs.toString()}`);
 }
 
 export function createHouseType(data: CreateHouseTypePayload): Promise<HouseType> {
-  return apiPost<HouseType>(`${BASE}/house-types/`, data);
+  return apiPost<HouseType>(`/v1/property-dev/house-types/`, data);
 }
 
 export function listVariants(house_type_id: string): Promise<HouseTypeVariant[]> {
   const qs = new URLSearchParams({ house_type_id });
-  return apiGet<HouseTypeVariant[]>(`${BASE}/house-type-variants/?${qs.toString()}`);
+  return apiGet<HouseTypeVariant[]>(`/v1/property-dev/house-type-variants/?${qs.toString()}`);
 }
 
 /* ── House Type Catalogue (preset + user-created) ─────────────────────── */
@@ -619,24 +618,24 @@ export function fetchHouseTypes(
   if (countryCode) qs.set('country_code', countryCode);
   if (projectId) qs.set('project_id', projectId);
   const suffix = qs.toString() ? `?${qs.toString()}` : '';
-  return apiGet<HouseTypeCatalogueEntry[]>(`${BASE}/house-type-catalogue/${suffix}`);
+  return apiGet<HouseTypeCatalogueEntry[]>(`/v1/property-dev/house-type-catalogue/${suffix}`);
 }
 
 export function createHouseTypeCatalogue(
   data: CreateHouseTypeCataloguePayload,
 ): Promise<HouseTypeCatalogueEntry> {
-  return apiPost<HouseTypeCatalogueEntry>(`${BASE}/house-type-catalogue/`, data);
+  return apiPost<HouseTypeCatalogueEntry>(`/v1/property-dev/house-type-catalogue/`, data);
 }
 
 export function updateHouseTypeCatalogue(
   id: string,
   data: UpdateHouseTypeCataloguePayload,
 ): Promise<HouseTypeCatalogueEntry> {
-  return apiPatch<HouseTypeCatalogueEntry>(`${BASE}/house-type-catalogue/${id}`, data);
+  return apiPatch<HouseTypeCatalogueEntry>(`/v1/property-dev/house-type-catalogue/${id}`, data);
 }
 
 export function deleteHouseTypeCatalogue(id: string): Promise<void> {
-  return apiDelete<void>(`${BASE}/house-type-catalogue/${id}`);
+  return apiDelete<void>(`/v1/property-dev/house-type-catalogue/${id}`);
 }
 
 /* ── Buyers ───────────────────────────────────────────────────────────── */
@@ -652,7 +651,7 @@ export function listBuyers(params: {
   if (params.status) qs.set('status', params.status);
   if (params.offset !== undefined) qs.set('offset', String(params.offset));
   if (params.limit !== undefined) qs.set('limit', String(params.limit));
-  return apiGet<Buyer[]>(`${BASE}/buyers/?${qs.toString()}`);
+  return apiGet<Buyer[]>(`/v1/property-dev/buyers/?${qs.toString()}`);
 }
 
 /**
@@ -667,7 +666,7 @@ export function createBuyer(
 ): Promise<Buyer> {
   const { syncToContacts = true } = opts;
   const qs = syncToContacts ? '' : '?sync_to_contacts=false';
-  return apiPost<Buyer>(`${BASE}/buyers/${qs}`, data);
+  return apiPost<Buyer>(`/v1/property-dev/buyers/${qs}`, data);
 }
 
 /**
@@ -685,7 +684,7 @@ export function getBuyerContact(buyerId: string): Promise<{
   country_code: string | null;
   module_tags: string[];
 }> {
-  return apiGet(`${BASE}/buyers/${buyerId}/contact`);
+  return apiGet(`/v1/property-dev/buyers/${buyerId}/contact`);
 }
 
 export function contractBuyer(
@@ -698,7 +697,7 @@ export function contractBuyer(
     freeze_deadline?: string;
   },
 ): Promise<Buyer> {
-  return apiPost<Buyer>(`${BASE}/buyers/${id}/contract`, data);
+  return apiPost<Buyer>(`/v1/property-dev/buyers/${id}/contract`, data);
 }
 
 /**
@@ -714,7 +713,7 @@ export function updateBuyer(
   buyerId: string,
   payload: UpdateBuyerPayload,
 ): Promise<Buyer> {
-  return apiPatch<Buyer>(`${BASE}/buyers/${buyerId}`, payload);
+  return apiPatch<Buyer>(`/v1/property-dev/buyers/${buyerId}`, payload);
 }
 
 /**
@@ -722,7 +721,7 @@ export function updateBuyer(
  * Wired through ``ConfirmDialog`` so the user has to acknowledge first.
  */
 export function deleteBuyer(buyerId: string): Promise<void> {
-  return apiDelete(`${BASE}/buyers/${buyerId}`);
+  return apiDelete(`/v1/property-dev/buyers/${buyerId}`);
 }
 
 /**
@@ -751,27 +750,27 @@ export function cancelBuyer(
   payload: BuyerCancelPayload,
 ): Promise<DepositForfeitureResponse> {
   return apiPost<DepositForfeitureResponse>(
-    `${BASE}/buyers/${buyerId}/cancel`,
+    `/v1/property-dev/buyers/${buyerId}/cancel`,
     payload,
   );
 }
 
 export function listJurisdictions(): Promise<string[]> {
-  return apiGet<string[]>(`${BASE}/jurisdictions`);
+  return apiGet<string[]>(`/v1/property-dev/jurisdictions`);
 }
 
 /* ── Selections ───────────────────────────────────────────────────────── */
 
 export function listSelections(buyer_id: string): Promise<BuyerSelection[]> {
   const qs = new URLSearchParams({ buyer_id });
-  return apiGet<BuyerSelection[]>(`${BASE}/selections/?${qs.toString()}`);
+  return apiGet<BuyerSelection[]>(`/v1/property-dev/selections/?${qs.toString()}`);
 }
 
 /* ── Handovers ────────────────────────────────────────────────────────── */
 
 export function listHandovers(plot_id: string): Promise<Handover[]> {
   const qs = new URLSearchParams({ plot_id });
-  return apiGet<Handover[]>(`${BASE}/handovers/?${qs.toString()}`);
+  return apiGet<Handover[]>(`/v1/property-dev/handovers/?${qs.toString()}`);
 }
 
 export interface CreateHandoverPayload {
@@ -782,7 +781,7 @@ export interface CreateHandoverPayload {
 }
 
 export function createHandover(data: CreateHandoverPayload): Promise<Handover> {
-  return apiPost<Handover>(`${BASE}/handovers/`, data);
+  return apiPost<Handover>(`/v1/property-dev/handovers/`, data);
 }
 
 export interface UpdateHandoverPayload {
@@ -800,15 +799,15 @@ export function updateHandover(
   id: string,
   data: UpdateHandoverPayload,
 ): Promise<Handover> {
-  return apiPatch<Handover>(`${BASE}/handovers/${id}`, data);
+  return apiPatch<Handover>(`/v1/property-dev/handovers/${id}`, data);
 }
 
 export function deleteHandover(id: string): Promise<void> {
-  return apiDelete(`${BASE}/handovers/${id}`);
+  return apiDelete(`/v1/property-dev/handovers/${id}`);
 }
 
 export function getHandover(id: string): Promise<Handover> {
-  return apiGet<Handover>(`${BASE}/handovers/${id}`);
+  return apiGet<Handover>(`/v1/property-dev/handovers/${id}`);
 }
 
 export function completeHandover(
@@ -822,13 +821,13 @@ export function completeHandover(
     notes?: string;
   },
 ): Promise<Handover> {
-  return apiPost<Handover>(`${BASE}/handovers/${id}/complete`, data);
+  return apiPost<Handover>(`/v1/property-dev/handovers/${id}/complete`, data);
 }
 
 /* ── Handover documents / closeout package (item #25) ─────────────────── */
 
 export function getHandoverBundle(handoverId: string): Promise<HandoverBundle> {
-  return apiGet<HandoverBundle>(`${BASE}/handovers/${handoverId}/docs`);
+  return apiGet<HandoverBundle>(`/v1/property-dev/handovers/${handoverId}/docs`);
 }
 
 export interface CreateHandoverDocPayload {
@@ -843,7 +842,7 @@ export interface CreateHandoverDocPayload {
 export function createHandoverDoc(
   data: CreateHandoverDocPayload,
 ): Promise<HandoverDoc> {
-  return apiPost<HandoverDoc>(`${BASE}/handover-docs/`, data);
+  return apiPost<HandoverDoc>(`/v1/property-dev/handover-docs/`, data);
 }
 
 export interface UpdateHandoverDocPayload {
@@ -857,11 +856,11 @@ export function updateHandoverDoc(
   id: string,
   data: UpdateHandoverDocPayload,
 ): Promise<HandoverDoc> {
-  return apiPatch<HandoverDoc>(`${BASE}/handover-docs/${id}`, data);
+  return apiPatch<HandoverDoc>(`/v1/property-dev/handover-docs/${id}`, data);
 }
 
 export function deleteHandoverDoc(id: string): Promise<void> {
-  return apiDelete(`${BASE}/handover-docs/${id}`);
+  return apiDelete(`/v1/property-dev/handover-docs/${id}`);
 }
 
 /**
@@ -881,7 +880,7 @@ export async function exportHandoverPackage(
   const token = getAuthToken();
   const headers: Record<string, string> = { Accept: 'application/zip' };
   if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(`/api${BASE}/handovers/${handoverId}/export`, {
+  const res = await fetch(`/api/v1/property-dev/handovers/${handoverId}/export`, {
     method: 'GET',
     headers,
   });
@@ -904,7 +903,7 @@ export function listSnags(params: {
 }): Promise<Snag[]> {
   const qs = new URLSearchParams({ handover_id: params.handover_id });
   if (params.status) qs.set('status', params.status);
-  return apiGet<Snag[]>(`${BASE}/snags/?${qs.toString()}`);
+  return apiGet<Snag[]>(`/v1/property-dev/snags/?${qs.toString()}`);
 }
 
 export interface CreateSnagPayload {
@@ -920,7 +919,7 @@ export interface CreateSnagPayload {
 }
 
 export function createSnag(data: CreateSnagPayload): Promise<Snag> {
-  return apiPost<Snag>(`${BASE}/snags/`, data);
+  return apiPost<Snag>(`/v1/property-dev/snags/`, data);
 }
 
 export interface UpdateSnagPayload {
@@ -935,28 +934,28 @@ export interface UpdateSnagPayload {
 }
 
 export function updateSnag(id: string, data: UpdateSnagPayload): Promise<Snag> {
-  return apiPatch<Snag>(`${BASE}/snags/${id}`, data);
+  return apiPatch<Snag>(`/v1/property-dev/snags/${id}`, data);
 }
 
 export function deleteSnag(id: string): Promise<void> {
-  return apiDelete(`${BASE}/snags/${id}`);
+  return apiDelete(`/v1/property-dev/snags/${id}`);
 }
 
 export function fixSnag(id: string, fix_notes?: string): Promise<Snag> {
   const qs = fix_notes ? `?fix_notes=${encodeURIComponent(fix_notes)}` : '';
-  return apiPost<Snag>(`${BASE}/snags/${id}/fix${qs}`, {});
+  return apiPost<Snag>(`/v1/property-dev/snags/${id}/fix${qs}`, {});
 }
 
 export function wontFixSnag(id: string, fix_notes?: string): Promise<Snag> {
   const qs = fix_notes ? `?fix_notes=${encodeURIComponent(fix_notes)}` : '';
-  return apiPost<Snag>(`${BASE}/snags/${id}/wont-fix${qs}`, {});
+  return apiPost<Snag>(`/v1/property-dev/snags/${id}/wont-fix${qs}`, {});
 }
 
 export async function uploadSnagPhoto(id: string, file: File): Promise<Snag> {
   const formData = new FormData();
   formData.append('file', file);
   const token = localStorage.getItem('oe_access_token');
-  const res = await fetch(`/api${BASE}/snags/${id}/photos/`, {
+  const res = await fetch(`/api/v1/property-dev/snags/${id}/photos/`, {
     method: 'POST',
     headers: {
       Authorization: token ? `Bearer ${token}` : '',
@@ -996,7 +995,7 @@ export function listWarrantyClaims(params: {
   if (params.status) qs.set('status', params.status);
   if (params.category) qs.set('category', params.category);
   if (params.severity) qs.set('severity', params.severity);
-  return apiGet<WarrantyClaim[]>(`${BASE}/warranty-claims/?${qs.toString()}`);
+  return apiGet<WarrantyClaim[]>(`/v1/property-dev/warranty-claims/?${qs.toString()}`);
 }
 
 export function createWarrantyClaim(data: {
@@ -1011,7 +1010,7 @@ export function createWarrantyClaim(data: {
   sla_deadline?: string | null;
   photos?: string[];
 }): Promise<WarrantyClaim> {
-  return apiPost<WarrantyClaim>(`${BASE}/warranty-claims/`, data);
+  return apiPost<WarrantyClaim>(`/v1/property-dev/warranty-claims/`, data);
 }
 
 export function updateWarrantyClaim(
@@ -1027,32 +1026,28 @@ export function updateWarrantyClaim(
     handover_id: string | null;
   }>,
 ): Promise<WarrantyClaim> {
-  return apiPatch<WarrantyClaim>(`${BASE}/warranty-claims/${id}`, data);
+  return apiPatch<WarrantyClaim>(`/v1/property-dev/warranty-claims/${id}`, data);
 }
 
 export function assignWarrantyClaim(
   id: string,
   assignedToUserId: string | null,
 ): Promise<WarrantyClaim> {
-  return apiPost<WarrantyClaim>(`${BASE}/warranty-claims/${id}/assign`, {
+  return apiPost<WarrantyClaim>(`/v1/property-dev/warranty-claims/${id}/assign`, {
     assigned_to_user_id: assignedToUserId,
   });
 }
 
 export function acceptWarrantyClaim(id: string): Promise<WarrantyClaim> {
-  return apiPost<WarrantyClaim>(`${BASE}/warranty/${id}/accept`, {});
+  return apiPost<WarrantyClaim>(`/v1/property-dev/warranty/${id}/accept`, {});
 }
 
 export function rejectWarrantyClaim(id: string): Promise<WarrantyClaim> {
-  return apiPost<WarrantyClaim>(`${BASE}/warranty/${id}/reject`, {});
+  return apiPost<WarrantyClaim>(`/v1/property-dev/warranty/${id}/reject`, {});
 }
 
 export function closeWarrantyClaim(id: string): Promise<WarrantyClaim> {
-  return apiPost<WarrantyClaim>(`${BASE}/warranty/${id}/close`, {});
-}
-
-export function warrantyClaimPdfUrl(id: string): string {
-  return `/api${BASE}/warranty-claims/${id}/pdf`;
+  return apiPost<WarrantyClaim>(`/v1/property-dev/warranty/${id}/close`, {});
 }
 
 /**
@@ -1065,11 +1060,10 @@ export function warrantyClaimPdfUrl(id: string): string {
  * ``<a download>`` flow.
  */
 export async function downloadWarrantyClaimPdf(id: string): Promise<Blob> {
-  const url = warrantyClaimPdfUrl(id);
   const token = getAuthToken();
   const headers: Record<string, string> = { Accept: 'application/pdf' };
   if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(url, { method: 'GET', headers });
+  const res = await fetch(`/api/v1/property-dev/warranty-claims/${id}/pdf`, { method: 'GET', headers });
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
     throw new Error(text || `HTTP ${res.status}`);
@@ -1081,7 +1075,7 @@ export function createWarrantyClaimFromSnag(
   snagId: string,
 ): Promise<WarrantyClaim> {
   return apiPost<WarrantyClaim>(
-    `${BASE}/warranty-claims/from-snag/${snagId}`,
+    `/v1/property-dev/warranty-claims/from-snag/${snagId}`,
     {},
   );
 }
@@ -1399,7 +1393,7 @@ export function listLeads(params?: {
   if (params?.offset !== undefined) qs.set('offset', String(params.offset));
   if (params?.limit !== undefined) qs.set('limit', String(params.limit));
   const q = qs.toString();
-  return apiGet<Lead[]>(`${BASE}/leads/${q ? `?${q}` : ''}`);
+  return apiGet<Lead[]>(`/v1/property-dev/leads/${q ? `?${q}` : ''}`);
 }
 
 /**
@@ -1416,7 +1410,7 @@ export function getLeadContact(leadId: string): Promise<{
   country_code: string | null;
   module_tags: string[];
 }> {
-  return apiGet(`${BASE}/leads/${leadId}/contact`);
+  return apiGet(`/v1/property-dev/leads/${leadId}/contact`);
 }
 
 /**
@@ -1431,19 +1425,19 @@ export function createLead(
 ): Promise<Lead> {
   const { syncToContacts = true } = opts;
   const qs = syncToContacts ? '' : '?sync_to_contacts=false';
-  return apiPost<Lead>(`${BASE}/leads/${qs}`, data);
+  return apiPost<Lead>(`/v1/property-dev/leads/${qs}`, data);
 }
 
 export function getLead(id: string): Promise<Lead> {
-  return apiGet<Lead>(`${BASE}/leads/${id}`);
+  return apiGet<Lead>(`/v1/property-dev/leads/${id}`);
 }
 
 export function updateLead(id: string, data: UpdateLeadPayload): Promise<Lead> {
-  return apiPatch<Lead>(`${BASE}/leads/${id}`, data);
+  return apiPatch<Lead>(`/v1/property-dev/leads/${id}`, data);
 }
 
 export function deleteLead(id: string): Promise<void> {
-  return apiDelete(`${BASE}/leads/${id}`);
+  return apiDelete(`/v1/property-dev/leads/${id}`);
 }
 
 export function convertLeadToReservation(
@@ -1451,7 +1445,7 @@ export function convertLeadToReservation(
   data: LeadConvertToReservationPayload,
 ): Promise<Reservation> {
   return apiPost<Reservation>(
-    `${BASE}/leads/${id}/convert-to-reservation`,
+    `/v1/property-dev/leads/${id}/convert-to-reservation`,
     data,
   );
 }
@@ -1472,25 +1466,25 @@ export function listReservations(params?: {
   if (params?.offset !== undefined) qs.set('offset', String(params.offset));
   if (params?.limit !== undefined) qs.set('limit', String(params.limit));
   const q = qs.toString();
-  return apiGet<Reservation[]>(`${BASE}/reservations/${q ? `?${q}` : ''}`);
+  return apiGet<Reservation[]>(`/v1/property-dev/reservations/${q ? `?${q}` : ''}`);
 }
 
 export function createReservation(
   data: CreateReservationPayload,
 ): Promise<Reservation> {
-  return apiPost<Reservation>(`${BASE}/reservations/`, data);
+  return apiPost<Reservation>(`/v1/property-dev/reservations/`, data);
 }
 
 export function getReservation(id: string): Promise<Reservation> {
-  return apiGet<Reservation>(`${BASE}/reservations/${id}`);
+  return apiGet<Reservation>(`/v1/property-dev/reservations/${id}`);
 }
 
 export function cancelReservation(id: string): Promise<Reservation> {
-  return apiPost<Reservation>(`${BASE}/reservations/${id}/cancel`, {});
+  return apiPost<Reservation>(`/v1/property-dev/reservations/${id}/cancel`, {});
 }
 
 export function expireReservation(id: string): Promise<Reservation> {
-  return apiPost<Reservation>(`${BASE}/reservations/${id}/expire`, {});
+  return apiPost<Reservation>(`/v1/property-dev/reservations/${id}/expire`, {});
 }
 
 export function expireOverdueReservations(): Promise<{
@@ -1498,7 +1492,7 @@ export function expireOverdueReservations(): Promise<{
   expired_ids: string[];
 }> {
   return apiPost<{ expired_count: number; expired_ids: string[] }>(
-    `${BASE}/reservations/expire-overdue`,
+    `/v1/property-dev/reservations/expire-overdue`,
     {},
   );
 }
@@ -1508,7 +1502,7 @@ export function convertReservationToSpa(
   data: ConvertReservationToSpaPayload,
 ): Promise<SalesContract> {
   return apiPost<SalesContract>(
-    `${BASE}/reservations/${id}/convert-to-spa`,
+    `/v1/property-dev/reservations/${id}/convert-to-spa`,
     data,
   );
 }
@@ -1526,11 +1520,11 @@ export function listSalesContracts(params: {
   if (params.development_id) qs.set('development_id', params.development_id);
   if (params.reservation_id) qs.set('reservation_id', params.reservation_id);
   if (params.status) qs.set('status', params.status);
-  return apiGet<SalesContract[]>(`${BASE}/sales-contracts/?${qs.toString()}`);
+  return apiGet<SalesContract[]>(`/v1/property-dev/sales-contracts/?${qs.toString()}`);
 }
 
 export function getSalesContract(id: string): Promise<SalesContract> {
-  return apiGet<SalesContract>(`${BASE}/sales-contracts/${id}`);
+  return apiGet<SalesContract>(`/v1/property-dev/sales-contracts/${id}`);
 }
 
 export function sendSpaForSignature(
@@ -1538,7 +1532,7 @@ export function sendSpaForSignature(
   data: { e_sign_envelope_id?: string } = {},
 ): Promise<SalesContract> {
   return apiPost<SalesContract>(
-    `${BASE}/sales-contracts/${id}/send-for-signature`,
+    `/v1/property-dev/sales-contracts/${id}/send-for-signature`,
     data,
   );
 }
@@ -1547,11 +1541,11 @@ export function signSalesContract(
   id: string,
   data: { signing_date?: string } = {},
 ): Promise<SalesContract> {
-  return apiPost<SalesContract>(`${BASE}/sales-contracts/${id}/sign`, data);
+  return apiPost<SalesContract>(`/v1/property-dev/sales-contracts/${id}/sign`, data);
 }
 
 export function cancelSalesContract(id: string): Promise<SalesContract> {
-  return apiPost<SalesContract>(`${BASE}/sales-contracts/${id}/cancel`, {});
+  return apiPost<SalesContract>(`/v1/property-dev/sales-contracts/${id}/cancel`, {});
 }
 
 /* ── Tax / VAT / Stamp-duty quote ──────────────────────────────────── */
@@ -1593,7 +1587,7 @@ export function fetchContractTaxQuote(
   payload: TaxQuotePayload = {},
 ): Promise<ContractTaxQuote> {
   return apiPost<ContractTaxQuote>(
-    `${BASE}/sales-contracts/${contractId}/tax-quote`,
+    `/v1/property-dev/sales-contracts/${contractId}/tax-quote`,
     payload,
   );
 }
@@ -1617,7 +1611,7 @@ export function listPaymentScheduleTemplates(): Promise<
   PaymentScheduleTemplate[]
 > {
   return apiGet<PaymentScheduleTemplate[]>(
-    `${BASE}/payment-schedule-templates/`,
+    `/v1/property-dev/payment-schedule-templates/`,
   );
 }
 
@@ -1633,7 +1627,7 @@ export function generatePaymentScheduleFromTemplate(
   data: GeneratePaymentSchedulePayload,
 ): Promise<PaymentSchedule> {
   return apiPost<PaymentSchedule>(
-    `${BASE}/payment-schedules/from-template`,
+    `/v1/property-dev/payment-schedules/from-template`,
     data,
   );
 }
@@ -1654,24 +1648,24 @@ export function listPaymentSchedules(params: {
   if (params.development_id) qs.set('development_id', params.development_id);
   if (params.status) qs.set('status', params.status);
   return apiGet<PaymentSchedule[]>(
-    `${BASE}/payment-schedules/?${qs.toString()}`,
+    `/v1/property-dev/payment-schedules/?${qs.toString()}`,
   );
 }
 
 export function getPaymentSchedule(id: string): Promise<PaymentSchedule> {
-  return apiGet<PaymentSchedule>(`${BASE}/payment-schedules/${id}`);
+  return apiGet<PaymentSchedule>(`/v1/property-dev/payment-schedules/${id}`);
 }
 
 export function activatePaymentSchedule(id: string): Promise<PaymentSchedule> {
   return apiPost<PaymentSchedule>(
-    `${BASE}/payment-schedules/${id}/activate`,
+    `/v1/property-dev/payment-schedules/${id}/activate`,
     {},
   );
 }
 
 export function suspendPaymentSchedule(id: string): Promise<PaymentSchedule> {
   return apiPost<PaymentSchedule>(
-    `${BASE}/payment-schedules/${id}/suspend`,
+    `/v1/property-dev/payment-schedules/${id}/suspend`,
     {},
   );
 }
@@ -1686,25 +1680,25 @@ export function listInstalments(params: {
   if (params.sales_contract_id)
     qs.set('sales_contract_id', params.sales_contract_id);
   if (params.status) qs.set('status', params.status);
-  return apiGet<Instalment[]>(`${BASE}/instalments/?${qs.toString()}`);
+  return apiGet<Instalment[]>(`/v1/property-dev/instalments/?${qs.toString()}`);
 }
 
 export function markInstalmentPaid(
   id: string,
   data: { amount: number | string; paid_at?: string; invoice_ref?: string },
 ): Promise<Instalment> {
-  return apiPost<Instalment>(`${BASE}/instalments/${id}/mark-paid`, data);
+  return apiPost<Instalment>(`/v1/property-dev/instalments/${id}/mark-paid`, data);
 }
 
 export function issueInstalmentDemand(id: string): Promise<Instalment> {
-  return apiPost<Instalment>(`${BASE}/instalments/${id}/issue-demand`, {});
+  return apiPost<Instalment>(`/v1/property-dev/instalments/${id}/issue-demand`, {});
 }
 
 export function waiveInstalment(
   id: string,
   data: { reason?: string } = {},
 ): Promise<Instalment> {
-  return apiPost<Instalment>(`${BASE}/instalments/${id}/waive`, data);
+  return apiPost<Instalment>(`/v1/property-dev/instalments/${id}/waive`, data);
 }
 
 export function accrueLateFees(): Promise<{
@@ -1712,7 +1706,7 @@ export function accrueLateFees(): Promise<{
   total_accrued: string;
 }> {
   return apiPost<{ touched_count: number; total_accrued: string }>(
-    `${BASE}/instalments/accrue-late-fees`,
+    `/v1/property-dev/instalments/accrue-late-fees`,
     {},
   );
 }
@@ -1723,13 +1717,13 @@ export function listContractParties(
   sales_contract_id: string,
 ): Promise<ContractParty[]> {
   const qs = new URLSearchParams({ sales_contract_id });
-  return apiGet<ContractParty[]>(`${BASE}/contract-parties/?${qs.toString()}`);
+  return apiGet<ContractParty[]>(`/v1/property-dev/contract-parties/?${qs.toString()}`);
 }
 
 export function addContractParty(
   data: ContractPartyCreatePayload,
 ): Promise<ContractParty> {
-  return apiPost<ContractParty>(`${BASE}/contract-parties/`, data);
+  return apiPost<ContractParty>(`/v1/property-dev/contract-parties/`, data);
 }
 
 export function updateContractParty(
@@ -1742,11 +1736,11 @@ export function updateContractParty(
     signature_ref?: string;
   },
 ): Promise<ContractParty> {
-  return apiPatch<ContractParty>(`${BASE}/contract-parties/${id}`, data);
+  return apiPatch<ContractParty>(`/v1/property-dev/contract-parties/${id}`, data);
 }
 
 export function removeContractParty(id: string): Promise<void> {
-  return apiDelete(`${BASE}/contract-parties/${id}`);
+  return apiDelete(`/v1/property-dev/contract-parties/${id}`);
 }
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -1987,7 +1981,7 @@ export function listBrokers(params?: {
   if (params?.offset !== undefined) qs.set('offset', String(params.offset));
   if (params?.limit !== undefined) qs.set('limit', String(params.limit));
   const q = qs.toString();
-  return apiGet<Broker[]>(`${BASE}/brokers/${q ? `?${q}` : ''}`);
+  return apiGet<Broker[]>(`/v1/property-dev/brokers/${q ? `?${q}` : ''}`);
 }
 
 export function createBroker(data: {
@@ -1998,26 +1992,26 @@ export function createBroker(data: {
   contact_phone?: string;
   default_commission_pct?: number;
 }): Promise<Broker> {
-  return apiPost<Broker>(`${BASE}/brokers/`, data);
+  return apiPost<Broker>(`/v1/property-dev/brokers/`, data);
 }
 
 export function getBroker(id: string): Promise<Broker> {
-  return apiGet<Broker>(`${BASE}/brokers/${id}`);
+  return apiGet<Broker>(`/v1/property-dev/brokers/${id}`);
 }
 
 export function updateBroker(
   id: string,
   data: Partial<Omit<Broker, 'id' | 'created_at' | 'updated_at'>>,
 ): Promise<Broker> {
-  return apiPatch<Broker>(`${BASE}/brokers/${id}`, data);
+  return apiPatch<Broker>(`/v1/property-dev/brokers/${id}`, data);
 }
 
 export function verifyBrokerKyc(id: string): Promise<Broker> {
-  return apiPost<Broker>(`${BASE}/brokers/${id}/verify-kyc`, {});
+  return apiPost<Broker>(`/v1/property-dev/brokers/${id}/verify-kyc`, {});
 }
 
 export function deleteBroker(id: string): Promise<void> {
-  return apiDelete(`${BASE}/brokers/${id}`);
+  return apiDelete(`/v1/property-dev/brokers/${id}`);
 }
 
 /* ── Commission Agreements ───────────────────────────────────────── */
@@ -2032,7 +2026,7 @@ export function listCommissionAgreements(params: {
   if (params.development_id) qs.set('development_id', params.development_id);
   if (params.on_date) qs.set('on_date', params.on_date);
   return apiGet<CommissionAgreement[]>(
-    `${BASE}/commission-agreements/?${qs.toString()}`,
+    `/v1/property-dev/commission-agreements/?${qs.toString()}`,
   );
 }
 
@@ -2046,7 +2040,7 @@ export function createCommissionAgreement(data: {
   accrual_trigger?: AccrualTrigger;
   status?: string;
 }): Promise<CommissionAgreement> {
-  return apiPost<CommissionAgreement>(`${BASE}/commission-agreements/`, data);
+  return apiPost<CommissionAgreement>(`/v1/property-dev/commission-agreements/`, data);
 }
 
 /* ── Commission Accruals ─────────────────────────────────────────── */
@@ -2058,13 +2052,13 @@ export function listCommissionAccruals(params: {
   const qs = new URLSearchParams({ broker_id: params.broker_id });
   if (params.state) qs.set('state', params.state);
   return apiGet<CommissionAccrual[]>(
-    `${BASE}/commission-accruals/?${qs.toString()}`,
+    `/v1/property-dev/commission-accruals/?${qs.toString()}`,
   );
 }
 
 export function approveCommissionAccrual(id: string): Promise<CommissionAccrual> {
   return apiPost<CommissionAccrual>(
-    `${BASE}/commission-accruals/${id}/approve`,
+    `/v1/property-dev/commission-accruals/${id}/approve`,
     {},
   );
 }
@@ -2073,7 +2067,7 @@ export function payCommissionAccrual(
   id: string,
   payment_ref: string,
 ): Promise<CommissionAccrual> {
-  return apiPost<CommissionAccrual>(`${BASE}/commission-accruals/${id}/pay`, {
+  return apiPost<CommissionAccrual>(`/v1/property-dev/commission-accruals/${id}/pay`, {
     payment_ref,
   });
 }
@@ -2084,7 +2078,7 @@ export function listEscrowAccounts(
   development_id: string,
 ): Promise<EscrowAccount[]> {
   const qs = new URLSearchParams({ development_id });
-  return apiGet<EscrowAccount[]>(`${BASE}/escrow-accounts/?${qs.toString()}`);
+  return apiGet<EscrowAccount[]>(`/v1/property-dev/escrow-accounts/?${qs.toString()}`);
 }
 
 export function createEscrowAccount(data: {
@@ -2097,7 +2091,7 @@ export function createEscrowAccount(data: {
   currency: string;
   opened_at: string;
 }): Promise<EscrowAccount> {
-  return apiPost<EscrowAccount>(`${BASE}/escrow-accounts/`, data);
+  return apiPost<EscrowAccount>(`/v1/property-dev/escrow-accounts/`, data);
 }
 
 export function updateEscrowAccount(
@@ -2111,11 +2105,11 @@ export function updateEscrowAccount(
     is_active: boolean;
   }>,
 ): Promise<EscrowAccount> {
-  return apiPatch<EscrowAccount>(`${BASE}/escrow-accounts/${id}`, data);
+  return apiPatch<EscrowAccount>(`/v1/property-dev/escrow-accounts/${id}`, data);
 }
 
 export function deleteEscrowAccount(id: string): Promise<void> {
-  return apiDelete(`${BASE}/escrow-accounts/${id}`);
+  return apiDelete(`/v1/property-dev/escrow-accounts/${id}`);
 }
 
 export function getEscrowBalance(
@@ -2126,7 +2120,7 @@ export function getEscrowBalance(
   if (as_of_date) qs.set('as_of_date', as_of_date);
   const q = qs.toString();
   return apiGet<EscrowBalance>(
-    `${BASE}/escrow-accounts/${id}/balance${q ? `?${q}` : ''}`,
+    `/v1/property-dev/escrow-accounts/${id}/balance${q ? `?${q}` : ''}`,
   );
 }
 
@@ -2137,7 +2131,7 @@ export function listEscrowTransactions(params: {
   const qs = new URLSearchParams({ escrow_account_id: params.escrow_account_id });
   if (params.unreconciled_only) qs.set('unreconciled_only', 'true');
   return apiGet<EscrowTransaction[]>(
-    `${BASE}/escrow-transactions/?${qs.toString()}`,
+    `/v1/property-dev/escrow-transactions/?${qs.toString()}`,
   );
 }
 
@@ -2151,7 +2145,7 @@ export function createEscrowTransaction(data: {
   source_reference?: string;
   transaction_date: string;
 }): Promise<EscrowTransaction> {
-  return apiPost<EscrowTransaction>(`${BASE}/escrow-transactions/`, data);
+  return apiPost<EscrowTransaction>(`/v1/property-dev/escrow-transactions/`, data);
 }
 
 export function reconcileEscrowTransaction(
@@ -2159,7 +2153,7 @@ export function reconcileEscrowTransaction(
   bank_reference: string,
 ): Promise<EscrowTransaction> {
   return apiPost<EscrowTransaction>(
-    `${BASE}/escrow-transactions/${id}/reconcile`,
+    `/v1/property-dev/escrow-transactions/${id}/reconcile`,
     { bank_reference },
   );
 }
@@ -2168,7 +2162,7 @@ export function reconcileEscrowTransaction(
 
 export function listPriceMatrices(development_id: string): Promise<PriceMatrix[]> {
   const qs = new URLSearchParams({ development_id });
-  return apiGet<PriceMatrix[]>(`${BASE}/price-matrices/?${qs.toString()}`);
+  return apiGet<PriceMatrix[]>(`/v1/property-dev/price-matrices/?${qs.toString()}`);
 }
 
 export function createPriceMatrix(data: {
@@ -2181,11 +2175,11 @@ export function createPriceMatrix(data: {
   rules?: PriceMatrixRule[];
   status?: PriceMatrixStatus;
 }): Promise<PriceMatrix> {
-  return apiPost<PriceMatrix>(`${BASE}/price-matrices/`, data);
+  return apiPost<PriceMatrix>(`/v1/property-dev/price-matrices/`, data);
 }
 
 export function activatePriceMatrix(id: string): Promise<PriceMatrix> {
-  return apiPost<PriceMatrix>(`${BASE}/price-matrices/${id}/activate`, {});
+  return apiPost<PriceMatrix>(`/v1/property-dev/price-matrices/${id}/activate`, {});
 }
 
 export function updatePriceMatrix(
@@ -2200,11 +2194,11 @@ export function updatePriceMatrix(
     status: PriceMatrixStatus;
   }>,
 ): Promise<PriceMatrix> {
-  return apiPatch<PriceMatrix>(`${BASE}/price-matrices/${id}`, data);
+  return apiPatch<PriceMatrix>(`/v1/property-dev/price-matrices/${id}`, data);
 }
 
 export function deletePriceMatrix(id: string): Promise<void> {
-  return apiDelete(`${BASE}/price-matrices/${id}`);
+  return apiDelete(`/v1/property-dev/price-matrices/${id}`);
 }
 
 export function previewPriceOnPlot(
@@ -2216,21 +2210,21 @@ export function previewPriceOnPlot(
   if (on_date) qs.set('on_date', on_date);
   const q = qs.toString();
   return apiGet<PriceMatrixPreview>(
-    `${BASE}/price-matrices/${matrix_id}/preview-on-plot/${plot_id}${q ? `?${q}` : ''}`,
+    `/v1/property-dev/price-matrices/${matrix_id}/preview-on-plot/${plot_id}${q ? `?${q}` : ''}`,
   );
 }
 
 export function bulkRecomputePrices(
   matrix_id: string,
 ): Promise<{ matrix_id: string; development_id: string; plots_updated: number; plots_unchanged: number }> {
-  return apiPost(`${BASE}/price-matrices/${matrix_id}/bulk-recompute`, {});
+  return apiPost(`/v1/property-dev/price-matrices/${matrix_id}/bulk-recompute`, {});
 }
 
 /* ── Phases + Blocks ─────────────────────────────────────────────── */
 
 export function listPhases(development_id: string): Promise<Phase[]> {
   const qs = new URLSearchParams({ development_id });
-  return apiGet<Phase[]>(`${BASE}/phases/?${qs.toString()}`);
+  return apiGet<Phase[]>(`/v1/property-dev/phases/?${qs.toString()}`);
 }
 
 export function createPhase(data: {
@@ -2242,7 +2236,7 @@ export function createPhase(data: {
   planned_end?: string;
   status?: PhaseStatus;
 }): Promise<Phase> {
-  return apiPost<Phase>(`${BASE}/phases/`, data);
+  return apiPost<Phase>(`/v1/property-dev/phases/`, data);
 }
 
 export function updatePhase(
@@ -2255,16 +2249,16 @@ export function updatePhase(
     status: PhaseStatus;
   }>,
 ): Promise<Phase> {
-  return apiPatch<Phase>(`${BASE}/phases/${id}`, data);
+  return apiPatch<Phase>(`/v1/property-dev/phases/${id}`, data);
 }
 
 export function deletePhase(id: string): Promise<void> {
-  return apiDelete(`${BASE}/phases/${id}`);
+  return apiDelete(`/v1/property-dev/phases/${id}`);
 }
 
 export function listBlocks(phase_id: string): Promise<Block[]> {
   const qs = new URLSearchParams({ phase_id });
-  return apiGet<Block[]>(`${BASE}/blocks/?${qs.toString()}`);
+  return apiGet<Block[]>(`/v1/property-dev/blocks/?${qs.toString()}`);
 }
 
 export function createBlock(data: {
@@ -2276,7 +2270,7 @@ export function createBlock(data: {
   orientation?: string;
   status?: BlockStatus;
 }): Promise<Block> {
-  return apiPost<Block>(`${BASE}/blocks/`, data);
+  return apiPost<Block>(`/v1/property-dev/blocks/`, data);
 }
 
 export function updateBlock(
@@ -2289,11 +2283,11 @@ export function updateBlock(
     status: BlockStatus;
   }>,
 ): Promise<Block> {
-  return apiPatch<Block>(`${BASE}/blocks/${id}`, data);
+  return apiPatch<Block>(`/v1/property-dev/blocks/${id}`, data);
 }
 
 export function deleteBlock(id: string): Promise<void> {
-  return apiDelete(`${BASE}/blocks/${id}`);
+  return apiDelete(`/v1/property-dev/blocks/${id}`);
 }
 
 /* ── Regulator Reports ───────────────────────────────────────────── */
@@ -2303,7 +2297,7 @@ export function regulatorReportRERA(
   quarter: string,
 ): Promise<RegulatorReport> {
   const qs = new URLSearchParams({ dev_id, quarter });
-  return apiGet<RegulatorReport>(`${BASE}/regulator-reports/RERA?${qs.toString()}`);
+  return apiGet<RegulatorReport>(`/v1/property-dev/regulator-reports/RERA?${qs.toString()}`);
 }
 
 export function regulatorReportMAHARERA(
@@ -2312,7 +2306,7 @@ export function regulatorReportMAHARERA(
 ): Promise<RegulatorReport> {
   const qs = new URLSearchParams({ dev_id, quarter });
   return apiGet<RegulatorReport>(
-    `${BASE}/regulator-reports/MAHARERA?${qs.toString()}`,
+    `/v1/property-dev/regulator-reports/MAHARERA?${qs.toString()}`,
   );
 }
 
@@ -2322,7 +2316,7 @@ export function regulatorReport214FZ(
 ): Promise<RegulatorReport> {
   const qs = new URLSearchParams({ dev_id, quarter });
   return apiGet<RegulatorReport>(
-    `${BASE}/regulator-reports/214-FZ?${qs.toString()}`,
+    `/v1/property-dev/regulator-reports/214-FZ?${qs.toString()}`,
   );
 }
 
@@ -2372,7 +2366,7 @@ export function fetchComplianceDashboard(
 ): Promise<ComplianceDashboard> {
   const qs = new URLSearchParams({ dev_id: devId });
   if (locale) qs.set('locale', locale);
-  return apiGet<ComplianceDashboard>(`${BASE}/compliance/dashboard?${qs}`);
+  return apiGet<ComplianceDashboard>(`/v1/property-dev/compliance/dashboard?${qs}`);
 }
 
 export function runComplianceChecks(
@@ -2382,7 +2376,7 @@ export function runComplianceChecks(
   const qs = new URLSearchParams({ dev_id: devId });
   if (locale) qs.set('locale', locale);
   return apiPost<ComplianceDashboard>(
-    `${BASE}/compliance/run-checks?${qs}`,
+    `/v1/property-dev/compliance/run-checks?${qs}`,
     {},
   );
 }
@@ -2398,22 +2392,8 @@ export function fetchRegulatorReport(
     quarter,
   });
   return apiGet<ComplianceRegulatorReport>(
-    `${BASE}/compliance/regulator-reports?${qs}`,
+    `/v1/property-dev/compliance/regulator-reports?${qs}`,
   );
-}
-
-export function complianceRegulatorReportPdfUrl(
-  devId: string,
-  regulator: RegulatorCode,
-  quarter: string,
-): string {
-  const qs = new URLSearchParams({
-    dev_id: devId,
-    regulator,
-    quarter,
-    as: 'pdf',
-  });
-  return `${BASE}/compliance/regulator-reports?${qs}`;
 }
 
 /* ── R6 Dashboards (task #140) ─────────────────────────────────────────── */
@@ -2563,7 +2543,7 @@ export function getInventoryHeatmap(
 ): Promise<InventoryHeatmapResponse> {
   const qs = new URLSearchParams({ dev_id: developmentId });
   return apiGet<InventoryHeatmapResponse>(
-    `${BASE}/dashboards/inventory-heatmap?${qs.toString()}`,
+    `/v1/property-dev/dashboards/inventory-heatmap?${qs.toString()}`,
   );
 }
 
@@ -2574,7 +2554,7 @@ export function getSalesVelocity(
   const qs = new URLSearchParams({ dev_id: developmentId });
   if (params.granularity) qs.set('granularity', params.granularity);
   return apiGet<SalesVelocityResponse>(
-    `${BASE}/dashboards/sales-velocity?${qs.toString()}`,
+    `/v1/property-dev/dashboards/sales-velocity?${qs.toString()}`,
   );
 }
 
@@ -2586,7 +2566,7 @@ export function getCashflowWaterfall(
   if (params.start_month) qs.set('start_month', params.start_month);
   if (params.months) qs.set('months', String(params.months));
   return apiGet<CashflowWaterfallResponse>(
-    `${BASE}/dashboards/cashflow-waterfall?${qs.toString()}`,
+    `/v1/property-dev/dashboards/cashflow-waterfall?${qs.toString()}`,
   );
 }
 
@@ -2595,7 +2575,7 @@ export function getInventoryAgeing(
 ): Promise<InventoryAgeingResponse> {
   const qs = new URLSearchParams({ dev_id: developmentId });
   return apiGet<InventoryAgeingResponse>(
-    `${BASE}/dashboards/inventory-ageing?${qs.toString()}`,
+    `/v1/property-dev/dashboards/inventory-ageing?${qs.toString()}`,
   );
 }
 
@@ -2606,14 +2586,14 @@ export function getFunnelConversion(
   const qs = new URLSearchParams({ dev_id: developmentId });
   if (params.period_days) qs.set('period_days', String(params.period_days));
   return apiGet<FunnelConversionResponse>(
-    `${BASE}/dashboards/funnel-conversion?${qs.toString()}`,
+    `/v1/property-dev/dashboards/funnel-conversion?${qs.toString()}`,
   );
 }
 
 export function getBuyerJourney(buyerId: string): Promise<BuyerJourneyResponse> {
   const qs = new URLSearchParams({ buyer_id: buyerId });
   return apiGet<BuyerJourneyResponse>(
-    `${BASE}/dashboards/buyer-journey?${qs.toString()}`,
+    `/v1/property-dev/dashboards/buyer-journey?${qs.toString()}`,
   );
 }
 
@@ -2734,7 +2714,7 @@ export function getCohortRetention(
   if (params.cohort_period) qs.set('cohort_period', params.cohort_period);
   const tail = qs.toString();
   return apiGet<CohortRetentionResponse>(
-    `${BASE}/dashboards/cohort-retention/${tail ? `?${tail}` : ''}`,
+    `/v1/property-dev/dashboards/cohort-retention/${tail ? `?${tail}` : ''}`,
   );
 }
 
@@ -2744,7 +2724,7 @@ export function getTimeToClose(
   const qs = _windowQs(params);
   const tail = qs.toString();
   return apiGet<TimeToCloseResponse>(
-    `${BASE}/dashboards/time-to-close/${tail ? `?${tail}` : ''}`,
+    `/v1/property-dev/dashboards/time-to-close/${tail ? `?${tail}` : ''}`,
   );
 }
 
@@ -2754,7 +2734,7 @@ export function getLeadSourceAttribution(
   const qs = _windowQs(params);
   const tail = qs.toString();
   return apiGet<LeadSourceAttributionResponse>(
-    `${BASE}/dashboards/lead-source-attribution/${tail ? `?${tail}` : ''}`,
+    `/v1/property-dev/dashboards/lead-source-attribution/${tail ? `?${tail}` : ''}`,
   );
 }
 
@@ -2769,7 +2749,7 @@ export function getConversionFunnel(
   if (params.plot_type) qs.set('plot_type', params.plot_type);
   const tail = qs.toString();
   return apiGet<ConversionFunnelResponse>(
-    `${BASE}/dashboards/conversion-funnel/${tail ? `?${tail}` : ''}`,
+    `/v1/property-dev/dashboards/conversion-funnel/${tail ? `?${tail}` : ''}`,
   );
 }
 
@@ -2779,7 +2759,7 @@ export function getBrokerPerformance(
   const qs = _windowQs(params);
   const tail = qs.toString();
   return apiGet<BrokerPerformanceResponse>(
-    `${BASE}/dashboards/broker-performance/${tail ? `?${tail}` : ''}`,
+    `/v1/property-dev/dashboards/broker-performance/${tail ? `?${tail}` : ''}`,
   );
 }
 
@@ -2838,7 +2818,7 @@ export function previewPropDevDocument(
   params: PropDevDocParams,
 ): Promise<PropDevDocPreview> {
   return apiPost<PropDevDocPreview, PropDevDocParams>(
-    `${BASE}/documents/preview`,
+    `/v1/property-dev/documents/preview`,
     params,
   );
 }
@@ -2871,7 +2851,7 @@ export function emailPropDevDocument(
   params: PropDevDocEmailParams,
 ): Promise<PropDevDocEmailResult> {
   return apiPost<PropDevDocEmailResult, PropDevDocEmailParams>(
-    `${BASE}/documents/email`,
+    `/v1/property-dev/documents/email`,
     params,
   );
 }
@@ -2978,7 +2958,7 @@ export function listDocumentTemplates(
     ? `?development_id=${encodeURIComponent(developmentId)}`
     : '';
   return apiGet<DocumentTemplateCatalogue>(
-    `${BASE}/document-templates/${qs}`,
+    `/v1/property-dev/document-templates/${qs}`,
   );
 }
 
@@ -3041,7 +3021,7 @@ export function deleteCustomDocumentTemplate(
   templateId: string,
 ): Promise<void> {
   return apiDelete<void>(
-    `${BASE}/document-templates/custom/${encodeURIComponent(templateId)}`,
+    `/v1/property-dev/document-templates/custom/${encodeURIComponent(templateId)}`,
   );
 }
 
@@ -3070,7 +3050,7 @@ export function sampleDocumentPreview(
   regulator: string,
 ): Promise<SampleDocumentPreview> {
   return apiPost<SampleDocumentPreview>(
-    `${BASE}/document-templates/${docType}/sample-preview`,
+    `/v1/property-dev/document-templates/${docType}/sample-preview`,
     { locale, regulator },
   );
 }
@@ -3105,7 +3085,7 @@ export function saveTextCustomDocumentTemplate(
   payload: SaveTextTemplateRequest,
 ): Promise<DocumentTemplateEntry> {
   return apiPost<DocumentTemplateEntry, SaveTextTemplateRequest>(
-    `${BASE}/document-templates/save-text`,
+    `/v1/property-dev/document-templates/save-text`,
     payload,
   );
 }
@@ -3135,7 +3115,7 @@ export function getCustomDocumentTemplateContent(
   templateId: string,
 ): Promise<CustomTemplateContent> {
   return apiGet<CustomTemplateContent>(
-    `${BASE}/document-templates/custom/${encodeURIComponent(templateId)}/content`,
+    `/v1/property-dev/document-templates/custom/${encodeURIComponent(templateId)}/content`,
   );
 }
 
@@ -3154,7 +3134,7 @@ export function getDocumentTemplateLocale(
   code: string,
 ): Promise<DocumentTemplateLocalePayload> {
   return apiGet<DocumentTemplateLocalePayload>(
-    `${BASE}/document-templates/locales/${encodeURIComponent(code)}`,
+    `/v1/property-dev/document-templates/locales/${encodeURIComponent(code)}`,
   );
 }
 
@@ -3165,7 +3145,7 @@ export function putDocumentTemplateLocale(
   data: Record<string, unknown>,
 ): Promise<{ code: string; status: string }> {
   return apiPut<{ code: string; status: string }>(
-    `${BASE}/document-templates/locales/${encodeURIComponent(code)}`,
+    `/v1/property-dev/document-templates/locales/${encodeURIComponent(code)}`,
     { data },
   );
 }
@@ -3175,7 +3155,7 @@ export function deleteDocumentTemplateLocaleOverride(
   code: string,
 ): Promise<void> {
   return apiDelete<void>(
-    `${BASE}/document-templates/locales/${encodeURIComponent(code)}`,
+    `/v1/property-dev/document-templates/locales/${encodeURIComponent(code)}`,
   );
 }
 
@@ -3217,7 +3197,7 @@ export async function downloadPropDevDocument(
   }
   // Bypass the JSON-parsing default of the typed helpers — the server
   // returns ``application/pdf`` here, not JSON.
-  const url = `/api${BASE}/documents/${doc_type}?${qs.toString()}`;
+  const url = `/api/v1/property-dev/documents/${doc_type}?${qs.toString()}`;
   const token = getAuthToken();
   const headers: Record<string, string> = { Accept: 'application/pdf' };
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -3330,25 +3310,25 @@ export interface CreatePricingRulePayload {
 }
 
 export function listPriceLists(devId: string): Promise<PriceList[]> {
-  return apiGet<PriceList[]>(`${BASE}/developments/${devId}/price-lists/`);
+  return apiGet<PriceList[]>(`/v1/property-dev/developments/${devId}/price-lists/`);
 }
 
 export function createPriceList(
   devId: string,
   data: CreatePriceListPayload,
 ): Promise<PriceList> {
-  return apiPost<PriceList>(`${BASE}/developments/${devId}/price-lists/`, data);
+  return apiPost<PriceList>(`/v1/property-dev/developments/${devId}/price-lists/`, data);
 }
 
 export function activatePriceList(priceListId: string): Promise<PriceList> {
   return apiPost<PriceList>(
-    `${BASE}/price-lists/${priceListId}/activate/`,
+    `/v1/property-dev/price-lists/${priceListId}/activate/`,
     {},
   );
 }
 
 export function listPricingRules(priceListId: string): Promise<PricingRule[]> {
-  return apiGet<PricingRule[]>(`${BASE}/price-lists/${priceListId}/rules/`);
+  return apiGet<PricingRule[]>(`/v1/property-dev/price-lists/${priceListId}/rules/`);
 }
 
 export function createPricingRule(
@@ -3356,7 +3336,7 @@ export function createPricingRule(
   data: CreatePricingRulePayload,
 ): Promise<PricingRule> {
   return apiPost<PricingRule>(
-    `${BASE}/price-lists/${priceListId}/rules/`,
+    `/v1/property-dev/price-lists/${priceListId}/rules/`,
     data,
   );
 }
@@ -3367,7 +3347,7 @@ export function updatePricingRule(
   data: Partial<CreatePricingRulePayload>,
 ): Promise<PricingRule> {
   return apiPatch<PricingRule>(
-    `${BASE}/price-lists/${priceListId}/rules/${ruleId}`,
+    `/v1/property-dev/price-lists/${priceListId}/rules/${ruleId}`,
     data,
   );
 }
@@ -3377,7 +3357,7 @@ export function deletePricingRule(
   ruleId: string,
 ): Promise<void> {
   return apiDelete<void>(
-    `${BASE}/price-lists/${priceListId}/rules/${ruleId}`,
+    `/v1/property-dev/price-lists/${priceListId}/rules/${ruleId}`,
   );
 }
 
@@ -3394,7 +3374,7 @@ export function quotePrice(params: {
   if (params.buyer_id) qs.set('buyer_id', params.buyer_id);
   if (params.quote_date) qs.set('quote_date', params.quote_date);
   return apiGet<PriceQuote>(
-    `${BASE}/price-lists/${params.priceListId}/quote/?${qs.toString()}`,
+    `/v1/property-dev/price-lists/${params.priceListId}/quote/?${qs.toString()}`,
   );
 }
 
@@ -3408,7 +3388,7 @@ export function quoteBasket(
   },
 ): Promise<PriceQuoteBasketResponse> {
   return apiPost<PriceQuoteBasketResponse>(
-    `${BASE}/price-lists/${priceListId}/quote-basket/`,
+    `/v1/property-dev/price-lists/${priceListId}/quote-basket/`,
     data,
   );
 }
@@ -3421,7 +3401,7 @@ export function listEffectiveRules(
   if (on_date) qs.set('date', on_date);
   const q = qs.toString();
   return apiGet(
-    `${BASE}/price-lists/${priceListId}/rules/effective/${q ? `?${q}` : ''}`,
+    `/v1/property-dev/price-lists/${priceListId}/rules/effective/${q ? `?${q}` : ''}`,
   );
 }
 
@@ -3488,7 +3468,7 @@ export function getInventoryMap(
   developmentId: string,
 ): Promise<InventoryMapResponse> {
   return apiGet<InventoryMapResponse>(
-    `${BASE}/developments/${developmentId}/inventory-map/`,
+    `/v1/property-dev/developments/${developmentId}/inventory-map/`,
   );
 }
 
@@ -3499,7 +3479,7 @@ export function bulkHoldInventory(
   holdUntil?: string | null,
 ): Promise<InventoryMapBulkResult> {
   return apiPost<InventoryMapBulkResult>(
-    `${BASE}/developments/${developmentId}/inventory-map/bulk-hold/`,
+    `/v1/property-dev/developments/${developmentId}/inventory-map/bulk-hold/`,
     {
       plot_ids: plotIds,
       hold_reason: holdReason,
@@ -3513,7 +3493,7 @@ export function bulkReleaseInventory(
   plotIds: string[],
 ): Promise<InventoryMapBulkResult> {
   return apiPost<InventoryMapBulkResult>(
-    `${BASE}/developments/${developmentId}/inventory-map/bulk-release/`,
+    `/v1/property-dev/developments/${developmentId}/inventory-map/bulk-release/`,
     { plot_ids: plotIds },
   );
 }
@@ -3522,7 +3502,7 @@ export function bulkReleaseInventory(
 // ── Document appearance ──────────────────────────────────────────────────
 //
 // How a generated PDF looks, as opposed to whose it is (that is the workspace
-// brand, /api/v1/branding/). Not under BASE: the setting is platform-wide -
+// brand, /api/v1/branding/). Not under /v1/property-dev: the setting is platform-wide -
 // the colours, logo alignment, footer line and page numbering are drawn by the
 // shared header and footer on every PDF the platform makes - and it is edited
 // from this module's settings page because that is where documents are

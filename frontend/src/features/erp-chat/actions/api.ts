@@ -23,11 +23,6 @@ import {
   type ChatActionListResponse,
 } from './types';
 
-const BASE = '/v1/erp_chat/actions/';
-
-function actionPath(id: string, suffix = ''): string {
-  return `${BASE}${encodeURIComponent(id)}/${suffix}`;
-}
 
 /**
  * Query string for a list request. Keys without a value are left out
@@ -55,13 +50,13 @@ export function buildActionListQuery(filters: ChatActionListFilters): string {
 
 /** Proposals visible to the caller, newest first, with per-status counts. */
 export async function listChatActions(filters: ChatActionListFilters = {}): Promise<ChatActionListResponse> {
-  const raw = await apiGet<unknown>(`${BASE}${buildActionListQuery(filters)}`);
+  const raw = await apiGet<unknown>(`/v1/erp_chat/actions/${buildActionListQuery(filters)}`);
   return normalizeActionList(raw);
 }
 
 /** One proposal as the server sees it now. */
 export async function getChatAction(id: string): Promise<ChatAction> {
-  return normalizeChatAction(await apiGet<ChatAction>(actionPath(id)));
+  return normalizeChatAction(await apiGet<ChatAction>(`/v1/erp_chat/actions/${encodeURIComponent(id)}/`));
 }
 
 /**
@@ -69,7 +64,7 @@ export async function getChatAction(id: string): Promise<ChatAction> {
  * person changed; the server re-validates and rebuilds the preview.
  */
 export async function patchChatAction(id: string, payload: Record<string, unknown>): Promise<ChatAction> {
-  return normalizeChatAction(await apiPatch<ChatAction>(actionPath(id), { payload }));
+  return normalizeChatAction(await apiPatch<ChatAction>(`/v1/erp_chat/actions/${encodeURIComponent(id)}/`, { payload }));
 }
 
 /**
@@ -77,13 +72,13 @@ export async function patchChatAction(id: string, payload: Record<string, unknow
  * `failed` (still HTTP 200) when the domain write itself failed.
  */
 export async function applyChatAction(id: string): Promise<ChatAction> {
-  return normalizeChatAction(await apiPost<ChatAction>(actionPath(id, 'apply/')));
+  return normalizeChatAction(await apiPost<ChatAction>(`/v1/erp_chat/actions/${encodeURIComponent(id)}/apply/`));
 }
 
 /** Decline a proposal. Nothing is written to the project. */
 export async function rejectChatAction(id: string, note?: string): Promise<ChatAction> {
   const body = note && note.trim() ? { note: note.trim() } : {};
-  return normalizeChatAction(await apiPost<ChatAction>(actionPath(id, 'reject/'), body));
+  return normalizeChatAction(await apiPost<ChatAction>(`/v1/erp_chat/actions/${encodeURIComponent(id)}/reject/`, body));
 }
 
 /**
@@ -92,7 +87,7 @@ export async function rejectChatAction(id: string, note?: string): Promise<ChatA
  * (a locked bill, a changed record) with the reason.
  */
 export async function applyChatActionsBatch(ids: string[]): Promise<ChatActionBatchResponse> {
-  const raw = await apiPost<{ items?: unknown[]; errors?: unknown[] }>(`${BASE}apply-batch/`, { ids });
+  const raw = await apiPost<{ items?: unknown[]; errors?: unknown[] }>(`/v1/erp_chat/actions/apply-batch/`, { ids });
   const items = Array.isArray(raw?.items)
     ? raw.items.filter(isChatAction).map((a) => normalizeChatAction(a))
     : [];
@@ -115,5 +110,5 @@ export async function applyChatActionsBatch(ids: string[]): Promise<ChatActionBa
 /** Undo an applied change, when the record is unchanged since. */
 export async function revertChatAction(id: string, note?: string): Promise<ChatAction> {
   const body = note && note.trim() ? { note: note.trim() } : {};
-  return normalizeChatAction(await apiPost<ChatAction>(actionPath(id, 'revert/'), body));
+  return normalizeChatAction(await apiPost<ChatAction>(`/v1/erp_chat/actions/${encodeURIComponent(id)}/revert/`, body));
 }

@@ -3,7 +3,7 @@
 /**
  * API helpers for the allowances & contingency register.
  *
- * Every path is built from BASE ('/v1/allowances'); apiGet / apiPost already
+ * Every path is built from /v1/allowances; apiGet / apiPost already
  * prepend '/api', so we never write '/api/v1' here. Every monetary value crosses
  * the wire as a Decimal-as-string (e.g. "1234.56"), never a number: format it for
  * display with formatCurrency / toNum from '@/shared/lib/money' and never call
@@ -12,7 +12,6 @@
 
 import { apiGet, apiPost, apiPatch, apiDelete } from '@/shared/lib/api';
 
-const BASE = '/v1/allowances';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -135,12 +134,12 @@ export function groupAllowancesByType(items: Allowance[]): AllowanceTypeGroup[] 
 /* ── Requests ──────────────────────────────────────────────────────────── */
 
 export async function fetchAllowances(projectId: string): Promise<Allowance[]> {
-  return apiGet<Allowance[]>(`${BASE}/projects/${encodeURIComponent(projectId)}`);
+  return apiGet<Allowance[]>(`/v1/allowances/projects/${encodeURIComponent(projectId)}`);
 }
 
 export async function fetchRegisterSummary(projectId: string): Promise<AllowanceRegisterSummary> {
   return apiGet<AllowanceRegisterSummary>(
-    `${BASE}/projects/${encodeURIComponent(projectId)}/summary`,
+    `/v1/allowances/projects/${encodeURIComponent(projectId)}/summary`,
   );
 }
 
@@ -148,31 +147,31 @@ export async function createAllowance(
   projectId: string,
   data: CreateAllowancePayload,
 ): Promise<Allowance> {
-  return apiPost<Allowance>(`${BASE}/projects/${encodeURIComponent(projectId)}`, data);
+  return apiPost<Allowance>(`/v1/allowances/projects/${encodeURIComponent(projectId)}`, data);
 }
 
 export async function updateAllowance(
   allowanceId: string,
   data: UpdateAllowancePayload,
 ): Promise<Allowance> {
-  return apiPatch<Allowance>(`${BASE}/items/${allowanceId}`, data);
+  return apiPatch<Allowance>(`/v1/allowances/items/${allowanceId}`, data);
 }
 
 export async function deleteAllowance(allowanceId: string): Promise<void> {
-  return apiDelete<void>(`${BASE}/items/${allowanceId}`);
+  return apiDelete<void>(`/v1/allowances/items/${allowanceId}`);
 }
 
 export async function fetchDrawdowns(allowanceId: string): Promise<Drawdown[]> {
-  return apiGet<Drawdown[]>(`${BASE}/items/${allowanceId}/drawdowns`);
+  return apiGet<Drawdown[]>(`/v1/allowances/items/${allowanceId}/drawdowns`);
 }
 
 export async function createDrawdown(
   allowanceId: string,
   data: CreateDrawdownPayload,
 ): Promise<Drawdown> {
-  return apiPost<Drawdown>(`${BASE}/items/${allowanceId}/drawdowns`, data);
+  return apiPost<Drawdown>(`/v1/allowances/items/${allowanceId}/drawdowns`, data);
 }
 
 export async function deleteDrawdown(drawdownId: string): Promise<void> {
-  return apiDelete<void>(`${BASE}/drawdowns/${drawdownId}`);
+  return apiDelete<void>(`/v1/allowances/drawdowns/${drawdownId}`);
 }

@@ -55,7 +55,6 @@ import { getErrorMessage, triggerDownload, apiPost } from '@/shared/lib/api';
 import { PROPERTY_DOCUMENT_LOCALES } from '@/shared/lib/documentExport';
 import { DocumentLanguageSelect } from '@/shared/ui/DocumentLanguageSelect';
 
-const API_BASE = '/v1/property-dev';
 const MANAGER_PLUS = new Set(['admin', 'superuser', 'owner', 'manager']);
 const BULK_MAX_ITEMS = 500;
 const inputCls =
@@ -262,7 +261,7 @@ function PlotStatusChangeSection() {
   const mu = useMutation<BulkResult, unknown, { dry: boolean }>({
     mutationFn: async ({ dry }) => {
       return apiPost<BulkResult>(
-        `${API_BASE}/bulk/plots/bulk-status-change/${dry ? '?dry_run=true' : ''}`,
+        `/v1/property-dev/bulk/plots/bulk-status-change/${dry ? '?dry_run=true' : ''}`,
         {
           plot_ids: plotIds,
           target_status: targetStatus,
@@ -389,7 +388,7 @@ function ReservationExtendExpirySection() {
   const mu = useMutation<BulkResult, unknown, { dry: boolean }>({
     mutationFn: async ({ dry }) =>
       apiPost<BulkResult>(
-        `${API_BASE}/bulk/reservations/bulk-extend-expiry/${
+        `/v1/property-dev/bulk/reservations/bulk-extend-expiry/${
           dry ? '?dry_run=true' : ''
         }`,
         {
@@ -487,7 +486,7 @@ function DocumentsRegenerateSection() {
   const mu = useMutation<BulkResult, unknown, { dry: boolean }>({
     mutationFn: async ({ dry }) =>
       apiPost<BulkResult>(
-        `${API_BASE}/bulk/documents/bulk-regenerate/${dry ? '?dry_run=true' : ''}`,
+        `/v1/property-dev/bulk/documents/bulk-regenerate/${dry ? '?dry_run=true' : ''}`,
         {
           document_type: docType,
           [idsKey]: ids,
@@ -577,7 +576,7 @@ function LeadsImportCsvSection() {
     if (dry) params.set('dry_run', 'true');
     const token = localStorage.getItem('oe_access_token') || '';
     const res = await fetch(
-      `/api${API_BASE}/bulk/leads/bulk-import-csv/?${params.toString()}`,
+      `/api/v1/property-dev/bulk/leads/bulk-import-csv/?${params.toString()}`,
       {
         method: 'POST',
         headers: {
@@ -690,7 +689,7 @@ function BuyerMergeSection() {
   const mu = useMutation<BulkResult, unknown, { dry: boolean }>({
     mutationFn: async ({ dry }) =>
       apiPost<BulkResult>(
-        `${API_BASE}/bulk/buyers/bulk-merge/${dry ? '?dry_run=true' : ''}`,
+        `/v1/property-dev/bulk/buyers/bulk-merge/${dry ? '?dry_run=true' : ''}`,
         {
           primary_buyer_id: primaryId,
           duplicate_buyer_ids: duplicates,

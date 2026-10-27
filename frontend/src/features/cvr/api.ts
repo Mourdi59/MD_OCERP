@@ -3,7 +3,7 @@
 /**
  * API helpers for Cost-Value Reconciliation (CVR) & Cashflow.
  *
- * Every path is built from BASE ('/v1/cvr'); apiGet / apiPost already prepend
+ * Every path is built from /v1/cvr; apiGet / apiPost already prepend
  * '/api', so we never write '/api/v1' here. Every monetary value crosses the
  * wire as a Decimal-as-string (e.g. "1234.56"), never a number: format it for
  * display with formatCurrency / toNum from '@/shared/lib/money' and never call
@@ -12,7 +12,6 @@
 
 import { apiGet, apiPost, apiPatch, apiDelete, type Page } from '@/shared/lib/api';
 
-const BASE = '/v1/cvr';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -195,85 +194,85 @@ export interface CreatePaymentApplicationPayload {
 /* ── Reports ───────────────────────────────────────────────────────────── */
 
 export async function fetchCvrReports(projectId: string): Promise<CvrReportList> {
-  return apiGet<CvrReportList>(`${BASE}/reports/?project_id=${encodeURIComponent(projectId)}`);
+  return apiGet<CvrReportList>(`/v1/cvr/reports/?project_id=${encodeURIComponent(projectId)}`);
 }
 
 export async function createCvrReport(data: CreateCvrReportPayload): Promise<CvrReport> {
-  return apiPost<CvrReport>(`${BASE}/reports/`, data);
+  return apiPost<CvrReport>(`/v1/cvr/reports/`, data);
 }
 
 export async function updateCvrReport(
   id: string,
   data: Partial<CreateCvrReportPayload>,
 ): Promise<CvrReport> {
-  return apiPatch<CvrReport>(`${BASE}/reports/${id}`, data);
+  return apiPatch<CvrReport>(`/v1/cvr/reports/${id}`, data);
 }
 
 export async function deleteCvrReport(id: string): Promise<void> {
-  return apiDelete<void>(`${BASE}/reports/${id}`);
+  return apiDelete<void>(`/v1/cvr/reports/${id}`);
 }
 
 export async function finalizeCvrReport(id: string): Promise<CvrReport> {
-  return apiPost<CvrReport>(`${BASE}/reports/${id}/finalize/`, {});
+  return apiPost<CvrReport>(`/v1/cvr/reports/${id}/finalize/`, {});
 }
 
 export async function fetchCvrSummary(reportId: string): Promise<CvrSummary> {
-  return apiGet<CvrSummary>(`${BASE}/reports/${reportId}/summary/`);
+  return apiGet<CvrSummary>(`/v1/cvr/reports/${reportId}/summary/`);
 }
 
 /* ── Lines ─────────────────────────────────────────────────────────────── */
 
 export async function fetchCvrLines(reportId: string): Promise<CvrLine[]> {
-  return apiGet<CvrLine[]>(`${BASE}/reports/${reportId}/lines/`);
+  return apiGet<CvrLine[]>(`/v1/cvr/reports/${reportId}/lines/`);
 }
 
 export async function createCvrLine(
   reportId: string,
   data: CreateCvrLinePayload,
 ): Promise<CvrLine> {
-  return apiPost<CvrLine>(`${BASE}/reports/${reportId}/lines/`, data);
+  return apiPost<CvrLine>(`/v1/cvr/reports/${reportId}/lines/`, data);
 }
 
 /** Add or refresh the labour cost head from the month's approved field timesheets. */
 export async function importFieldLabourLine(reportId: string): Promise<CvrLine> {
-  return apiPost<CvrLine>(`${BASE}/reports/${reportId}/lines/from-field-time/`, {});
+  return apiPost<CvrLine>(`/v1/cvr/reports/${reportId}/lines/from-field-time/`, {});
 }
 
 export async function updateCvrLine(lineId: string, data: UpdateCvrLinePayload): Promise<CvrLine> {
-  return apiPatch<CvrLine>(`${BASE}/lines/${lineId}`, data);
+  return apiPatch<CvrLine>(`/v1/cvr/lines/${lineId}`, data);
 }
 
 export async function deleteCvrLine(lineId: string): Promise<void> {
-  return apiDelete<void>(`${BASE}/lines/${lineId}`);
+  return apiDelete<void>(`/v1/cvr/lines/${lineId}`);
 }
 
 /* ── Cashflow ──────────────────────────────────────────────────────────── */
 
 export async function fetchCashflowPoints(projectId: string): Promise<CashflowPoint[]> {
-  return apiGet<CashflowPoint[]>(`${BASE}/cashflow/?project_id=${encodeURIComponent(projectId)}`);
+  return apiGet<CashflowPoint[]>(`/v1/cvr/cashflow/?project_id=${encodeURIComponent(projectId)}`);
 }
 
 export async function fetchCashflowSeries(projectId: string): Promise<CashflowSeries> {
   return apiGet<CashflowSeries>(
-    `${BASE}/cashflow/series/?project_id=${encodeURIComponent(projectId)}`,
+    `/v1/cvr/cashflow/series/?project_id=${encodeURIComponent(projectId)}`,
   );
 }
 
 export async function createCashflowPoint(
   data: CreateCashflowPointPayload,
 ): Promise<CashflowPoint> {
-  return apiPost<CashflowPoint>(`${BASE}/cashflow/`, data);
+  return apiPost<CashflowPoint>(`/v1/cvr/cashflow/`, data);
 }
 
 export async function updateCashflowPoint(
   id: string,
   data: UpdateCashflowPointPayload,
 ): Promise<CashflowPoint> {
-  return apiPatch<CashflowPoint>(`${BASE}/cashflow/${id}`, data);
+  return apiPatch<CashflowPoint>(`/v1/cvr/cashflow/${id}`, data);
 }
 
 export async function deleteCashflowPoint(id: string): Promise<void> {
-  return apiDelete<void>(`${BASE}/cashflow/${id}`);
+  return apiDelete<void>(`/v1/cvr/cashflow/${id}`);
 }
 
 /* ── Payment applications ──────────────────────────────────────────────── */
@@ -282,21 +281,21 @@ export async function fetchPaymentApplications(
   projectId: string,
 ): Promise<PaymentApplicationList> {
   return apiGet<PaymentApplicationList>(
-    `${BASE}/payment-applications/?project_id=${encodeURIComponent(projectId)}`,
+    `/v1/cvr/payment-applications/?project_id=${encodeURIComponent(projectId)}`,
   );
 }
 
 export async function createPaymentApplication(
   data: CreatePaymentApplicationPayload,
 ): Promise<PaymentApplication> {
-  return apiPost<PaymentApplication>(`${BASE}/payment-applications/`, data);
+  return apiPost<PaymentApplication>(`/v1/cvr/payment-applications/`, data);
 }
 
 export async function updatePaymentApplication(
   id: string,
   data: Partial<CreatePaymentApplicationPayload>,
 ): Promise<PaymentApplication> {
-  return apiPatch<PaymentApplication>(`${BASE}/payment-applications/${id}`, data);
+  return apiPatch<PaymentApplication>(`/v1/cvr/payment-applications/${id}`, data);
 }
 
 /** A contract progress claim offered by the payment application picker. */
@@ -317,11 +316,11 @@ export interface ProgressClaimOption {
 export async function fetchProgressClaimOptions(projectId: string): Promise<ProgressClaimOption[]> {
   // The route is not paged, it answers with every claim of the project.
   const page = await apiGet<Pick<Page<ProgressClaimOption>, 'items' | 'total'>>(
-    `${BASE}/progress-claims/?project_id=${encodeURIComponent(projectId)}`,
+    `/v1/cvr/progress-claims/?project_id=${encodeURIComponent(projectId)}`,
   );
   return page.items;
 }
 
 export async function deletePaymentApplication(id: string): Promise<void> {
-  return apiDelete<void>(`${BASE}/payment-applications/${id}`);
+  return apiDelete<void>(`/v1/cvr/payment-applications/${id}`);
 }

@@ -76,22 +76,21 @@ export type FidelityReportListItem = Omit<FidelityReport, 'items'> & { id: strin
 
 export type CheckFormat = 'gaeb_xml' | 'bc3' | 'excel' | 'csv';
 
-const base = (boqId: string) => `/v1/boq/boqs/${encodeURIComponent(boqId)}/exchange-reports`;
 
 export function listFidelityReports(boqId: string, direction?: 'import' | 'export'): Promise<{ items: FidelityReportListItem[] }> {
   const query = direction ? `?direction=${direction}` : '';
-  return apiGet<{ items: FidelityReportListItem[] }>(`${base(boqId)}/${query}`);
+  return apiGet<{ items: FidelityReportListItem[] }>(`/v1/boq/boqs/${encodeURIComponent(boqId)}/exchange-reports/${query}`);
 }
 
 export function getFidelityReport(boqId: string, reportId: string): Promise<FidelityReport> {
-  return apiGet<FidelityReport>(`${base(boqId)}/${encodeURIComponent(reportId)}/`);
+  return apiGet<FidelityReport>(`/v1/boq/boqs/${encodeURIComponent(boqId)}/exchange-reports/${encodeURIComponent(reportId)}/`);
 }
 
 export function checkExportFidelity(
   boqId: string,
   body: { format_id: CheckFormat; variant?: '' | 'x83' | 'x84'; roundtrip: boolean },
 ): Promise<FidelityReport> {
-  return apiPost<FidelityReport>(`${base(boqId)}/check/`, body);
+  return apiPost<FidelityReport>(`/v1/boq/boqs/${encodeURIComponent(boqId)}/exchange-reports/check/`, body);
 }
 
 /** Download a stored report as CSV or XLSX, narrowed to the dialog's filter. */
@@ -106,7 +105,7 @@ export async function downloadFidelityReport(
   if (filter.kind) params.set('kind', filter.kind);
   const language = activeLanguageTag();
   const res = await fetchWithAuth(
-    `/api${base(boqId)}/${encodeURIComponent(reportId)}/download/?${params.toString()}`,
+    `/api/v1/boq/boqs/${encodeURIComponent(boqId)}/exchange-reports/${encodeURIComponent(reportId)}/download/?${params.toString()}`,
     { headers: language ? { 'Accept-Language': language } : {} },
   );
   if (!res.ok) throw new Error(String(res.status));

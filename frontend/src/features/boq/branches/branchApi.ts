@@ -11,7 +11,6 @@ import { apiGet, apiPatch, apiPost, apiPut, downloadWithAuth } from '@/shared/li
 import { documentExportUrl, type DocumentFormat } from '@/shared/lib/documentExport';
 import type { BOQ } from '../api';
 
-const BASE = '/v1/boq/boqs';
 
 export type BranchStatus = 'open' | 'merged' | 'archived';
 export type Resolution = 'source' | 'target';
@@ -152,39 +151,39 @@ export interface CreateBranchBody {
 }
 
 export const branchApi = {
-  tree: (boqId: string) => apiGet<BranchTree>(`${BASE}/${boqId}/branches/`),
+  tree: (boqId: string) => apiGet<BranchTree>(`/v1/boq/boqs/${boqId}/branches/`),
 
   create: (sourceBoqId: string, body: CreateBranchBody) =>
-    apiPost<BOQ, CreateBranchBody>(`${BASE}/${sourceBoqId}/branches/`, body),
+    apiPost<BOQ, CreateBranchBody>(`/v1/boq/boqs/${sourceBoqId}/branches/`, body),
 
   update: (branchId: string, body: { name?: string; note?: string; status?: 'open' | 'archived' }) =>
-    apiPatch<BranchTree>(`${BASE}/${branchId}/branch/`, body),
+    apiPatch<BranchTree>(`/v1/boq/boqs/${branchId}/branch/`, body),
 
-  compare: (aId: string, bId: string) => apiGet<BranchCompare>(`${BASE}/${aId}/branches/compare/${bId}`),
+  compare: (aId: string, bId: string) => apiGet<BranchCompare>(`/v1/boq/boqs/${aId}/branches/compare/${bId}`),
 
   exportCompare: (aId: string, bId: string, format: DocumentFormat, view: CompareView, locale: string) =>
     downloadWithAuth(
-      documentExportUrl(`${BASE}/${aId}/branches/compare/${bId}/export`, { format, view, locale }),
+      documentExportUrl(`/v1/boq/boqs/${aId}/branches/compare/${bId}/export`, { format, view, locale }),
       `branch-compare.${format}`,
     ),
 
   plan: (targetId: string, sourceId: string, keys?: string[]) =>
-    apiPost<ApplyPlan>(`${BASE}/${targetId}/branches/plan/`, { source_boq_id: sourceId, keys: keys ?? null }),
+    apiPost<ApplyPlan>(`/v1/boq/boqs/${targetId}/branches/plan/`, { source_boq_id: sourceId, keys: keys ?? null }),
 
   cherryPick: (targetId: string, sourceId: string, keys: string[], resolutions: Record<string, Resolution>) =>
-    apiPost<ApplyResult>(`${BASE}/${targetId}/branches/cherry-pick/`, {
+    apiPost<ApplyResult>(`/v1/boq/boqs/${targetId}/branches/cherry-pick/`, {
       source_boq_id: sourceId,
       keys,
       resolutions,
     }),
 
   merge: (branchId: string, resolutions: Record<string, Resolution>, includeMarkups: boolean) =>
-    apiPost<ApplyResult>(`${BASE}/${branchId}/branch/merge/`, {
+    apiPost<ApplyResult>(`/v1/boq/boqs/${branchId}/branch/merge/`, {
       resolutions,
       include_markups: includeMarkups,
       confirm: true,
     }),
 
   linkDesignOption: (branchId: string, optionId: string | null) =>
-    apiPut<BranchTree>(`${BASE}/${branchId}/branch/design-option/`, { option_id: optionId }),
+    apiPut<BranchTree>(`/v1/boq/boqs/${branchId}/branch/design-option/`, { option_id: optionId }),
 };

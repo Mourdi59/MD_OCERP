@@ -8,7 +8,6 @@
 import type { Page } from '@/shared/lib/apiHelpers';
 import { apiDelete, apiGet, apiPatch, apiPost, apiPut, API_BASE, getAuthToken } from '@/shared/lib/api';
 
-const BASE = `${API_BASE}/v1/schedule`;
 
 /* ── Scheduling profiles ──────────────────────────────────────────────── */
 
@@ -266,8 +265,8 @@ function saveBlob(blob: Blob, filename: string): void {
   }, 1000);
 }
 
-async function postForm<T>(path: string, form: FormData): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, { method: 'POST', headers: authHeaders(true), body: form });
+async function readForm<T>(sent: Promise<Response>): Promise<T> {
+  const res = await sent;
   if (!res.ok) throw await toError(res);
   return res.json() as Promise<T>;
 }
@@ -315,7 +314,7 @@ export const interopApi = {
   /* Progress sheet */
   async downloadProgressSheet(scheduleId: string, filters: ProgressSheetFilters): Promise<number> {
     const res = await fetch(
-      `${BASE}/schedules/${encodeURIComponent(scheduleId)}/progress-sheet${progressSheetQuery(filters)}`,
+      `${API_BASE}/v1/schedule/schedules/${encodeURIComponent(scheduleId)}/progress-sheet${progressSheetQuery(filters)}`,
       { method: 'GET', headers: authHeaders(false) },
     );
     if (!res.ok) throw await toError(res);
@@ -327,7 +326,9 @@ export const interopApi = {
     form.append('file', file);
     if (statusDate) form.append('status_date', statusDate);
     if (locale) form.append('locale', locale);
-    return postForm<SheetPreview>(`/schedules/${encodeURIComponent(scheduleId)}/progress-sheet/preview`, form);
+    return readForm<SheetPreview>(
+      fetch(`${API_BASE}/v1/schedule/schedules/${encodeURIComponent(scheduleId)}/progress-sheet/preview`, { method: 'POST', headers: authHeaders(true), body: form }),
+    );
   },
   applyProgressSheet(
     scheduleId: string,
@@ -340,7 +341,9 @@ export const interopApi = {
     form.append('status_date', body.statusDate);
     form.append('row_numbers', JSON.stringify(body.rowNumbers));
     if (body.locale) form.append('locale', body.locale);
-    return postForm<SheetApplyResult>(`/schedules/${encodeURIComponent(scheduleId)}/progress-sheet/apply`, form);
+    return readForm<SheetApplyResult>(
+      fetch(`${API_BASE}/v1/schedule/schedules/${encodeURIComponent(scheduleId)}/progress-sheet/apply`, { method: 'POST', headers: authHeaders(true), body: form }),
+    );
   },
 
   /* Import source */

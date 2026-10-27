@@ -193,7 +193,6 @@ const LOCALE_UNITS: Record<string, readonly string[]> = {
  * sessions keep working: the server sync is best-effort.
  */
 const CUSTOM_UNITS_KEY = 'oe_custom_units';
-const CUSTOM_UNITS_ENDPOINT = '/v1/users/me/custom-units/';
 
 /** The key two unit spellings are compared by: trimmed, case-folded, with
  *  the superscript squared / cubed glyphs folded to digits, so `M3`, `m3`
@@ -260,7 +259,7 @@ export async function syncCustomUnitsFromServer(): Promise<string[]> {
   if (inFlightSync) return inFlightSync;
   inFlightSync = (async () => {
     try {
-      const resp = await apiGet<CustomUnitsResponse>(CUSTOM_UNITS_ENDPOINT);
+      const resp = await apiGet<CustomUnitsResponse>('/v1/users/me/custom-units/');
       const server = Array.isArray(resp?.units) ? resp.units : [];
       const merged = unionUnits(loadCustomUnits(), server);
       writeCustomUnits(merged);
@@ -283,7 +282,7 @@ export function saveCustomUnit(unit: string): void {
   writeCustomUnits([...custom, trimmed]);
   // Best-effort server sync with the new unit alone: the server adds it to
   // the stored list. Don't block the UI on the round-trip.
-  apiPatch(CUSTOM_UNITS_ENDPOINT, { units: [trimmed] }).catch(() => undefined);
+  apiPatch('/v1/users/me/custom-units/', { units: [trimmed] }).catch(() => undefined);
 }
 
 /**
