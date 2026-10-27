@@ -1009,7 +1009,7 @@
       "signature": "서명",
       "signatures": "서명",
       "days_one": "{n}일",
-      "footer_page": "{page} / {total} 쪽",
+      "footer_page": "{page} / {total} 페이지",
       "sig_approved_by": "승인",
       "no": "아니오",
       "days_other": "{n}일",

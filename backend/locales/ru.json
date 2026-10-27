@@ -1527,6 +1527,9 @@
         "decimal_separator": ",",
         "group_separator": " "
       }
+    },
+    "furniture": {
+      "footer_page": "Страница {page} из {total}"
     }
   },
   "cost_control": {

@@ -876,7 +876,7 @@
       "sig_checked_by": "Tarkastus",
       "sig_approved_by": "Hyväksyntä",
       "footer_generated": "Laadittu {timestamp}",
-      "footer_page": "Sivu {page}/{total}"
+      "footer_page": "Sivu {page} / {total}"
     },
     "submittals": {
       "strings": {

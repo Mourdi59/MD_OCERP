@@ -876,7 +876,7 @@
       "sig_checked_by": "जाँचकर्ता",
       "sig_approved_by": "अनुमोदनकर्ता",
       "footer_generated": "तैयार किया गया {timestamp}",
-      "footer_page": "पृष्ठ {page} / {total}"
+      "footer_page": "पेज {page} / {total}"
     },
     "submittals": {
       "strings": {

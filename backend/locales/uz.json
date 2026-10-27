@@ -876,7 +876,7 @@
       "sig_checked_by": "Tekshirgan",
       "sig_approved_by": "Tasdiqlagan",
       "footer_generated": "Yaratilgan vaqt: {timestamp}",
-      "footer_page": "{page} / {total}-bet"
+      "footer_page": "{page}-sahifa / jami {total}"
     },
     "submittals": {
       "strings": {

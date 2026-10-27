@@ -1009,7 +1009,7 @@
       "signature": "签名",
       "signatures": "签署",
       "days_one": "{n}天",
-      "footer_page": "第 {page} 页,共 {total} 页",
+      "footer_page": "第 {page} 页，共 {total} 页",
       "sig_approved_by": "批准",
       "no": "否",
       "days_other": "{n}天",

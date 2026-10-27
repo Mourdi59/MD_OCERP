@@ -876,7 +876,7 @@
       "sig_checked_by": "Ellenőrizte",
       "sig_approved_by": "Jóváhagyta",
       "footer_generated": "Létrehozva: {timestamp}",
-      "footer_page": "{page}. oldal / {total}"
+      "footer_page": "{page}. oldal / összesen {total}"
     },
     "submittals": {
       "strings": {

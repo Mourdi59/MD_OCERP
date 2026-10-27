@@ -1604,6 +1604,9 @@
           "refunded": "ফেরত দেওয়া হয়েছে"
         }
       }
+    },
+    "furniture": {
+      "footer_page": "পৃষ্ঠা {page} / {total}"
     }
   },
   "property_dev": {
