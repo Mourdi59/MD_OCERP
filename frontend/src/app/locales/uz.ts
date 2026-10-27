@@ -60761,7 +60761,7 @@ const resource = {
     "mcp.severity.error": "Xato",
     "mcp.severity.warning": "Ogohlantirish",
     "mcp.severity.info": "Maʼlumot",
-    "mcp.outcome.ok": "OK",
+    "mcp.outcome.ok": "Muvaffaqiyatli",
     "mcp.outcome.error": "Xato",
     "mcp.outcome.denied": "Rad etilgan",
     "mcp.outcome.rate_limited": "So‘rov chegarasiga yetildi",

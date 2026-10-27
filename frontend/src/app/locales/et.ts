@@ -59779,7 +59779,7 @@ const resource = {
     "mcp.severity.error": "Viga",
     "mcp.severity.warning": "Hoiatus",
     "mcp.severity.info": "Teave",
-    "mcp.outcome.ok": "OK",
+    "mcp.outcome.ok": "Õnnestus",
     "mcp.outcome.error": "Viga",
     "mcp.outcome.denied": "Keelatud",
     "mcp.outcome.rate_limited": "Piirmäär ületatud",

@@ -59829,7 +59829,7 @@ const resource = {
     "mcp.severity.error": "Feil",
     "mcp.severity.warning": "Advarsel",
     "mcp.severity.info": "Info",
-    "mcp.outcome.ok": "OK",
+    "mcp.outcome.ok": "Vellykket",
     "mcp.outcome.error": "Feil",
     "mcp.outcome.denied": "Avvist",
     "mcp.outcome.rate_limited": "Hastighetsgrensen er nådd",

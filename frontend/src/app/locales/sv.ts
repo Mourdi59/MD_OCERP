@@ -60444,7 +60444,7 @@ const resource = {
     "mcp.severity.error": "Fel",
     "mcp.severity.warning": "Varning",
     "mcp.severity.info": "Info",
-    "mcp.outcome.ok": "OK",
+    "mcp.outcome.ok": "Lyckades",
     "mcp.outcome.error": "Fel",
     "mcp.outcome.denied": "Nekad",
     "mcp.outcome.rate_limited": "Hastighetsgräns nådd",

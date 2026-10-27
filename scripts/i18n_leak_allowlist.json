@@ -1873,5 +1873,35 @@
     "en_value": "GTIN / EAN",
     "note": "GS1 trade item number and EAN barcode standard codes, written the same way in every locale including ru",
     "reason_category": "standard_code"
+  },
+  "boq.fidelity.format_excel": {
+    "en_value": "Excel",
+    "note": "Excel is a product name; every locale writes it in Latin script",
+    "reason_category": "product_name"
+  },
+  "closeout.dossier.channel_webhook": {
+    "en_value": "Webhook",
+    "note": "technical term for an HTTP callback; ru, uk, bg, ko, hi, ar, he, th, ja transliterate it, the other locales carry the English loanword unchanged",
+    "reason_category": "cognate_loanword"
+  },
+  "cutting.diagram_repeat": {
+    "en_value": "{{n}} x",
+    "note": "repeat count and a multiplication sign, no word to translate",
+    "reason_category": "template_placeholder"
+  },
+  "field_evidence.accuracy_short": {
+    "en_value": "±{{meters}} m",
+    "note": "SI unit symbol for metre; locales with their own symbol (ru, uk, bg, ar, he, el, hi, th, zh and others) already differ, the rest use m",
+    "reason_category": "abbreviation"
+  },
+  "mcp.duration_ms": {
+    "en_value": "{{ms}} ms",
+    "note": "SI unit symbol for millisecond; locales with their own symbol (ru, uk, bg, kk, ky, mn, ar, he, th, ja, zh and others) differ, the rest use ms",
+    "reason_category": "abbreviation"
+  },
+  "schedule.progress_sheet.filter_wbs": {
+    "en_value": "WBS",
+    "note": "work breakdown structure acronym; de PSP, es EDT, pt EAP, ru ISR, uk ISR, kk, el, he and zh are localised, the other locales keep the international acronym",
+    "reason_category": "acronym"
   }
 }

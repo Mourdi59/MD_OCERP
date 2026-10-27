@@ -60173,7 +60173,7 @@ const resource = {
     "mcp.severity.error": "Greška",
     "mcp.severity.warning": "Upozorenje",
     "mcp.severity.info": "Informacija",
-    "mcp.outcome.ok": "OK",
+    "mcp.outcome.ok": "Uspješno",
     "mcp.outcome.error": "Greška",
     "mcp.outcome.denied": "Odbijeno",
     "mcp.outcome.rate_limited": "Ograničenje brzine premašeno",

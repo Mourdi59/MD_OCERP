@@ -55908,7 +55908,7 @@ const resource = {
     "mcp.severity.error": "Error",
     "mcp.severity.warning": "Aviso",
     "mcp.severity.info": "Info",
-    "mcp.outcome.ok": "OK",
+    "mcp.outcome.ok": "Correcto",
     "mcp.outcome.error": "Error",
     "mcp.outcome.denied": "Denegado",
     "mcp.outcome.rate_limited": "Límite de frecuencia alcanzado",
