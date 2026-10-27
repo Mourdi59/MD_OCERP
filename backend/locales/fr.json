@@ -1178,6 +1178,7 @@
     "boq_pdf": {
       "strings": {
         "ai_generated": "Généré par IA",
+        "drawing": "Plan",
         "cost_estimate": "ESTIMATION DES COÛTS",
         "summary": "RÉSUMÉ",
         "project": "Projet :",

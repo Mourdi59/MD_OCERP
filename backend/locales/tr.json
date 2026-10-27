@@ -1154,6 +1154,7 @@
     "boq_pdf": {
       "strings": {
         "ai_generated": "Yapay zekâ ile üretildi",
+        "drawing": "Çizim",
         "cost_estimate": "MALİYET TAHMİNİ",
         "summary": "ÖZET",
         "project": "Proje:",

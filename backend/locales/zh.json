@@ -1178,6 +1178,7 @@
     "boq_pdf": {
       "strings": {
         "ai_generated": "AI 生成",
+        "drawing": "图纸",
         "cost_estimate": "COST ESTIMATE",
         "summary": "SUMMARY",
         "project": "Project:",

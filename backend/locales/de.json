@@ -1159,6 +1159,7 @@
     "boq_pdf": {
       "strings": {
         "ai_generated": "KI-generiert",
+        "drawing": "Zeichnung",
         "cost_estimate": "KOSTENSCHÄTZUNG",
         "summary": "ZUSAMMENFASSUNG",
         "project": "Projekt:",

@@ -1178,6 +1178,7 @@
     "boq_pdf": {
       "strings": {
         "ai_generated": "Створено ШІ",
+        "drawing": "Креслення",
         "cost_estimate": "КОШТОРИСНИЙ РОЗРАХУНОК",
         "summary": "ПІДСУМКИ",
         "project": "Проєкт:",
