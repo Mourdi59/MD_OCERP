@@ -43,3 +43,4 @@ demo_packs/residential-saopaulo||Pintura de fachada
 # either side keeps the exception narrow without that.
 frontend/src/app/locales/cs.ts||aby práce
 frontend/src/app/locales/cs.ts||na zaměření
+backend/app/modules/property_dev/data/document_locales/hu.json||hozzájárulása nélkül
