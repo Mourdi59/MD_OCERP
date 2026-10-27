@@ -880,6 +880,11 @@
       "vi",
       "zh"
     ],
+    "backend/app/modules/schedule_advanced/messages": [
+      "de",
+      "en",
+      "ru"
+    ],
     "backend/app/modules/site_logistics/messages": [
       "ar",
       "bg",
