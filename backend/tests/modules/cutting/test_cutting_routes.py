@@ -251,6 +251,12 @@ async def test_imports_from_a_boq_line_and_a_csv_file(app_factory, db_session) -
             assert from_file.status_code == 200, from_file.text
             assert from_file.json()["imported"] == 2
             assert {p["ref"] for p in from_file.json()["job"]["pieces"]} == {"X1", "X2"}
+
+            too_big = await client.post(
+                f"{_PREFIX}/jobs/{job['id']}/import/file",
+                files={"upload": ("cut.csv", io.BytesIO(b"x" * (8 * 1024 * 1024 + 1)), "text/csv")},
+            )
+            assert too_big.status_code == 413
     finally:
         app_factory.dependency_overrides.clear()
 

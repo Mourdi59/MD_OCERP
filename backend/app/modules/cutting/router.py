@@ -221,7 +221,7 @@ async def import_file(
 ) -> ImportResult:
     """A CSV or XLSX cut list becomes the cut list."""
     job = await _job(job_id, user_id, session)
-    content = await upload.read()
+    content = await upload.read(MAX_UPLOAD_BYTES + 1)
     if len(content) > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail=f"File exceeds the {MAX_UPLOAD_BYTES} byte limit")
     service = _service(session)
