@@ -421,3 +421,21 @@ def _check_unique_refs(rows: list[PieceIn] | list[StockIn]) -> None:
         if row.ref in seen:
             raise ValueError(f"Duplicate ref {row.ref!r}")
         seen.add(row.ref)
+
+
+class InventoryOffcutListResponse(BaseModel):
+    """A page of InventoryOffcut with the count of rows the filters matched."""
+
+    items: list[InventoryOffcut]
+    total: int
+    offset: int = 0
+    limit: int = 50
+
+
+class PlanSummaryListResponse(BaseModel):
+    """A page of PlanSummary with the count of rows the filters matched."""
+
+    items: list[PlanSummary]
+    total: int
+    offset: int = 0
+    limit: int = 50

@@ -162,3 +162,21 @@ class MeetingValidationResponse(BaseModel):
     errors: int
     warnings: int
     results: list[MeetingValidationResult] = Field(default_factory=list)
+
+
+class GlossaryTermListResponse(BaseModel):
+    """A page of GlossaryTermResponse with the count of rows the filters matched."""
+
+    items: list[GlossaryTermResponse]
+    total: int
+    offset: int = 0
+    limit: int = 50
+
+
+class RecordingListResponse(BaseModel):
+    """A page of RecordingResponse with the count of rows the filters matched."""
+
+    items: list[RecordingResponse]
+    total: int
+    offset: int = 0
+    limit: int = 50

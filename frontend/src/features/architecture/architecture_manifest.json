@@ -46911,7 +46911,7 @@
           "method": "GET",
           "path": "/packages/{package_id}/dossiers",
           "handler": "list_dossiers",
-          "response_model": "list[DossierResponse]",
+          "response_model": "DossierListResponse",
           "request_schema": "None"
         },
         {
@@ -46945,7 +46945,7 @@
           "method": "GET",
           "path": "/projects/{project_id}/dossier-targets",
           "handler": "list_dossier_targets",
-          "response_model": "list[DossierTarget]",
+          "response_model": "DossierTargetListResponse",
           "request_schema": "None"
         }
       ],
@@ -47818,6 +47818,60 @@
               "name": "kind",
               "type": "str | None",
               "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "DossierListResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "A page of DossierResponse with the count of rows the filters matched.",
+          "fields": [
+            {
+              "name": "items",
+              "type": "list[DossierResponse]"
+            },
+            {
+              "name": "total",
+              "type": "int"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "default": "50"
+            }
+          ]
+        },
+        {
+          "class_name": "DossierTargetListResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "A page of DossierTarget with the count of rows the filters matched.",
+          "fields": [
+            {
+              "name": "items",
+              "type": "list[DossierTarget]"
+            },
+            {
+              "name": "total",
+              "type": "int"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "default": "50"
             }
           ]
         }
@@ -53291,7 +53345,7 @@
           "method": "GET",
           "path": "/scales",
           "handler": "list_scales",
-          "response_model": "list[ScaleResponse]",
+          "response_model": "ScaleListResponse",
           "request_schema": "None"
         },
         {
@@ -53318,7 +53372,7 @@
           "method": "GET",
           "path": "/assessments",
           "handler": "list_assessments",
-          "response_model": "list[AssessmentResponse]",
+          "response_model": "AssessmentListResponse",
           "request_schema": "None"
         },
         {
@@ -53345,7 +53399,7 @@
           "method": "GET",
           "path": "/actions",
           "handler": "list_actions",
-          "response_model": "list[ActionResponse]",
+          "response_model": "ActionListResponse",
           "request_schema": "None"
         },
         {
@@ -54166,6 +54220,87 @@
             {
               "name": "asset_refs",
               "type": "list[str]"
+            }
+          ]
+        },
+        {
+          "class_name": "ScaleListResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "A page of ScaleResponse with the count of rows the filters matched.",
+          "fields": [
+            {
+              "name": "items",
+              "type": "list[ScaleResponse]"
+            },
+            {
+              "name": "total",
+              "type": "int"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "default": "50"
+            }
+          ]
+        },
+        {
+          "class_name": "AssessmentListResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "A page of AssessmentResponse with the count of rows the filters matched.",
+          "fields": [
+            {
+              "name": "items",
+              "type": "list[AssessmentResponse]"
+            },
+            {
+              "name": "total",
+              "type": "int"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "default": "50"
+            }
+          ]
+        },
+        {
+          "class_name": "ActionListResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "A page of ActionResponse with the count of rows the filters matched.",
+          "fields": [
+            {
+              "name": "items",
+              "type": "list[ActionResponse]"
+            },
+            {
+              "name": "total",
+              "type": "int"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "default": "50"
             }
           ]
         }
@@ -80734,7 +80869,7 @@
           "method": "GET",
           "path": "/inventory-offcuts/",
           "handler": "inventory_offcuts",
-          "response_model": "list[InventoryOffcut]",
+          "response_model": "InventoryOffcutListResponse",
           "request_schema": "JobKind"
         },
         {
@@ -80760,7 +80895,7 @@
           "method": "GET",
           "path": "/jobs/{job_id}/plans",
           "handler": "list_plans",
-          "response_model": "list[PlanSummary]"
+          "response_model": "PlanSummaryListResponse"
         },
         {
           "method": "GET",
@@ -81872,6 +82007,60 @@
             {
               "name": "item_ids",
               "type": "list[uuid.UUID]"
+            }
+          ]
+        },
+        {
+          "class_name": "InventoryOffcutListResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "A page of InventoryOffcut with the count of rows the filters matched.",
+          "fields": [
+            {
+              "name": "items",
+              "type": "list[InventoryOffcut]"
+            },
+            {
+              "name": "total",
+              "type": "int"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "default": "50"
+            }
+          ]
+        },
+        {
+          "class_name": "PlanSummaryListResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "A page of PlanSummary with the count of rows the filters matched.",
+          "fields": [
+            {
+              "name": "items",
+              "type": "list[PlanSummary]"
+            },
+            {
+              "name": "total",
+              "type": "int"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "default": "50"
             }
           ]
         }
@@ -84025,7 +84214,7 @@
           "method": "GET",
           "path": "/diaries/{diary_id}/merge-audit/",
           "handler": "diary_merge_audit",
-          "response_model": "list[MergeAuditOut]",
+          "response_model": "MergeAuditListResponse",
           "request_schema": "None"
         },
         {
@@ -84162,7 +84351,7 @@
           "method": "GET",
           "path": "/diary-entries/{entry_id}/merge-audit/",
           "handler": "entry_merge_audit",
-          "response_model": "list[MergeAuditOut]",
+          "response_model": "MergeAuditListResponse",
           "request_schema": "None"
         },
         {
@@ -99156,7 +99345,7 @@
           "method": "GET",
           "path": "/comparisons/",
           "handler": "list_comparisons",
-          "response_model": "list[ComparisonSummary]",
+          "response_model": "ComparisonListResponse",
           "request_schema": "DrawingCompareService"
         },
         {
@@ -99921,6 +100110,33 @@
             {
               "name": "results",
               "type": "list[ValidationResultOut]"
+            }
+          ]
+        },
+        {
+          "class_name": "ComparisonListResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "A page of ComparisonSummary with the count of rows the filters matched.",
+          "fields": [
+            {
+              "name": "items",
+              "type": "list[ComparisonSummary]"
+            },
+            {
+              "name": "total",
+              "type": "int"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "default": "50"
             }
           ]
         }
@@ -139320,7 +139536,7 @@
           "method": "GET",
           "path": "/facilities",
           "handler": "list_facilities",
-          "response_model": "list[FacilityResponse]"
+          "response_model": "FacilityListResponse"
         },
         {
           "method": "POST",
@@ -139351,13 +139567,13 @@
           "method": "GET",
           "path": "/portfolio",
           "handler": "portfolio",
-          "response_model": "list[SummaryResponse]"
+          "response_model": "PortfolioResponse"
         },
         {
           "method": "GET",
           "path": "/subcontractors/{subcontractor_id}/guarantees",
           "handler": "subcontractor_guarantees",
-          "response_model": "list[GuaranteeResponse]"
+          "response_model": "GuaranteeListResponse"
         },
         {
           "method": "GET",
@@ -139369,7 +139585,7 @@
           "method": "GET",
           "path": "/projects/{project_id}/guarantees",
           "handler": "list_guarantees",
-          "response_model": "list[GuaranteeResponse]",
+          "response_model": "GuaranteeListResponse",
           "request_schema": "date | None"
         },
         {
@@ -140386,6 +140602,87 @@
               "name": "next_expiry",
               "type": "date | None",
               "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "GuaranteeListResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "A page of guarantees; ``total`` counts every row the filters matched.",
+          "fields": [
+            {
+              "name": "items",
+              "type": "list[GuaranteeResponse]"
+            },
+            {
+              "name": "total",
+              "type": "int"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "default": "500"
+            }
+          ]
+        },
+        {
+          "class_name": "FacilityListResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "A page of bank credit lines.",
+          "fields": [
+            {
+              "name": "items",
+              "type": "list[FacilityResponse]"
+            },
+            {
+              "name": "total",
+              "type": "int"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "default": "500"
+            }
+          ]
+        },
+        {
+          "class_name": "PortfolioResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Per-project figures for the projects the caller can open.",
+          "fields": [
+            {
+              "name": "items",
+              "type": "list[SummaryResponse]"
+            },
+            {
+              "name": "total",
+              "type": "int"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "default": "500"
             }
           ]
         }
@@ -147702,7 +147999,7 @@
           "method": "GET",
           "path": "/{inspection_id}/merge-audit/",
           "handler": "inspection_merge_audit",
-          "response_model": "list[MergeAuditOut]",
+          "response_model": "MergeAuditListResponse",
           "request_schema": "None"
         },
         {
@@ -155550,7 +155847,7 @@
           "method": "GET",
           "path": "/tokens/",
           "handler": "list_tokens_route",
-          "response_model": "list[McpTokenResponse]"
+          "response_model": "McpTokenListResponse"
         },
         {
           "method": "POST",
@@ -155569,7 +155866,7 @@
           "method": "GET",
           "path": "/calls/",
           "handler": "recent_calls_route",
-          "response_model": "list[McpToolCallResponse]"
+          "response_model": "McpToolCallListResponse"
         },
         {
           "method": "GET",
@@ -155843,6 +156140,60 @@
             {
               "name": "findings",
               "type": "list[McpValidationFinding]"
+            }
+          ]
+        },
+        {
+          "class_name": "McpTokenListResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "A page of McpTokenResponse with the count of rows the filters matched.",
+          "fields": [
+            {
+              "name": "items",
+              "type": "list[McpTokenResponse]"
+            },
+            {
+              "name": "total",
+              "type": "int"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "default": "50"
+            }
+          ]
+        },
+        {
+          "class_name": "McpToolCallListResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "A page of McpToolCallResponse with the count of rows the filters matched.",
+          "fields": [
+            {
+              "name": "items",
+              "type": "list[McpToolCallResponse]"
+            },
+            {
+              "name": "total",
+              "type": "int"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "default": "50"
             }
           ]
         }
@@ -207678,7 +208029,7 @@
           "method": "GET",
           "path": "/items/{item_id}/merge-audit/",
           "handler": "item_merge_audit",
-          "response_model": "list[MergeAuditOut]",
+          "response_model": "MergeAuditListResponse",
           "request_schema": "None"
         },
         {
@@ -237078,7 +237429,7 @@
           "method": "GET",
           "path": "/master-schedules/{master_id}/constraints-log",
           "handler": "master_constraints_log",
-          "response_model": "list[LpsConstraintRow]",
+          "response_model": "LpsConstraintListResponse",
           "request_schema": "ScheduleAdvancedService"
         },
         {
@@ -240993,6 +241344,33 @@
               "name": "link_resolved_at",
               "type": "datetime | None",
               "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "LpsConstraintListResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "A page of the constraints log, open constraints first.",
+          "fields": [
+            {
+              "name": "items",
+              "type": "list[LpsConstraintRow]"
+            },
+            {
+              "name": "total",
+              "type": "int"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "default": "500"
             }
           ]
         },
@@ -289615,7 +289993,7 @@
     "total_columns": 9616,
     "total_relationships": 252,
     "total_routes": 4773,
-    "total_schemas": 4255,
+    "total_schemas": 4269,
     "total_python_files": 2936,
     "frontend_features": 215,
     "frontend_ts_files": 3784,

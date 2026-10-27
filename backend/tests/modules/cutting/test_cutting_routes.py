@@ -192,7 +192,7 @@ async def test_the_full_loop_from_cut_list_to_boq_and_inventory(app_factory, db_
                 f"{_PREFIX}/inventory-offcuts/", params={"project_id": str(project_id), "material": "B500 16"}
             )
             assert offcuts.status_code == 200
-            assert sum(o["on_hand"] for o in offcuts.json()) == returned.json()["returned"]
+            assert sum(o["on_hand"] for o in offcuts.json()["items"]) == returned.json()["returned"]
     finally:
         app_factory.dependency_overrides.clear()
 

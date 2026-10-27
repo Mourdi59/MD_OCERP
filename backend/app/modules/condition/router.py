@@ -35,10 +35,12 @@ from fastapi.responses import Response
 from app.dependencies import CurrentUserId, CurrentUserPayload, RequirePermission, SessionDep, verify_project_access
 from app.modules.condition.schemas import (
     ActionCreate,
+    ActionListResponse,
     ActionResponse,
     ActionUpdate,
     ApplyToAssetsResponse,
     AssessmentCreate,
+    AssessmentListResponse,
     AssessmentResponse,
     AssessmentUpdate,
     DeriveRequest,
@@ -46,6 +48,7 @@ from app.modules.condition.schemas import (
     RatingSuggestionRequest,
     RatingSuggestionResponse,
     ScaleCreate,
+    ScaleListResponse,
     ScaleResponse,
 )
 from app.modules.condition.service import DEFAULT_HORIZON_YEARS, ConditionService
@@ -64,16 +67,17 @@ def _uid(user_id: str | None) -> str | None:
 # ── Scales ───────────────────────────────────────────────────────────────────
 
 
-@router.get("/scales", response_model=list[ScaleResponse])
+@router.get("/scales", response_model=ScaleListResponse)
 async def list_scales(
     project_id: uuid.UUID = Query(...),
     user_id: CurrentUserId = None,  # type: ignore[assignment]
     _perm: None = Depends(RequirePermission("condition.read")),
     service: ConditionService = Depends(_service),
-) -> list[ScaleResponse]:
+) -> ScaleListResponse:
     """Every scale usable in this project."""
     await verify_project_access(project_id, user_id or "", service.session)
-    return [ScaleResponse(**s) for s in await service.list_scales(project_id)]
+    items = [ScaleResponse(**s) for s in await service.list_scales(project_id)]
+    return ScaleListResponse(items=items, total=len(items), limit=len(items))
 
 
 @router.post("/scales", response_model=ScaleResponse, status_code=201)
@@ -125,7 +129,7 @@ async def suggest_rating(
 # ── Assessments ──────────────────────────────────────────────────────────────
 
 
-@router.get("/assessments", response_model=list[AssessmentResponse])
+@router.get("/assessments", response_model=AssessmentListResponse)
 async def list_assessments(
     project_id: uuid.UUID = Query(...),
     inspection_id: str | None = Query(default=None, max_length=36),
@@ -134,11 +138,12 @@ async def list_assessments(
     user_id: CurrentUserId = None,  # type: ignore[assignment]
     _perm: None = Depends(RequirePermission("condition.read")),
     service: ConditionService = Depends(_service),
-) -> list[AssessmentResponse]:
+) -> AssessmentListResponse:
     """Ratings of a project, newest first."""
     await verify_project_access(project_id, user_id or "", service.session)
     rows = await service.repo.list_assessments(project_id, inspection_id=inspection_id, asset_ref=asset_ref, area=area)
-    return [AssessmentResponse.model_validate(r) for r in rows]
+    items = [AssessmentResponse.model_validate(r) for r in rows]
+    return AssessmentListResponse(items=items, total=len(items), limit=len(items))
 
 
 @router.post("/assessments", response_model=AssessmentResponse, status_code=201)
@@ -184,18 +189,19 @@ async def delete_assessment(
 # ── Actions ──────────────────────────────────────────────────────────────────
 
 
-@router.get("/actions", response_model=list[ActionResponse])
+@router.get("/actions", response_model=ActionListResponse)
 async def list_actions(
     project_id: uuid.UUID = Query(...),
     action_status: str | None = Query(default=None, alias="status", pattern=r"^(proposed|approved|done|rejected)$"),
     user_id: CurrentUserId = None,  # type: ignore[assignment]
     _perm: None = Depends(RequirePermission("condition.read")),
     service: ConditionService = Depends(_service),
-) -> list[ActionResponse]:
+) -> ActionListResponse:
     """Maintenance actions of a project, by first year and priority."""
     await verify_project_access(project_id, user_id or "", service.session)
     rows = await service.repo.list_actions(project_id, statuses=[action_status] if action_status else None)
-    return [ActionResponse.model_validate(r) for r in rows]
+    items = [ActionResponse.model_validate(r) for r in rows]
+    return ActionListResponse(items=items, total=len(items), limit=len(items))
 
 
 @router.post("/actions", response_model=ActionResponse, status_code=201)

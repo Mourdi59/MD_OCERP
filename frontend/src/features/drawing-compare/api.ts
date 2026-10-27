@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 /** Drawing revision compare API client (`/api/v1/drawing-compare`). */
 
+import type { Page } from '@/shared/lib/apiHelpers';
 import { API_BASE, apiDelete, apiGet, apiPatch, apiPost, downloadWithAuth } from '@/shared/lib/api';
 import type { Affine, Pt } from './lib/transform';
 
@@ -169,7 +170,9 @@ export interface PreviousRevision {
 export const drawingCompareApi = {
   list: (projectId: string, refId?: string) => {
     const qs = refId ? `&ref_id=${encodeURIComponent(refId)}` : '';
-    return apiGet<ComparisonSummary[]>(`${BASE}/comparisons/?project_id=${encodeURIComponent(projectId)}${qs}`);
+    return apiGet<Page<ComparisonSummary>>(
+      `${BASE}/comparisons/?project_id=${encodeURIComponent(projectId)}${qs}`,
+    ).then((page) => page.items);
   },
   get: (id: string) => apiGet<Comparison>(`${BASE}/comparisons/${id}`),
   createPdf: (payload: PdfComparisonPayload) => apiPost<Comparison>(`${BASE}/comparisons/`, payload),

@@ -1,6 +1,7 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 
+import type { Page } from '@/shared/lib/apiHelpers';
 import { ApiError, apiDelete, apiGet, apiPatch, apiPost, apiPut, downloadWithAuth, fetchWithAuth } from '@/shared/lib/api';
 
 // ---------------------------------------------------------------------------
@@ -337,9 +338,9 @@ export async function importFile(jobId: string, file: File): Promise<ImportResul
 
 export const fetchInventoryOffcuts = (projectId: string, kind: JobKind, material: string) => {
   const qs = material ? `&material=${encodeURIComponent(material)}` : '';
-  return apiGet<InventoryOffcut[]>(
+  return apiGet<Page<InventoryOffcut>>(
     `${BASE}/inventory-offcuts/?project_id=${encodeURIComponent(projectId)}&kind=${kind}${qs}`,
-  );
+  ).then((page) => page.items);
 };
 
 export const addInventoryStock = (jobId: string, itemIds: string[]) =>
@@ -349,7 +350,8 @@ export const validateJob = (jobId: string) => apiGet<ValidationReport>(`${BASE}/
 
 export const optimiseJob = (jobId: string) => apiPost<CuttingPlan>(`${BASE}/jobs/${jobId}/optimise`);
 
-export const fetchPlans = (jobId: string) => apiGet<CuttingPlanSummary[]>(`${BASE}/jobs/${jobId}/plans`);
+export const fetchPlans = (jobId: string) =>
+  apiGet<Page<CuttingPlanSummary>>(`${BASE}/jobs/${jobId}/plans`).then((page) => page.items);
 
 export const fetchPlan = (planId: string) => apiGet<CuttingPlan>(`${BASE}/plans/${planId}`);
 

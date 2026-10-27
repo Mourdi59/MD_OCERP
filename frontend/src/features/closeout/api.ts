@@ -1,5 +1,6 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
+import type { Page } from '@/shared/lib/apiHelpers';
 import { API_BASE, apiGet, apiPost, apiPatch, apiPut, apiDelete, fetchWithAuth, getAuthToken } from '@/shared/lib/api';
 
 const BASE = '/v1/closeout';
@@ -363,7 +364,7 @@ export function requestDossier(
 }
 
 export function listDossiers(packageId: string): Promise<Dossier[]> {
-  return apiGet<Dossier[]>(`${BASE}/packages/${packageId}/dossiers`);
+  return apiGet<Page<Dossier>>(`${BASE}/packages/${packageId}/dossiers`).then((page) => page.items);
 }
 
 export function deliverDossier(dossierId: string, target: DossierDeliveryTarget): Promise<DossierDelivery> {
@@ -375,7 +376,7 @@ export function resendDelivery(deliveryId: string): Promise<DossierDelivery> {
 }
 
 export function listDossierTargets(projectId: string): Promise<DossierTarget[]> {
-  return apiGet<DossierTarget[]>(`${BASE}/projects/${projectId}/dossier-targets`);
+  return apiGet<Page<DossierTarget>>(`${BASE}/projects/${projectId}/dossier-targets`).then((page) => page.items);
 }
 
 export async function downloadDossier(dossier: Dossier): Promise<void> {

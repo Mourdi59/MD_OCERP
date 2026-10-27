@@ -313,3 +313,21 @@ class DossierTarget(BaseModel):
     channel: str
     name: str
     kind: str | None = None
+
+
+class DossierListResponse(BaseModel):
+    """A page of DossierResponse with the count of rows the filters matched."""
+
+    items: list[DossierResponse]
+    total: int
+    offset: int = 0
+    limit: int = 50
+
+
+class DossierTargetListResponse(BaseModel):
+    """A page of DossierTarget with the count of rows the filters matched."""
+
+    items: list[DossierTarget]
+    total: int
+    offset: int = 0
+    limit: int = 50

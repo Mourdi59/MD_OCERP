@@ -42,14 +42,14 @@ async def test_token_secret_is_shown_once_and_revoking_another_persons_token_is_
         assert body["token"].startswith("oe_")
         assert body["can_propose"] is False
         assert body["expires_at"] is not None
-        listed = (await client.get(f"{API_PREFIX}/tokens/")).json()
+        listed = (await client.get(f"{API_PREFIX}/tokens/")).json()["items"]
         assert [t["id"] for t in listed] == [body["id"]]
         assert "token" not in listed[0]
         token_id = body["id"]
 
     async with http_client(build_app(session, caller_id=other.id)) as client:
         assert (await client.delete(f"{API_PREFIX}/tokens/{token_id}/")).status_code == 404
-        assert (await client.get(f"{API_PREFIX}/tokens/")).json() == []
+        assert (await client.get(f"{API_PREFIX}/tokens/")).json()["items"] == []
 
 
 async def test_general_api_keys_are_not_listed_or_revocable_as_mcp_tokens(session) -> None:
@@ -60,7 +60,7 @@ async def test_general_api_keys_are_not_listed_or_revocable_as_mcp_tokens(sessio
     user = await make_user(session)
     general = await UserService(session, get_settings()).create_api_key(user.id, APIKeyCreate(name="CI key"))
     async with http_client(build_app(session, caller_id=user.id)) as client:
-        assert (await client.get(f"{API_PREFIX}/tokens/")).json() == []
+        assert (await client.get(f"{API_PREFIX}/tokens/")).json()["items"] == []
         assert (await client.delete(f"{API_PREFIX}/tokens/{general.id}/")).status_code == 404
 
 

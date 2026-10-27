@@ -27,6 +27,7 @@ from app.modules.schedule.profile_schemas import (
     RecalculateRequest,
     RecalculateResponse,
     SchedulingProfileCreate,
+    SchedulingProfileListResponse,
     SchedulingProfileResponse,
     SchedulingProfileUpdate,
 )
@@ -55,18 +56,19 @@ async def _verify_profile(service: SchedulingProfileService, session: SessionDep
 
 @profile_router.get(
     "/scheduling-profiles/",
-    response_model=list[SchedulingProfileResponse],
+    response_model=SchedulingProfileListResponse,
     dependencies=[Depends(RequirePermission("schedule.read"))],
 )
 async def list_profiles(
     session: SessionDep,
     user_id: CurrentUserId,
     project_id: uuid.UUID = Query(...),
-) -> list[SchedulingProfileResponse]:
+) -> SchedulingProfileListResponse:
     """The project's scheduling profiles, default first."""
     await verify_project_access(project_id, user_id, session)
     rows = await _service(session).list_for_project(project_id)
-    return [SchedulingProfileResponse.model_validate(r) for r in rows]
+    items = [SchedulingProfileResponse.model_validate(r) for r in rows]
+    return SchedulingProfileListResponse(items=items, total=len(items), limit=len(items))
 
 
 @profile_router.post(

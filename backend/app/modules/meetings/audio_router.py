@@ -34,12 +34,14 @@ from app.dependencies import CurrentUserId, RequirePermission, SessionDep, verif
 from app.modules.meetings.audio_schemas import (
     GlossarySeedResponse,
     GlossaryTermCreate,
+    GlossaryTermListResponse,
     GlossaryTermResponse,
     GlossaryTermUpdate,
     MeetingValidationResponse,
     MeetingValidationResult,
     ProposalReviewRequest,
     ProposalReviewResponse,
+    RecordingListResponse,
     RecordingResponse,
     RecordingUpdate,
     SpeechCapabilities,
@@ -134,7 +136,7 @@ async def minutes_pdf_languages() -> list[str]:
 
 @router.get(
     "/glossary/",
-    response_model=list[GlossaryTermResponse],
+    response_model=GlossaryTermListResponse,
     dependencies=[Depends(RequirePermission("meetings.read"))],
 )
 async def list_glossary(
@@ -142,9 +144,10 @@ async def list_glossary(
     project_id: uuid.UUID = Query(...),
     user_id: CurrentUserId = None,  # type: ignore[assignment]
     svc: MeetingAudioService = Depends(_svc),
-) -> list[GlossaryTermResponse]:
+) -> GlossaryTermListResponse:
     await verify_project_access(project_id, str(user_id), session)
-    return [GlossaryTermResponse.model_validate(t) for t in await svc.list_terms(project_id)]
+    items = [GlossaryTermResponse.model_validate(t) for t in await svc.list_terms(project_id)]
+    return GlossaryTermListResponse(items=items, total=len(items), limit=len(items))
 
 
 @router.post(
@@ -231,7 +234,7 @@ async def delete_glossary_term(
 
 @router.get(
     "/{meeting_id}/recordings/",
-    response_model=list[RecordingResponse],
+    response_model=RecordingListResponse,
     dependencies=[Depends(RequirePermission("meetings.read"))],
 )
 async def list_recordings(
@@ -239,9 +242,10 @@ async def list_recordings(
     session: SessionDep,
     user_id: CurrentUserId = None,  # type: ignore[assignment]
     svc: MeetingAudioService = Depends(_svc),
-) -> list[RecordingResponse]:
+) -> RecordingListResponse:
     await _meeting_for(session, meeting_id, user_id)
-    return [recording_response(r) for r in await svc.list_recordings(meeting_id)]
+    items = [recording_response(r) for r in await svc.list_recordings(meeting_id)]
+    return RecordingListResponse(items=items, total=len(items), limit=len(items))
 
 
 @router.get(

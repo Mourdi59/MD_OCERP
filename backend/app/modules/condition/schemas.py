@@ -274,3 +274,30 @@ class ApplyToAssetsResponse(BaseModel):
     updated: int
     skipped: int
     asset_refs: list[str] = Field(default_factory=list)
+
+
+class ScaleListResponse(BaseModel):
+    """A page of ScaleResponse with the count of rows the filters matched."""
+
+    items: list[ScaleResponse]
+    total: int
+    offset: int = 0
+    limit: int = 50
+
+
+class AssessmentListResponse(BaseModel):
+    """A page of AssessmentResponse with the count of rows the filters matched."""
+
+    items: list[AssessmentResponse]
+    total: int
+    offset: int = 0
+    limit: int = 50
+
+
+class ActionListResponse(BaseModel):
+    """A page of ActionResponse with the count of rows the filters matched."""
+
+    items: list[ActionResponse]
+    total: int
+    offset: int = 0
+    limit: int = 50

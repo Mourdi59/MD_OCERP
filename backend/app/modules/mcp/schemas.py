@@ -107,3 +107,21 @@ class McpValidationReport(BaseModel):
     status: str
     score: float | None
     findings: list[McpValidationFinding] = Field(default_factory=list)
+
+
+class McpTokenListResponse(BaseModel):
+    """A page of McpTokenResponse with the count of rows the filters matched."""
+
+    items: list[McpTokenResponse]
+    total: int
+    offset: int = 0
+    limit: int = 50
+
+
+class McpToolCallListResponse(BaseModel):
+    """A page of McpToolCallResponse with the count of rows the filters matched."""
+
+    items: list[McpToolCallResponse]
+    total: int
+    offset: int = 0
+    limit: int = 50

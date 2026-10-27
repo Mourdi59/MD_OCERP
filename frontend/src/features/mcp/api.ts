@@ -7,6 +7,7 @@
  * is never called from the browser; this file only manages the person's switch,
  * tokens, call log and validation findings.
  */
+import type { Page } from '@/shared/lib/apiHelpers';
 import { apiDelete, apiGet, apiPost, apiPut } from '@/shared/lib/api';
 
 export const MCP_BASE = '/v1/mcp';
@@ -94,9 +95,10 @@ export const mcpKeys = {
 export const getMcpSettings = () => apiGet<McpSettings>(`${MCP_BASE}/settings/`);
 export const updateMcpSettings = (body: Partial<Pick<McpSettings, 'enabled' | 'rate_limit_per_minute'>>) =>
   apiPut<McpSettings>(`${MCP_BASE}/settings/`, body);
-export const listMcpTokens = () => apiGet<McpToken[]>(`${MCP_BASE}/tokens/`);
+export const listMcpTokens = () => apiGet<Page<McpToken>>(`${MCP_BASE}/tokens/`).then((page) => page.items);
 export const createMcpToken = (body: McpTokenCreate) => apiPost<McpTokenCreated>(`${MCP_BASE}/tokens/`, body);
 export const revokeMcpToken = (id: string) => apiDelete(`${MCP_BASE}/tokens/${encodeURIComponent(id)}/`);
-export const listMcpCalls = (limit = 25) => apiGet<McpToolCall[]>(`${MCP_BASE}/calls/?limit=${limit}`);
+export const listMcpCalls = (limit = 25) =>
+  apiGet<Page<McpToolCall>>(`${MCP_BASE}/calls/?limit=${limit}`).then((page) => page.items);
 export const listMcpTools = () => apiGet<McpToolInfo[]>(`${MCP_BASE}/tools/`);
 export const getMcpValidation = () => apiGet<McpValidationReport>(`${MCP_BASE}/validation/`);

@@ -4,6 +4,7 @@
  * API helpers for condition ratings and the maintenance plan (/v1/condition).
  * Money and quantities arrive as decimal strings.
  */
+import type { Page } from '@/shared/lib/apiHelpers';
 import { API_BASE, apiDelete, apiGet, apiPatch, apiPost, downloadWithAuth } from '@/shared/lib/api';
 
 const BASE = '/v1/condition';
@@ -186,12 +187,13 @@ function planParams(projectId: string, q: PlanQuery): string {
   return p.toString();
 }
 
-export const fetchScales = (projectId: string) => apiGet<ConditionScale[]>(`${BASE}/scales?project_id=${projectId}`);
+export const fetchScales = (projectId: string) =>
+  apiGet<Page<ConditionScale>>(`${BASE}/scales?project_id=${projectId}`).then((page) => page.items);
 
 export const fetchAssessments = (projectId: string, filters: { inspection_id?: string } = {}) => {
   const p = new URLSearchParams({ project_id: projectId });
   if (filters.inspection_id) p.set('inspection_id', filters.inspection_id);
-  return apiGet<Assessment[]>(`${BASE}/assessments?${p.toString()}`);
+  return apiGet<Page<Assessment>>(`${BASE}/assessments?${p.toString()}`).then((page) => page.items);
 };
 
 export const createAssessment = (payload: AssessmentCreate) => apiPost<Assessment>(`${BASE}/assessments`, payload);
@@ -206,7 +208,8 @@ export const suggestRating = (payload: {
   intensity?: number | null;
 }) => apiPost<{ rating: number | null; confidence: number; level: ScaleLevel | null }>(`${BASE}/suggest-rating`, payload);
 
-export const fetchActions = (projectId: string) => apiGet<MaintenanceAction[]>(`${BASE}/actions?project_id=${projectId}`);
+export const fetchActions = (projectId: string) =>
+  apiGet<Page<MaintenanceAction>>(`${BASE}/actions?project_id=${projectId}`).then((page) => page.items);
 
 export const createAction = (payload: ActionCreate) => apiPost<MaintenanceAction>(`${BASE}/actions`, payload);
 

@@ -40,8 +40,8 @@ from app.modules.mcp.schemas import (
     McpSettingsUpdate,
     McpTokenCreate,
     McpTokenCreatedResponse,
-    McpTokenResponse,
-    McpToolCallResponse,
+    McpTokenListResponse,
+    McpToolCallListResponse,
     McpToolInfo,
     McpValidationReport,
 )
@@ -144,10 +144,11 @@ async def update_settings_route(
     return await McpService(session).update_settings(uuid.UUID(user_id), data)
 
 
-@router.get("/tokens/", response_model=list[McpTokenResponse], dependencies=[_USE])
-async def list_tokens_route(user_id: CurrentUserId, session: SessionDep) -> list[McpTokenResponse]:
+@router.get("/tokens/", response_model=McpTokenListResponse, dependencies=[_USE])
+async def list_tokens_route(user_id: CurrentUserId, session: SessionDep) -> McpTokenListResponse:
     """The caller's MCP tokens, without secrets."""
-    return await McpService(session).list_tokens(uuid.UUID(user_id))
+    items = await McpService(session).list_tokens(uuid.UUID(user_id))
+    return McpTokenListResponse(items=items, total=len(items), limit=len(items))
 
 
 @router.post("/tokens/", response_model=McpTokenCreatedResponse, status_code=201, dependencies=[_USE])
@@ -165,14 +166,17 @@ async def revoke_token_route(token_id: uuid.UUID, user_id: CurrentUserId, sessio
     return Response(status_code=204)
 
 
-@router.get("/calls/", response_model=list[McpToolCallResponse], dependencies=[_USE])
+@router.get("/calls/", response_model=McpToolCallListResponse, dependencies=[_USE])
 async def recent_calls_route(
     user_id: CurrentUserId,
     session: SessionDep,
     limit: int = Query(default=50, ge=1, le=200),
-) -> list[McpToolCallResponse]:
+) -> McpToolCallListResponse:
     """The caller's latest tool calls, newest first."""
-    return await McpService(session).recent_calls(uuid.UUID(user_id), limit=limit)
+    service = McpService(session)
+    items = await service.recent_calls(uuid.UUID(user_id), limit=limit)
+    total = await service.count_calls(uuid.UUID(user_id))
+    return McpToolCallListResponse(items=items, total=total, limit=limit)
 
 
 @router.get("/tools/", response_model=list[McpToolInfo], dependencies=[_USE])

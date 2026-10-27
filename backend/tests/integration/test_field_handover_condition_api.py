@@ -196,16 +196,16 @@ async def test_dossier_check_config_and_signoff_gate(client, admin):
     assert gated.status_code in (403, 404)
 
     targets = await client.get(f"/api/v1/closeout/projects/{project_id}/dossier-targets", headers=admin)
-    assert targets.status_code == 200 and targets.json() == []
+    assert targets.status_code == 200 and targets.json()["items"] == []
 
     listed = await client.get(f"/api/v1/closeout/packages/{package_id}/dossiers", headers=admin)
-    assert listed.status_code == 200 and listed.json() == []
+    assert listed.status_code == 200 and listed.json()["items"] == []
 
 
 async def test_condition_rating_plan_and_export(client, admin):
     project_id = await _project(client, admin)
     scales = await client.get(f"/api/v1/condition/scales?project_id={project_id}", headers=admin)
-    assert scales.status_code == 200 and scales.json()[0]["key"] == "default_6"
+    assert scales.status_code == 200 and scales.json()["items"][0]["key"] == "default_6"
 
     suggestion = await client.post(
         "/api/v1/condition/suggest-rating", json={"severity": 4, "extent_pct": 80, "intensity": 4}, headers=admin

@@ -264,3 +264,12 @@ class ValidationResponse(BaseModel):
     errors: int = 0
     warnings: int = 0
     results: list[ValidationResultOut] = Field(default_factory=list)
+
+
+class ComparisonListResponse(BaseModel):
+    """A page of ComparisonSummary with the count of rows the filters matched."""
+
+    items: list[ComparisonSummary]
+    total: int
+    offset: int = 0
+    limit: int = 50

@@ -53,9 +53,11 @@ from app.modules.closeout.schemas import (
     DossierDeliveryResponse,
     DossierDeliveryTarget,
     DossierFinding,
+    DossierListResponse,
     DossierRequest,
     DossierResponse,
     DossierTarget,
+    DossierTargetListResponse,
     OutstandingWork,
     SlotStatus,
     SuggestBindingsResponse,
@@ -539,13 +541,13 @@ async def request_dossier(
     return await _dossier_response(service, dossier)
 
 
-@router.get("/packages/{package_id}/dossiers", response_model=list[DossierResponse])
+@router.get("/packages/{package_id}/dossiers", response_model=DossierListResponse)
 async def list_dossiers(
     package_id: uuid.UUID,
     user_id: CurrentUserId = None,  # type: ignore[assignment]
     _perm: None = Depends(RequirePermission("closeout.read")),
     service: DossierService = Depends(_dossier_service),
-) -> list[DossierResponse]:
+) -> DossierListResponse:
     """Dossiers of a package, newest first, each with its delivery log."""
     package = await _load_package_and_verify(service.closeout, package_id, user_id)
     dossiers = await service.list_dossiers(package.id)
@@ -558,7 +560,7 @@ async def list_dossiers(
         resp = DossierResponse.model_validate(dossier)
         resp.deliveries = by_dossier.get(dossier.id, [])
         out.append(resp)
-    return out
+    return DossierListResponse(items=out, total=len(out), limit=len(out))
 
 
 @router.get("/dossiers/{dossier_id}", response_model=DossierResponse)
@@ -627,15 +629,16 @@ async def resend_delivery(
     return DossierDeliveryResponse.model_validate(resent)
 
 
-@router.get("/projects/{project_id}/dossier-targets", response_model=list[DossierTarget])
+@router.get("/projects/{project_id}/dossier-targets", response_model=DossierTargetListResponse)
 async def list_dossier_targets(
     project_id: uuid.UUID,
     session: SessionDep,
     user_id: CurrentUserId = None,  # type: ignore[assignment]
     _perm: None = Depends(RequirePermission("closeout.read")),
-) -> list[DossierTarget]:
+) -> DossierTargetListResponse:
     """Webhook endpoints and chat connectors a dossier of this project can go to."""
     from app.modules.closeout.dossier_service import list_delivery_targets
 
     await verify_project_access(project_id, user_id or "", session)
-    return [DossierTarget(**row) for row in await list_delivery_targets(session, project_id, user_id)]
+    items = [DossierTarget(**row) for row in await list_delivery_targets(session, project_id, user_id)]
+    return DossierTargetListResponse(items=items, total=len(items), limit=len(items))

@@ -394,6 +394,10 @@ class DrawingCompareService:
         """Compares of a project, newest first."""
         return await self.repo.list_for_project(project_id, ref_id=ref_id, limit=limit, offset=offset)
 
+    async def count_comparisons(self, project_id: uuid.UUID, *, ref_id: str | None) -> int:
+        """How many compares the same filters match, ignoring the page."""
+        return await self.repo.count_for_project(project_id, ref_id=ref_id)
+
     async def delete(self, cmp: DrawingComparison) -> None:
         """Delete a compare (re-measure flags it raised stay on their rows)."""
         await self.repo.delete(cmp)

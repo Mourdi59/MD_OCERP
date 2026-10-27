@@ -57,7 +57,7 @@ from app.modules.cutting.schemas import (
     ApplyResponse,
     BoqImportRequest,
     ImportResult,
-    InventoryOffcut,
+    InventoryOffcutListResponse,
     InventoryStockRequest,
     JobCreate,
     JobKind,
@@ -69,6 +69,7 @@ from app.modules.cutting.schemas import (
     PlanOut,
     PlanProposal,
     PlanSummary,
+    PlanSummaryListResponse,
     RebarImportRequest,
     ReturnOffcutsRequest,
     ReturnOffcutsResponse,
@@ -232,17 +233,18 @@ async def import_file(
 # ── Site inventory ────────────────────────────────────────────────────────
 
 
-@router.get("/inventory-offcuts/", response_model=list[InventoryOffcut], dependencies=[_READ])
+@router.get("/inventory-offcuts/", response_model=InventoryOffcutListResponse, dependencies=[_READ])
 async def inventory_offcuts(
     user_id: CurrentUserId,
     session: SessionDep,
     project_id: uuid.UUID = Query(...),
     kind: JobKind = Query(default="linear"),
     material: str | None = Query(default=None, max_length=120),
-) -> list[InventoryOffcut]:
+) -> InventoryOffcutListResponse:
     """Reusable offcuts on hand in the project's site inventory."""
     await verify_project_access(project_id, user_id, session)
-    return await _service(session).inventory_offcuts(project_id, kind=kind, material=material)
+    items = await _service(session).inventory_offcuts(project_id, kind=kind, material=material)
+    return InventoryOffcutListResponse(items=items, total=len(items), limit=len(items))
 
 
 @router.post("/jobs/{job_id}/stocks/from-inventory", response_model=JobOut, dependencies=[_WRITE])
@@ -274,12 +276,13 @@ async def optimise_job(job_id: uuid.UUID, user_id: CurrentUserId, session: Sessi
     return PlanOut.model_validate(plan)
 
 
-@router.get("/jobs/{job_id}/plans", response_model=list[PlanSummary], dependencies=[_READ])
-async def list_plans(job_id: uuid.UUID, user_id: CurrentUserId, session: SessionDep) -> list[PlanSummary]:
+@router.get("/jobs/{job_id}/plans", response_model=PlanSummaryListResponse, dependencies=[_READ])
+async def list_plans(job_id: uuid.UUID, user_id: CurrentUserId, session: SessionDep) -> PlanSummaryListResponse:
     """The job's plans, newest first."""
     job = await _job(job_id, user_id, session)
     plans = await _service(session).repo.list_plans(job.id)
-    return [PlanSummary.model_validate(p) for p in plans]
+    items = [PlanSummary.model_validate(p) for p in plans]
+    return PlanSummaryListResponse(items=items, total=len(items), limit=len(items))
 
 
 @router.get("/plans/{plan_id}", response_model=PlanOut, dependencies=[_READ])

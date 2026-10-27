@@ -142,7 +142,7 @@ async def test_a_token_stops_working_when_mcp_is_switched_off_or_the_token_is_re
         assert revoked.status_code == 204
         after = await client.post(URL, json=rpc("ping"), headers=auth(token))
         assert after.status_code == 401
-        listed = (await client.get(f"{API_PREFIX}/tokens/")).json()
+        listed = (await client.get(f"{API_PREFIX}/tokens/")).json()["items"]
         assert [t["is_active"] for t in listed] == [False]
 
 
@@ -381,7 +381,7 @@ async def test_every_tool_call_is_audited_and_listed_for_its_owner(session) -> N
             json=rpc("tools/call", {"name": "get_boq", "arguments": {"project_id": str(uuid.uuid4())}}),
             headers=auth(token),
         )
-        calls = (await client.get(f"{API_PREFIX}/calls/")).json()
+        calls = (await client.get(f"{API_PREFIX}/calls/")).json()["items"]
     assert [c["tool"] for c in calls] == ["get_boq", "list_projects"]
     assert [c["outcome"] for c in calls] == ["denied", "ok"]
     rows = (

@@ -77,6 +77,15 @@ class McpCallLogRepository:
         )
         return list((await self.session.execute(stmt)).scalars().all())
 
+    async def count_for_user(self, user_id: uuid.UUID) -> int:
+        """How many tool calls the caller has on record."""
+        stmt = select(func.count(ActivityLog.id)).where(
+            ActivityLog.module == MCP_AUDIT_MODULE,
+            ActivityLog.entity_type == MCP_AUDIT_ENTITY,
+            ActivityLog.actor_id == user_id,
+        )
+        return int((await self.session.execute(stmt)).scalar_one())
+
     async def count_outcome_since(self, user_id: uuid.UUID, outcome: str, since: datetime) -> int:
         """How many of the caller's calls ended with ``outcome`` since ``since``."""
         stmt = select(func.count(ActivityLog.id)).where(

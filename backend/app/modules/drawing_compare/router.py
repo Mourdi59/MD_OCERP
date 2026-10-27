@@ -40,6 +40,7 @@ from app.modules.drawing_compare.schemas import (
     ChangeResponse,
     ChangeRfiCreate,
     ChangeUpdate,
+    ComparisonListResponse,
     ComparisonResponse,
     ComparisonSummary,
     DwgComparisonCreate,
@@ -84,7 +85,7 @@ async def _change(
     return change, cmp
 
 
-@router.get("/comparisons/", response_model=list[ComparisonSummary], dependencies=[_READ])
+@router.get("/comparisons/", response_model=ComparisonListResponse, dependencies=[_READ])
 async def list_comparisons(
     user_id: CurrentUserId,
     session: SessionDep,
@@ -93,11 +94,13 @@ async def list_comparisons(
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     service: DrawingCompareService = Depends(_service),
-) -> list[ComparisonSummary]:
+) -> ComparisonListResponse:
     """Compares of a project, newest first; ``ref_id`` narrows to those touching one revision."""
     await verify_project_access(project_id, user_id, session)
     rows = await service.list_comparisons(project_id, ref_id=ref_id, limit=limit, offset=offset)
-    return [ComparisonSummary.model_validate(r) for r in rows]
+    total = await service.count_comparisons(project_id, ref_id=ref_id)
+    items = [ComparisonSummary.model_validate(r) for r in rows]
+    return ComparisonListResponse(items=items, total=total, offset=offset, limit=limit)
 
 
 @router.post("/comparisons/", response_model=ComparisonResponse, status_code=201, dependencies=[_CREATE])

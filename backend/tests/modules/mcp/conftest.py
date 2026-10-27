@@ -27,13 +27,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencies import get_current_user_id, get_current_user_payload, get_session
 from app.modules.mcp.auth import tool_call_limiter
 from app.modules.mcp.models import McpSettings
+from app.modules.mcp.protocol import LATEST_PROTOCOL_VERSION
 from app.modules.mcp.router import router as mcp_router
 from app.modules.projects.models import Project
 from app.modules.users.models import User
 from tests._pg import transactional_session
 
 API_PREFIX = "/v1/mcp"
-PROTOCOL_VERSION = "2025-06-18"
+PROTOCOL_VERSION = LATEST_PROTOCOL_VERSION
 
 
 @pytest.fixture(scope="session", autouse=True)

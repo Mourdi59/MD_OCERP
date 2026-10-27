@@ -14,6 +14,14 @@ export function normalizeListResponse<T>(data: T[] | { items: T[] } | undefined 
   return [];
 }
 
+/** The page envelope a list route answers with. */
+export interface Page<T> {
+  items: T[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+
 /** Everything a caller needs to know about a paged read, including what it did not get. */
 export interface PagedResult<T> {
   items: T[];

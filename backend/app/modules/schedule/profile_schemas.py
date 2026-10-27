@@ -145,3 +145,12 @@ class RecalculateResponse(BaseModel):
         default_factory=dict, description="How many activities each setting changed"
     )
     activities: list[RecalculatedActivity] = Field(default_factory=list)
+
+
+class SchedulingProfileListResponse(BaseModel):
+    """A page of SchedulingProfileResponse with the count of rows the filters matched."""
+
+    items: list[SchedulingProfileResponse]
+    total: int
+    offset: int = 0
+    limit: int = 50

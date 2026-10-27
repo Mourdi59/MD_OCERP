@@ -37,13 +37,18 @@ const TOKEN = {
 function serve(overrides: Record<string, unknown> = {}) {
   const routes: Record<string, unknown> = {
     '/v1/mcp/settings/': { enabled: true, rate_limit_per_minute: 60, endpoint_path: '/api/v1/mcp', protocol_versions: ['2025-06-18'] },
-    '/v1/mcp/tokens/': [TOKEN],
-    '/v1/mcp/calls/?limit=25': [
-      {
-        id: 'c-1', tool: 'get_boq', kind: 'read', outcome: 'denied', duration_ms: 12, project_id: null,
-        token_prefix: 'oe_abcdefghi', action_id: null, error: 'project_not_found', created_at: '2026-10-25T10:00:00Z',
-      },
-    ],
+    '/v1/mcp/tokens/': { items: [TOKEN], total: 1, offset: 0, limit: 1 },
+    '/v1/mcp/calls/?limit=25': {
+      items: [
+        {
+          id: 'c-1', tool: 'get_boq', kind: 'read', outcome: 'denied', duration_ms: 12, project_id: null,
+          token_prefix: 'oe_abcdefghi', action_id: null, error: 'project_not_found', created_at: '2026-10-25T10:00:00Z',
+        },
+      ],
+      total: 1,
+      offset: 0,
+      limit: 25,
+    },
     '/v1/mcp/validation/': {
       status: 'warnings',
       score: 0.8,

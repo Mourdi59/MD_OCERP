@@ -346,6 +346,10 @@ class McpService:
             metadata={"key_prefix": key.key_prefix},
         )
 
+    async def count_calls(self, user_id: uuid.UUID) -> int:
+        """How many audited tool calls the caller has made, for the feed's total."""
+        return await self.call_repo.count_for_user(user_id)
+
     async def recent_calls(self, user_id: uuid.UUID, *, limit: int = 50) -> list[McpToolCallResponse]:
         """The caller's latest audited tool calls."""
         out = []

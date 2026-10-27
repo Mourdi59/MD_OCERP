@@ -5,6 +5,7 @@
 // scheduling profiles with attributed recalculation, and the stored source of
 // an imported schedule. All routes live under /api/v1/schedule.
 
+import type { Page } from '@/shared/lib/apiHelpers';
 import { apiDelete, apiGet, apiPatch, apiPost, apiPut, API_BASE, getAuthToken } from '@/shared/lib/api';
 
 const BASE = `${API_BASE}/v1/schedule`;
@@ -287,7 +288,9 @@ export function progressSheetQuery(filters: ProgressSheetFilters): string {
 export const interopApi = {
   /* Profiles */
   listProfiles: (projectId: string) =>
-    apiGet<SchedulingProfile[]>(`/v1/schedule/scheduling-profiles/?project_id=${encodeURIComponent(projectId)}`),
+    apiGet<Page<SchedulingProfile>>(
+      `/v1/schedule/scheduling-profiles/?project_id=${encodeURIComponent(projectId)}`,
+    ).then((page) => page.items),
   createProfile: (projectId: string, draft: ProfileDraft) =>
     apiPost<SchedulingProfile>('/v1/schedule/scheduling-profiles/', { project_id: projectId, ...draft }),
   updateProfile: (profileId: string, draft: Partial<ProfileDraft>) =>

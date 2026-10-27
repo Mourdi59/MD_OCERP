@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -45,6 +45,13 @@ class ComparisonRepository:
             stmt = stmt.where(or_(DrawingComparison.old_ref_id == ref_id, DrawingComparison.new_ref_id == ref_id))
         stmt = stmt.order_by(DrawingComparison.created_at.desc()).limit(limit).offset(offset)
         return list((await self.session.execute(stmt)).scalars().all())
+
+    async def count_for_project(self, project_id: uuid.UUID, *, ref_id: str | None = None) -> int:
+        """Compares of a project that the ``ref_id`` filter matches."""
+        stmt = select(func.count(DrawingComparison.id)).where(DrawingComparison.project_id == project_id)
+        if ref_id:
+            stmt = stmt.where(or_(DrawingComparison.old_ref_id == ref_id, DrawingComparison.new_ref_id == ref_id))
+        return int((await self.session.execute(stmt)).scalar_one())
 
     async def add(self, comparison: DrawingComparison, changes: list[DrawingChange]) -> DrawingComparison:
         """Insert a compare with its changes in one flush."""

@@ -6,6 +6,7 @@
 // upload is a raw multipart fetch (like the voice capture) so the boundary is
 // set by the browser; everything else goes through the shared JSON helpers.
 
+import type { Page } from '@/shared/lib/apiHelpers';
 import {
   apiDelete,
   apiGet,
@@ -188,7 +189,9 @@ export function fetchMinutesPdfLanguages(): Promise<string[]> {
 }
 
 export function fetchGlossary(projectId: string): Promise<GlossaryTerm[]> {
-  return apiGet<GlossaryTerm[]>(`${BASE}/glossary/?project_id=${encodeURIComponent(projectId)}`);
+  return apiGet<Page<GlossaryTerm>>(`${BASE}/glossary/?project_id=${encodeURIComponent(projectId)}`).then(
+    (page) => page.items,
+  );
 }
 
 export function addGlossaryTerm(projectId: string, input: GlossaryTermInput): Promise<GlossaryTerm> {
@@ -208,7 +211,7 @@ export function seedGlossary(projectId: string): Promise<GlossarySeedResult> {
 }
 
 export function fetchRecordings(meetingId: string): Promise<MeetingRecording[]> {
-  return apiGet<MeetingRecording[]>(`${BASE}/${meetingId}/recordings/`);
+  return apiGet<Page<MeetingRecording>>(`${BASE}/${meetingId}/recordings/`).then((page) => page.items);
 }
 
 export async function createRecording(

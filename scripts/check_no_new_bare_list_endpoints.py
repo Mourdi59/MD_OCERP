@@ -148,6 +148,19 @@ CANNOT_TRUNCATE: frozenset[str] = frozenset(
         # would hide a record type from the route form, so an admin could not
         # put that record under approval at all: a correctness bug, not a page.
         "enterprise_workflows/router.py::list_entity_types",
+        # The tool catalogue of the MCP server, built by McpService.tool_catalogue
+        # from the tool table compiled into the source. It gains an entry when a
+        # developer registers a tool, never at runtime or per tenant, and the
+        # route returns every tool with no query and no LIMIT. A client choosing
+        # which tools to enable must see all of them, so a short answer would
+        # hide a tool, a correctness bug rather than a page.
+        "mcp/router.py::tools_route",
+        # The languages the minutes PDF can be printed in, read from the font
+        # and text bundles the build ships. A fixed set that changes only when a
+        # developer adds a language, with no query and no LIMIT. The language
+        # picker has to offer every one, so a short answer would make a
+        # supported language impossible to choose.
+        "meetings/audio_router.py::minutes_pdf_languages",
     }
 )
 

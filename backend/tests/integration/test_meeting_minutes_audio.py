@@ -421,7 +421,7 @@ async def test_retention_sweep_deletes_expired_audio_only(client, ctx, monkeypat
         removed = await prune_expired_meeting_audio(s)
         await s.commit()
     assert removed >= 1
-    rows = (await client.get(f"/api/v1/meetings/{ctx['meeting_id']}/recordings/", headers=ctx["h"])).json()
+    rows = (await client.get(f"/api/v1/meetings/{ctx['meeting_id']}/recordings/", headers=ctx["h"])).json()["items"]
     swept = next(r for r in rows if r["id"] == rec["id"])
     assert swept["has_audio"] is False and swept["transcript"] == "kept text"
 

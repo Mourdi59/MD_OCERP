@@ -199,7 +199,7 @@ async def test_pdf_compare_is_stored_with_both_revisions(http_client, world):
         f"{_BASE}/comparisons/", params={"project_id": a["project_id"], "ref_id": a["new_doc"]}, headers=a["headers"]
     )
     assert listed.status_code == 200
-    assert cmp["id"] in [row["id"] for row in listed.json()]
+    assert cmp["id"] in [row["id"] for row in listed.json()["items"]]
 
 
 @pytest.mark.asyncio
