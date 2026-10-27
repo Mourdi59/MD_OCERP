@@ -724,7 +724,7 @@ def audio_expiry(created_at: datetime, retention_days: int | None) -> datetime |
 
 def audio_overdue(row: dict[str, Any], now: datetime) -> bool:
     """True when audio is still stored past its expiry."""
-    if not row.get("audio_storage_key"):
+    if not (row.get("has_audio") or row.get("audio_storage_key")):
         return False
     expires = row.get("audio_expires_at")
     if isinstance(expires, str):

@@ -893,7 +893,7 @@ class MeetingAudioService:
             {
                 "id": str(r.id),
                 "source": r.source,
-                "audio_storage_key": r.audio_storage_key,
+                "has_audio": bool(r.audio_storage_key),
                 "audio_expires_at": r.audio_expires_at,
                 "consent_confirmed_at": r.consent_confirmed_at.isoformat() if r.consent_confirmed_at else None,
                 "proposals": r.proposals or {},

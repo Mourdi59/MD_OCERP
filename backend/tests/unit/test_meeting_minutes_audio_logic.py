@@ -239,3 +239,5 @@ def test_audio_expiry_and_overdue() -> None:
     assert not al.audio_overdue({"audio_storage_key": "", "audio_expires_at": now - timedelta(days=1)}, now)
     assert not al.audio_overdue({"audio_storage_key": "k", "audio_expires_at": None}, now)
     assert al.audio_overdue({"audio_storage_key": "k", "audio_expires_at": "2026-10-01T00:00:00"}, now)
+    assert al.audio_overdue({"has_audio": True, "audio_expires_at": now - timedelta(days=1)}, now)
+    assert not al.audio_overdue({"has_audio": False, "audio_expires_at": now - timedelta(days=1)}, now)
