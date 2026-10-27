@@ -9,7 +9,7 @@ cannot hold). Inspector-guarded, so a database whose table ``create_all``
 already built reaches this revision and does nothing.
 
 Revision ID: v201_boq_exchange_report
-Revises: v200_supplier_pricelists_discounts
+Revises: v201_schedule_scheduling_profiles
 Create Date: 2026-10-25
 """
 
@@ -23,7 +23,7 @@ from alembic import op
 from app.database import GUID
 
 revision: str = "v201_boq_exchange_report"
-down_revision: str | Sequence[str] | None = "v200_supplier_pricelists_discounts"
+down_revision: str | Sequence[str] | None = "v201_schedule_scheduling_profiles"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

@@ -13,7 +13,7 @@ Additive only:
 Inspector-guarded, so a database whose tables ``create_all`` already built does nothing.
 
 Revision ID: v201_drawing_revision_compare
-Revises: v200_supplier_pricelists_discounts
+Revises: v201_meetings_recording_glossary
 Create Date: 2026-10-25
 """
 
@@ -27,7 +27,7 @@ from alembic import op
 from app.database import GUID
 
 revision: str = "v201_drawing_revision_compare"
-down_revision: str | Sequence[str] | None = "v200_supplier_pricelists_discounts"
+down_revision: str | Sequence[str] | None = "v201_meetings_recording_glossary"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
