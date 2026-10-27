@@ -207,6 +207,34 @@ async def test_cherry_pick_writes_only_chosen_lines_and_snapshots_the_target(ses
 
 
 @pytest.mark.asyncio
+async def test_an_updated_line_carries_its_pricing_rates_and_basis(session: AsyncSession) -> None:
+    _, main_id = await _seed(session)
+    branches = BranchService(session)
+    source = await branches.create_branch(main_id, name="Source")
+    target = await branches.create_branch(main_id, name="Target")
+    slab = (await _by_ordinal(session, source.id))["1.1"]
+    await _set(session, slab, quantity=90)
+    slab.net_cost_rate = "70"
+    slab.target_rate = "85"
+    slab.sale_rate = "99"
+    slab.price_basis = "supplier_quote"
+    await session.flush()
+    plan = await branches.plan(source.id, target.id)
+    key = next(i["key"] for i in plan["items"] if i["ordinal"] == "1.1")
+
+    result = await branches.cherry_pick(source.id, target.id, keys=[key], resolutions={})
+    assert result["updated"] == 1
+    line = (await _by_ordinal(session, target.id))["1.1"]
+    await session.refresh(line)
+    assert (Decimal(line.net_cost_rate), Decimal(line.target_rate), Decimal(line.sale_rate)) == (
+        Decimal("70"),
+        Decimal("85"),
+        Decimal("99"),
+    )
+    assert line.price_basis == "supplier_quote"
+
+
+@pytest.mark.asyncio
 async def test_conflicts_must_be_decided_and_each_decision_is_honoured(session: AsyncSession) -> None:
     _, main_id = await _seed(session)
     branches = BranchService(session)
