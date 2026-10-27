@@ -51397,6 +51397,7 @@ const resource = {
     "settings.company.appearance_title": "Dokumenti i PDF",
     "settings.company.doc_logo_section_subtitle": "Službeni logotip koji se ispisuje na vašim dokumentima. Logotip u izborniku aplikacije postavlja se u općim postavkama.",
     "settings.company.doc_logo_fallback_link": "Promijenite logotip aplikacije u općim postavkama",
+    "settings.company.doc_preview_generated": "Izrađeno {{date}}",
     "settings.document_templates.title": "Izgled po vrsti dokumenta",
     "settings.document_templates.subtitle": "Dodijelite jednoj vrsti dokumenta vlastiti izgled. Sve što ovdje ne postavite slijedi izgled iznad, a svaki se uzorak ispisuje na papiru koji taj dokument koristi.",
     "settings.document_templates.status_own": "Vlastiti izgled",

@@ -944,7 +944,7 @@ function LetterheadPreview({
     look?.footer_text ||
     (look?.print_stamp && look.print_stamp !== 'auto'
       ? form.legal_name.trim()
-      : [form.legal_name.trim(), 'Generated 2026-01-01'].filter(Boolean).join(' | '));
+      : [form.legal_name.trim(), t('settings.company.doc_preview_generated', { defaultValue: 'Generated {{date}}', date: '2026-01-01' })].filter(Boolean).join(' | '));
   const registration = look?.footer_show_registration ? form.registration_line.trim() : '';
   const printable = hasLetterhead({
     legal_name: form.legal_name,

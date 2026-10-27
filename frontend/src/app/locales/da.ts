@@ -51119,6 +51119,7 @@ const resource = {
     "settings.company.appearance_title": "Dokumenter og PDF",
     "settings.company.doc_logo_section_subtitle": "Det officielle logo, der udskrives på dine dokumenter. Logoet i appens menu indstilles under Generelle indstillinger.",
     "settings.company.doc_logo_fallback_link": "Skift appens logo under Generelle indstillinger",
+    "settings.company.doc_preview_generated": "Oprettet {{date}}",
     "settings.document_templates.title": "Udseende pr. dokumenttype",
     "settings.document_templates.subtitle": "Giv én slags dokument sit eget udseende. Det, du ikke angiver her, følger udseendet ovenfor, og hver prøve udskrives på det papir, det pågældende dokument bruger.",
     "settings.document_templates.status_own": "Eget udseende",

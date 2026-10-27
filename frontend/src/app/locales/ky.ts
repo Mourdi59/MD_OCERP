@@ -51230,6 +51230,7 @@ const resource = {
     "settings.company.appearance_title": "Документтер жана PDF",
     "settings.company.doc_logo_section_subtitle": "Документтериңизге басылуучу расмий логотип. Колдонмо менюсундагы логотип Жалпы жөндөөлөрдө коюлат.",
     "settings.company.doc_logo_fallback_link": "Колдонмонун логотибин Жалпы жөндөөлөрдө өзгөртүү",
+    "settings.company.doc_preview_generated": "Түзүлдү: {{date}}",
     "settings.document_templates.title": "Документ түрү боюнча көрүнүш",
     "settings.document_templates.subtitle": "Бир түрдөгү документке өзүнүн көрүнүшүн бериңиз. Бул жерде тууралабаганыңыздын баары жогорудагы көрүнүштү колдонот, ал ар бир үлгү ошол документ колдонгон кагазга басылат.",
     "settings.document_templates.status_own": "Өз көрүнүшү",

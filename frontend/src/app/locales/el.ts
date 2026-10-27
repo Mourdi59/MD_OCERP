@@ -51073,6 +51073,7 @@ const resource = {
     "settings.company.appearance_title": "Έγγραφα και PDF",
     "settings.company.doc_logo_section_subtitle": "Το επίσημο λογότυπο που εκτυπώνεται στα έγγραφά σας. Το λογότυπο στο μενού της εφαρμογής ορίζεται στις Γενικές ρυθμίσεις.",
     "settings.company.doc_logo_fallback_link": "Αλλαγή λογοτύπου εφαρμογής στις Γενικές ρυθμίσεις",
+    "settings.company.doc_preview_generated": "Δημιουργήθηκε {{date}}",
     "settings.document_templates.title": "Εμφάνιση ανά τύπο εγγράφου",
     "settings.document_templates.subtitle": "Δώστε σε έναν τύπο εγγράφου τη δική του εμφάνιση. Ό,τι δεν ορίσετε εδώ ακολουθεί την εμφάνιση παραπάνω, και κάθε δείγμα εκτυπώνεται στο χαρτί που χρησιμοποιεί αυτό το έγγραφο.",
     "settings.document_templates.status_own": "Δική του εμφάνιση",

@@ -52392,6 +52392,7 @@ const resource = {
     "settings.company.appearance_title": "書類とPDF",
     "settings.company.doc_logo_section_subtitle": "書類に印刷される正式なロゴです。アプリメニューのロゴは一般設定で変更します。",
     "settings.company.doc_logo_fallback_link": "一般設定でアプリのロゴを変更",
+    "settings.company.doc_preview_generated": "作成日 {{date}}",
     "settings.document_templates.title": "書類ごとの見た目",
     "settings.document_templates.subtitle": "特定の種類の書類だけに見た目を設定します。ここで設定しない項目は上の見た目に従い、各サンプルはその書類が使う用紙で印刷されます。",
     "settings.document_templates.status_own": "専用の見た目",

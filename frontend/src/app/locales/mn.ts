@@ -50760,6 +50760,7 @@ const resource = {
     "settings.company.appearance_title": "Баримт бичиг ба PDF",
     "settings.company.doc_logo_section_subtitle": "Таны баримтууд дээр хэвлэгдэх албан ёсны лого. Аппын цэсийн лого Ерөнхий тохиргоонд тохируулагдана.",
     "settings.company.doc_logo_fallback_link": "Аппын логог Ерөнхий тохиргооноос солих",
+    "settings.company.doc_preview_generated": "Үүсгэсэн: {{date}}",
     "settings.document_templates.title": "Баримт бичгийн төрөл тус бүрийн харагдац",
     "settings.document_templates.subtitle": "Нэг төрлийн баримт бичигт өөрийн гэсэн харагдацыг өгнө үү. Энд тохируулаагүй бүх зүйл дээрх харагдацыг дагана, ал бүрийн жишээ тухайн баримт бичиг ашигладаг цаасан дээр хэвлэгдэнэ.",
     "settings.document_templates.status_own": "Өөрийн харагдац",

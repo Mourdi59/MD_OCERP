@@ -53083,6 +53083,7 @@ const resource = {
     "settings.company.appearance_title": "Документи та PDF",
     "settings.company.doc_logo_section_subtitle": "Офіційний логотип, що друкується на ваших документах. Логотип у меню застосунку задається в загальних налаштуваннях.",
     "settings.company.doc_logo_fallback_link": "Змінити логотип застосунку в загальних налаштуваннях",
+    "settings.company.doc_preview_generated": "Створено {{date}}",
     "settings.document_templates.title": "Оформлення для кожного типу документа",
     "settings.document_templates.subtitle": "Задайте окреме оформлення для одного виду документів. Усе, що ви тут не налаштуєте, використовуватиме оформлення вище, а зразок друкується на тому папері, який використовує цей документ.",
     "settings.document_templates.status_own": "Власне оформлення",

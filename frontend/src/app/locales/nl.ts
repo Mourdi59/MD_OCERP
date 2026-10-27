@@ -52000,6 +52000,7 @@ const resource = {
     "settings.company.appearance_title": "Documenten en PDF",
     "settings.company.doc_logo_section_subtitle": "Het officiële logo dat op uw documenten wordt afgedrukt. Het logo in het appmenu stelt u in bij Algemene instellingen.",
     "settings.company.doc_logo_fallback_link": "Wijzig het applogo in Algemene instellingen",
+    "settings.company.doc_preview_generated": "Gegenereerd op {{date}}",
     "settings.document_templates.title": "Uiterlijk per documenttype",
     "settings.document_templates.subtitle": "Geef één soort document een eigen uiterlijk. Wat u hier niet instelt, volgt het uiterlijk hierboven, en elk voorbeeld wordt afgedrukt op het papier dat dat document gebruikt.",
     "settings.document_templates.status_own": "Eigen uiterlijk",

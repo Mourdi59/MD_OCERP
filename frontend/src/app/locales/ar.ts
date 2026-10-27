@@ -53967,6 +53967,7 @@ const resource = {
     "settings.company.appearance_title": "المستندات وPDF",
     "settings.company.doc_logo_section_subtitle": "الشعار الرسمي المطبوع على مستنداتك. يُحدد شعار قائمة التطبيق في الإعدادات العامة.",
     "settings.company.doc_logo_fallback_link": "تغيير شعار التطبيق في الإعدادات العامة",
+    "settings.company.doc_preview_generated": "أُنشئ في {{date}}",
     "settings.document_templates.title": "شكل حسب نوع المستند",
     "settings.document_templates.subtitle": "امنح نوعًا واحدًا من المستندات شكله الخاص. ما لا يُحدَّد هنا يتبع الشكل أعلاه، وتُطبع كل عيّنة على الورق الذي يستخدمه ذلك المستند.",
     "settings.document_templates.status_own": "شكل خاص",

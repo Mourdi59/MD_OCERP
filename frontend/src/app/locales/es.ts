@@ -53974,6 +53974,7 @@ const resource = {
     "settings.company.appearance_title": "Documentos y PDF",
     "settings.company.doc_logo_section_subtitle": "El logotipo oficial impreso en sus documentos. El logotipo del menú de la aplicación se define en Ajustes generales.",
     "settings.company.doc_logo_fallback_link": "Cambiar el logotipo de la aplicación en Ajustes generales",
+    "settings.company.doc_preview_generated": "Generado el {{date}}",
     "settings.document_templates.title": "Aspecto por tipo de documento",
     "settings.document_templates.subtitle": "Dé a un tipo de documento un aspecto propio. Lo que no configure aquí sigue el aspecto de arriba, y cada muestra se imprime en el papel que usa ese documento.",
     "settings.document_templates.status_own": "Aspecto propio",

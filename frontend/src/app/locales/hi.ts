@@ -51124,6 +51124,7 @@ const resource = {
     "settings.company.appearance_title": "दस्तावेज़ और PDF",
     "settings.company.doc_logo_section_subtitle": "आपके दस्तावेज़ों पर छपने वाला औपचारिक लोगो। ऐप मेनू का लोगो सामान्य सेटिंग्स में तय होता है।",
     "settings.company.doc_logo_fallback_link": "सामान्य सेटिंग्स में ऐप लोगो बदलें",
+    "settings.company.doc_preview_generated": "{{date}} को बनाया गया",
     "settings.document_templates.title": "दस्तावेज़ के अनुसार रूप-रंग",
     "settings.document_templates.subtitle": "किसी एक तरह के दस्तावेज़ को अपना अलग रूप-रंग दें। जो यहाँ सेट नहीं किया जाता वह ऊपर वाले रूप-रंग का पालन करता है, और हर नमूना उसी कागज़ पर छपता है जो वह दस्तावेज़ इस्तेमाल करता है।",
     "settings.document_templates.status_own": "अपना रूप-रंग",

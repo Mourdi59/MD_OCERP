@@ -51351,6 +51351,7 @@ const resource = {
     "settings.company.appearance_title": "מסמכים ו-PDF",
     "settings.company.doc_logo_section_subtitle": "הלוגו הרשמי המודפס על המסמכים שלכם. הלוגו בתפריט האפליקציה נקבע בהגדרות כלליות.",
     "settings.company.doc_logo_fallback_link": "שינוי לוגו האפליקציה בהגדרות כלליות",
+    "settings.company.doc_preview_generated": "נוצר ב-{{date}}",
     "settings.document_templates.title": "מראה לפי סוג מסמך",
     "settings.document_templates.subtitle": "הענק מראה משלו לסוג מסמך אחד. מה שלא מוגדר כאן יעקוב אחרי המראה למעלה, וכל דוגמה מודפסת על הנייר שאותו מסמך משתמש בו.",
     "settings.document_templates.status_own": "מראה משלו",

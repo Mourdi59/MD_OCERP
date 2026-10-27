@@ -52281,6 +52281,7 @@ const resource = {
     "settings.company.appearance_title": "Dokumenty a PDF",
     "settings.company.doc_logo_section_subtitle": "Oficiální logo tištěné na vašich dokumentech. Logo v menu aplikace se nastavuje v Obecném nastavení.",
     "settings.company.doc_logo_fallback_link": "Změnit logo aplikace v Obecném nastavení",
+    "settings.company.doc_preview_generated": "Vytvořeno {{date}}",
     "settings.document_templates.title": "Vzhled podle typu dokumentu",
     "settings.document_templates.subtitle": "Dejte jednomu typu dokumentu vlastní vzhled. Co zde nenastavíte, řídí se vzhledem výše a každá ukázka se tiskne na papír, který daný dokument používá.",
     "settings.document_templates.status_own": "Vlastní vzhled",

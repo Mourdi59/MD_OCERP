@@ -51477,6 +51477,7 @@ const resource = {
     "settings.company.appearance_title": "문서 및 PDF",
     "settings.company.doc_logo_section_subtitle": "문서에 인쇄되는 공식 로고입니다. 앱 메뉴의 로고는 일반 설정에서 지정합니다.",
     "settings.company.doc_logo_fallback_link": "일반 설정에서 앱 로고 변경",
+    "settings.company.doc_preview_generated": "생성일 {{date}}",
     "settings.document_templates.title": "문서별 외관",
     "settings.document_templates.subtitle": "특정 종류의 문서에만 별도의 외관을 지정합니다. 여기서 지정하지 않은 항목은 위의 외관을 따르며, 각 샘플은 해당 문서가 사용하는 용지로 인쇄됩니다.",
     "settings.document_templates.status_own": "전용 외관",

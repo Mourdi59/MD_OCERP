@@ -52905,6 +52905,7 @@ const resource = {
     "settings.company.appearance_title": "Dokumentumok és PDF",
     "settings.company.doc_logo_section_subtitle": "A dokumentumokra nyomtatott hivatalos logó. Az alkalmazásmenü logóját az Általános beállításokban lehet megadni.",
     "settings.company.doc_logo_fallback_link": "Az alkalmazás logójának módosítása az Általános beállításokban",
+    "settings.company.doc_preview_generated": "Készült: {{date}}",
     "settings.document_templates.title": "Dokumentumtípusonkénti megjelenés",
     "settings.document_templates.subtitle": "Adjon egy dokumentumtípusnak saját megjelenést. Amit itt nem állít be, a fenti megjelenést követi, és minden minta azon a papíron nyomtatódik, amelyet az adott dokumentum használ.",
     "settings.document_templates.status_own": "Saját megjelenés",

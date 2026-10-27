@@ -51393,6 +51393,7 @@ const resource = {
     "settings.company.appearance_title": "Documente și PDF",
     "settings.company.doc_logo_section_subtitle": "Sigla oficială tipărită pe documentele dvs. Sigla din meniul aplicației se setează în Setări generale.",
     "settings.company.doc_logo_fallback_link": "Schimbă sigla aplicației în Setări generale",
+    "settings.company.doc_preview_generated": "Generat la {{date}}",
     "settings.document_templates.title": "Aspect pe tip de document",
     "settings.document_templates.subtitle": "Dați unui tip de document un aspect propriu. Ce nu setați aici urmează aspectul de mai sus, iar fiecare mostră se tipărește pe hârtia pe care o folosește documentul respectiv.",
     "settings.document_templates.status_own": "Aspect propriu",

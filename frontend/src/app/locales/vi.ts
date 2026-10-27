@@ -50868,6 +50868,7 @@ const resource = {
     "settings.company.appearance_title": "Tài liệu và PDF",
     "settings.company.doc_logo_section_subtitle": "Logo chính thức in trên tài liệu của bạn. Logo trong menu ứng dụng được đặt tại Cài đặt chung.",
     "settings.company.doc_logo_fallback_link": "Đổi logo ứng dụng tại Cài đặt chung",
+    "settings.company.doc_preview_generated": "Tạo ngày {{date}}",
     "settings.document_templates.title": "Giao diện theo từng loại tài liệu",
     "settings.document_templates.subtitle": "Đặt giao diện riêng cho một loại tài liệu. Những gì bạn không đặt ở đây sẽ theo giao diện chung ở trên, và mỗi mẫu được in trên loại giấy mà tài liệu đó dùng.",
     "settings.document_templates.status_own": "Giao diện riêng",

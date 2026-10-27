@@ -53975,6 +53975,7 @@ const resource = {
     "settings.company.appearance_title": "Documents et PDF",
     "settings.company.doc_logo_section_subtitle": "Le logo officiel imprimé sur vos documents. Le logo du menu de l'application se définit dans les Paramètres généraux.",
     "settings.company.doc_logo_fallback_link": "Modifier le logo de l'application dans les Paramètres généraux",
+    "settings.company.doc_preview_generated": "Généré le {{date}}",
     "settings.document_templates.title": "Aspect par type de document",
     "settings.document_templates.subtitle": "Donnez à un type de document un aspect qui lui est propre. Ce que vous ne définissez pas ici suit l'aspect ci-dessus, et chaque aperçu s'imprime sur le papier que ce document utilise.",
     "settings.document_templates.status_own": "Aspect propre",

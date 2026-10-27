@@ -51119,6 +51119,7 @@ const resource = {
     "settings.company.appearance_title": "Dokumenter og PDF",
     "settings.company.doc_logo_section_subtitle": "Den formelle logoen som skrives ut på dokumentene dine. Logoen i appmenyen angis i Generelle innstillinger.",
     "settings.company.doc_logo_fallback_link": "Endre applogoen i Generelle innstillinger",
+    "settings.company.doc_preview_generated": "Generert {{date}}",
     "settings.document_templates.title": "Utseende per dokumenttype",
     "settings.document_templates.subtitle": "Gi én dokumenttype et utseende for seg selv. Det du ikke angir her, følger utseendet ovenfor, og hver prøve skrives ut på papiret det dokumentet bruker.",
     "settings.document_templates.status_own": "Eget utseende",

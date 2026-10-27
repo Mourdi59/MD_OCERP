@@ -51045,6 +51045,7 @@ const resource = {
     "settings.company.appearance_title": "Dokumendid ja PDF",
     "settings.company.doc_logo_section_subtitle": "Ametlik logo, mis prinditakse teie dokumentidele. Rakenduse menüü logo määratakse üldseadetes.",
     "settings.company.doc_logo_fallback_link": "Muuda rakenduse logo üldseadetes",
+    "settings.company.doc_preview_generated": "Loodud {{date}}",
     "settings.document_templates.title": "Dokumendipõhine välimus",
     "settings.document_templates.subtitle": "Anna ühele dokumenditüübile oma välimus. Kõik, mida siin ei määra, järgib ülalolevat välimust, ja iga näidis prinditakse paberile, mida see dokument kasutab.",
     "settings.document_templates.status_own": "Oma välimus",

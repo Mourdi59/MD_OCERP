@@ -51117,6 +51117,7 @@ const resource = {
     "settings.company.appearance_title": "Документи и PDF",
     "settings.company.doc_logo_section_subtitle": "Официалното лого, отпечатвано върху документите ви. Логото в менюто на приложението се задава в Общи настройки.",
     "settings.company.doc_logo_fallback_link": "Променете логото на приложението в Общи настройки",
+    "settings.company.doc_preview_generated": "Създадено на {{date}}",
     "settings.document_templates.title": "Оформление за всеки тип документ",
     "settings.document_templates.subtitle": "Задайте отделно оформление за един вид документи. Всичко, което не зададете тук, използва оформлението по-горе, а примерът се отпечатва на хартията, която използва този документ.",
     "settings.document_templates.status_own": "Собствено оформление",

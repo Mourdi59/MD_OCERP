@@ -45949,6 +45949,7 @@ const resource = {
     "settings.company.appearance_title": "Documents and PDF",
     "settings.company.doc_logo_section_subtitle": "The formal logo printed on your documents. The logo in the app menu is set in General settings.",
     "settings.company.doc_logo_fallback_link": "Change the app logo in General settings",
+    "settings.company.doc_preview_generated": "Generated {{date}}",
     "settings.document_templates.title": "Per-document look",
     "settings.document_templates.subtitle": "Give one kind of document a look of its own. Whatever you do not set here follows the look above, and each sample prints on the paper that document uses.",
     "settings.document_templates.status_own": "Own look",

@@ -51994,6 +51994,7 @@ const resource = {
     "settings.company.appearance_title": "Belgeler ve PDF",
     "settings.company.doc_logo_section_subtitle": "Belgelerinizde yazdırılan resmi logo. Uygulama menüsündeki logo Genel ayarlar bölümünde belirlenir.",
     "settings.company.doc_logo_fallback_link": "Uygulama logosunu Genel ayarlar bölümünde değiştir",
+    "settings.company.doc_preview_generated": "Oluşturulma: {{date}}",
     "settings.document_templates.title": "Belge türüne göre görünüm",
     "settings.document_templates.subtitle": "Bir belge türüne kendi görünümünü verin. Burada ayarlamadığınız her şey yukarıdaki görünümü izler ve her örnek, o belgenin kullandığı kağıda basılır.",
     "settings.document_templates.status_own": "Kendi görünümü",

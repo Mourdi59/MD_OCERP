@@ -51081,6 +51081,7 @@ const resource = {
     "settings.company.appearance_title": "اسناد و PDF",
     "settings.company.doc_logo_section_subtitle": "لوگوی رسمی که روی اسناد شما چاپ می‌شود. لوگوی منوی برنامه در تنظیمات عمومی تعیین می‌شود.",
     "settings.company.doc_logo_fallback_link": "تغییر لوگوی برنامه در تنظیمات عمومی",
+    "settings.company.doc_preview_generated": "ایجادشده در {{date}}",
     "settings.document_templates.title": "ظاهر بر اساس نوع سند",
     "settings.document_templates.subtitle": "به یک نوع سند ظاهر جداگانه بدهید. آنچه اینجا تنظیم نشود از ظاهر بالا پیروی می‌کند و هر نمونه روی همان کاغذی چاپ می‌شود که آن سند استفاده می‌کند.",
     "settings.document_templates.status_own": "ظاهر اختصاصی",

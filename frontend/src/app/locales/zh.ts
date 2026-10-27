@@ -53329,6 +53329,7 @@ const resource = {
     "settings.company.appearance_title": "文档和 PDF",
     "settings.company.doc_logo_section_subtitle": "打印在您文档上的正式徽标。应用菜单中的徽标在“常规设置”中设置。",
     "settings.company.doc_logo_fallback_link": "在常规设置中更改应用徽标",
+    "settings.company.doc_preview_generated": "生成于 {{date}}",
     "settings.document_templates.title": "各文档的外观",
     "settings.document_templates.subtitle": "为某一类文档单独设置外观。未在此设置的，沿用上方的外观；每个示例都会按该文档使用的纸张打印。",
     "settings.document_templates.status_own": "独立外观",

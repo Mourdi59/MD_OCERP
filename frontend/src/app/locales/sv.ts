@@ -51734,6 +51734,7 @@ const resource = {
     "settings.company.appearance_title": "Dokument och PDF",
     "settings.company.doc_logo_section_subtitle": "Den formella logotypen som skrivs ut på dina dokument. Logotypen i appmenyn ställs in under Allmänna inställningar.",
     "settings.company.doc_logo_fallback_link": "Ändra applogotypen under Allmänna inställningar",
+    "settings.company.doc_preview_generated": "Skapad {{date}}",
     "settings.document_templates.title": "Utseende per dokumenttyp",
     "settings.document_templates.subtitle": "Ge en dokumenttyp ett eget utseende. Det du inte ställer in här följer utseendet ovan, och varje exempel skrivs ut på det papper det dokumentet använder.",
     "settings.document_templates.status_own": "Eget utseende",

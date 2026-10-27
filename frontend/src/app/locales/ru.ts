@@ -54012,6 +54012,7 @@ const resource = {
     "settings.company.appearance_title": "Документы и PDF",
     "settings.company.doc_logo_section_subtitle": "Официальный логотип, печатаемый на ваших документах. Логотип в меню приложения задаётся в общих настройках.",
     "settings.company.doc_logo_fallback_link": "Изменить логотип приложения в общих настройках",
+    "settings.company.doc_preview_generated": "Создано {{date}}",
     "settings.document_templates.title": "Оформление для каждого типа документа",
     "settings.document_templates.subtitle": "Задайте отдельное оформление для одного вида документов. Всё, что вы не настроите здесь, будет использовать оформление выше, а образец печатается на той бумаге, которую использует этот документ.",
     "settings.document_templates.status_own": "Собственное оформление",

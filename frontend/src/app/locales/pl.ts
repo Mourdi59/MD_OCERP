@@ -52542,6 +52542,7 @@ const resource = {
     "settings.company.appearance_title": "Dokumenty i PDF",
     "settings.company.doc_logo_section_subtitle": "Oficjalne logo drukowane na Twoich dokumentach. Logo w menu aplikacji ustawia się w Ustawieniach ogólnych.",
     "settings.company.doc_logo_fallback_link": "Zmień logo aplikacji w Ustawieniach ogólnych",
+    "settings.company.doc_preview_generated": "Wygenerowano {{date}}",
     "settings.document_templates.title": "Wygląd dla poszczególnych dokumentów",
     "settings.document_templates.subtitle": "Nadaj jednemu rodzajowi dokumentu własny wygląd. To, czego tu nie ustawisz, przyjmuje wygląd powyżej, a każda próbka drukuje się na papierze, którego ten dokument używa.",
     "settings.document_templates.status_own": "Własny wygląd",

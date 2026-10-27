@@ -51358,6 +51358,7 @@ const resource = {
     "settings.company.appearance_title": "নথি ও PDF",
     "settings.company.doc_logo_section_subtitle": "আপনার নথিতে ছাপা আনুষ্ঠানিক লোগো। অ্যাপ মেনুর লোগো সাধারণ সেটিংসে ঠিক করা হয়।",
     "settings.company.doc_logo_fallback_link": "সাধারণ সেটিংসে অ্যাপের লোগো পরিবর্তন করুন",
+    "settings.company.doc_preview_generated": "তৈরি হয়েছে {{date}}",
     "settings.document_templates.title": "নথি অনুযায়ী রূপ",
     "settings.document_templates.subtitle": "একটি নির্দিষ্ট ধরনের নথিকে নিজস্ব রূপ দিন। এখানে যা সেট করা হয়নি তা ওপরের রূপ অনুসরণ করবে, এবং প্রতিটি নমুনা সেই নথি যে কাগজ ব্যবহার করে তাতেই ছাপা হয়।",
     "settings.document_templates.status_own": "নিজস্ব রূপ",

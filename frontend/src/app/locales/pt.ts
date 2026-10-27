@@ -53964,6 +53964,7 @@ const resource = {
     "settings.company.appearance_title": "Documentos e PDF",
     "settings.company.doc_logo_section_subtitle": "O logótipo formal impresso nos seus documentos. O logótipo do menu da aplicação define-se nas Definições gerais.",
     "settings.company.doc_logo_fallback_link": "Alterar o logótipo da aplicação nas Definições gerais",
+    "settings.company.doc_preview_generated": "Gerado em {{date}}",
     "settings.document_templates.title": "Aspeto por tipo de documento",
     "settings.document_templates.subtitle": "Dê a um tipo de documento um aspeto próprio. O que não definir aqui segue o aspeto acima, e cada amostra é impressa no papel que esse documento usa.",
     "settings.document_templates.status_own": "Aspeto próprio",

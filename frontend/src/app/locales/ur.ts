@@ -51087,6 +51087,7 @@ const resource = {
     "settings.company.appearance_title": "دستاویزات اور PDF",
     "settings.company.doc_logo_section_subtitle": "سرکاری لوگو جو آپ کی دستاویزات پر پرنٹ ہوتا ہے۔ ایپ مینو کا لوگو عمومی ترتیبات میں سیٹ ہوتا ہے۔",
     "settings.company.doc_logo_fallback_link": "ایپ کا لوگو عمومی ترتیبات میں تبدیل کریں",
+    "settings.company.doc_preview_generated": "{{date}} کو بنایا گیا",
     "settings.document_templates.title": "دستاویز کے مطابق ظاہری شکل",
     "settings.document_templates.subtitle": "کسی ایک قسم کی دستاویز کو اپنی الگ ظاہری شکل دیں۔ جو یہاں سیٹ نہیں کیا جاتا وہ اوپر والی ظاہری شکل کی پیروی کرتا ہے، اور ہر نمونہ اسی کاغذ پر چھپتا ہے جو وہ دستاویز استعمال کرتی ہے۔",
     "settings.document_templates.status_own": "اپنی ظاہری شکل",

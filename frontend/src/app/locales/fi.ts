@@ -51117,6 +51117,7 @@ const resource = {
     "settings.company.appearance_title": "Asiakirjat ja PDF",
     "settings.company.doc_logo_section_subtitle": "Asiakirjoihisi tulostettava virallinen logo. Sovelluksen valikon logo asetetaan yleisissä asetuksissa.",
     "settings.company.doc_logo_fallback_link": "Vaihda sovelluksen logo yleisissä asetuksissa",
+    "settings.company.doc_preview_generated": "Luotu {{date}}",
     "settings.document_templates.title": "Asiakirjakohtainen ulkoasu",
     "settings.document_templates.subtitle": "Anna yhdelle asiakirjatyypille oma ulkoasu. Kaikki, mitä et aseta täällä, noudattaa yllä olevaa ulkoasua, ja jokainen malli tulostuu paperille, jota kyseinen asiakirja käyttää.",
     "settings.document_templates.status_own": "Oma ulkoasu",

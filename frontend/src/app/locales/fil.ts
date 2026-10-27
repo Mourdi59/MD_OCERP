@@ -51046,6 +51046,7 @@ const resource = {
     "settings.company.appearance_title": "Mga Dokumento at PDF",
     "settings.company.doc_logo_section_subtitle": "Ang pormal na logo na ipi-print sa iyong mga dokumento. Ang logo sa menu ng app ay itinatakda sa General settings.",
     "settings.company.doc_logo_fallback_link": "Palitan ang logo ng app sa General settings",
+    "settings.company.doc_preview_generated": "Ginawa noong {{date}}",
     "settings.document_templates.title": "Itsura ayon sa uri ng dokumento",
     "settings.document_templates.subtitle": "Bigyan ang isang uri ng dokumento ng sarili nitong itsura. Ang hindi itinakda rito ay susunod sa itsura sa itaas, at ang bawat sample ay nililimbag sa papel na ginagamit ng dokumentong iyon.",
     "settings.document_templates.status_own": "Sariling itsura",

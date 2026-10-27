@@ -52276,6 +52276,7 @@ const resource = {
     "settings.company.appearance_title": "Documenti e PDF",
     "settings.company.doc_logo_section_subtitle": "Il logo ufficiale stampato sui tuoi documenti. Il logo nel menu dell'app si imposta nelle Impostazioni generali.",
     "settings.company.doc_logo_fallback_link": "Cambia il logo dell'app nelle Impostazioni generali",
+    "settings.company.doc_preview_generated": "Generato il {{date}}",
     "settings.document_templates.title": "Aspetto per tipo di documento",
     "settings.document_templates.subtitle": "Assegna a un tipo di documento un aspetto proprio. Ciò che non imposti qui segue l'aspetto sopra, e ogni anteprima si stampa sulla carta che quel documento usa.",
     "settings.document_templates.status_own": "Aspetto proprio",

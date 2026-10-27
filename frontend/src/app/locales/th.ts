@@ -50860,6 +50860,7 @@ const resource = {
     "settings.company.appearance_title": "เอกสารและ PDF",
     "settings.company.doc_logo_section_subtitle": "โลโก้ทางการที่พิมพ์บนเอกสารของคุณ โลโก้ในเมนูแอปตั้งค่าได้ในการตั้งค่าทั่วไป",
     "settings.company.doc_logo_fallback_link": "เปลี่ยนโลโก้แอปในการตั้งค่าทั่วไป",
+    "settings.company.doc_preview_generated": "สร้างเมื่อ {{date}}",
     "settings.document_templates.title": "รูปลักษณ์ตามประเภทเอกสาร",
     "settings.document_templates.subtitle": "กำหนดรูปลักษณ์เฉพาะให้เอกสารประเภทหนึ่ง สิ่งที่ไม่ได้กำหนดไว้ที่นี่จะใช้รูปลักษณ์ด้านบน และตัวอย่างแต่ละแบบจะพิมพ์บนกระดาษที่เอกสารนั้นใช้",
     "settings.document_templates.status_own": "รูปลักษณ์เฉพาะ",

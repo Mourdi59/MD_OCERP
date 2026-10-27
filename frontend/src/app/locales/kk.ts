@@ -51074,6 +51074,7 @@ const resource = {
     "settings.company.appearance_title": "Құжаттар және PDF",
     "settings.company.doc_logo_section_subtitle": "Құжаттарыңызға басылатын ресми логотип. Қолданба мәзіріндегі логотип Жалпы параметрлерде орнатылады.",
     "settings.company.doc_logo_fallback_link": "Қолданба логотипін Жалпы параметрлерде өзгерту",
+    "settings.company.doc_preview_generated": "Жасалды: {{date}}",
     "settings.document_templates.title": "Құжат түрі бойынша көрініс",
     "settings.document_templates.subtitle": "Бір құжат түріне жеке көрініс беріңіз. Мұнда баптамағаныңыздың бәрі жоғарыдағы көріністі қолданады, ал әрбір үлгі осы құжат пайдаланатын қағазда басылады.",
     "settings.document_templates.status_own": "Жеке көрініс",

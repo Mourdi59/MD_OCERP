@@ -50853,6 +50853,7 @@ const resource = {
     "settings.company.appearance_title": "Dokumen dan PDF",
     "settings.company.doc_logo_section_subtitle": "Logo resmi yang dicetak pada dokumen Anda. Logo di menu aplikasi diatur di Pengaturan umum.",
     "settings.company.doc_logo_fallback_link": "Ubah logo aplikasi di Pengaturan umum",
+    "settings.company.doc_preview_generated": "Dibuat {{date}}",
     "settings.document_templates.title": "Tampilan per jenis dokumen",
     "settings.document_templates.subtitle": "Beri satu jenis dokumen tampilan tersendiri. Apa pun yang tidak Anda atur di sini mengikuti tampilan di atas, dan setiap contoh dicetak pada kertas yang digunakan dokumen tersebut.",
     "settings.document_templates.status_own": "Tampilan sendiri",

@@ -52752,6 +52752,7 @@ const resource = {
     "settings.company.appearance_title": "Hujjatlar va PDF",
     "settings.company.doc_logo_section_subtitle": "Hujjatlaringizda chop etiladigan rasmiy logotip. Ilova menyusidagi logotip Umumiy sozlamalarda oʻrnatiladi.",
     "settings.company.doc_logo_fallback_link": "Ilova logotipini Umumiy sozlamalarda oʻzgartirish",
+    "settings.company.doc_preview_generated": "Yaratilgan: {{date}}",
     "settings.document_templates.title": "Hujjat turi boʻyicha koʻrinish",
     "settings.document_templates.subtitle": "Bitta hujjat turiga oʻzining koʻrinishini bering. Bu yerda sozlamagan narsangiz yuqoridagi koʻrinishga amal qiladi, va har bir namuna shu hujjat foydalanadigan qogʻozda chop etiladi.",
     "settings.document_templates.status_own": "Oʻz koʻrinishi",
