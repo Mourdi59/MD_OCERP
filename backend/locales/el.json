@@ -1389,6 +1389,7 @@
     "boq_pdf": {
       "strings": {
         "ai_generated": "Δημιουργήθηκε από AI",
+        "drawing": "Σχέδιο",
         "cost_estimate": "ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ ΚΟΣΤΟΥΣ",
         "summary": "ΣΥΝΟΨΗ",
         "project": "Έργο:",

@@ -1389,6 +1389,7 @@
     "boq_pdf": {
       "strings": {
         "ai_generated": "AI द्वारा निर्मित",
+        "drawing": "ड्रॉइंग",
         "cost_estimate": "लागत अनुमान",
         "summary": "सारांश",
         "project": "परियोजना:",

@@ -1394,6 +1394,7 @@
     "boq_pdf": {
       "strings": {
         "ai_generated": "נוצר בבינה מלאכותית",
+        "drawing": "שרטוט",
         "cost_estimate": "אומדן עלויות",
         "summary": "סיכום",
         "project": "פרויקט:",

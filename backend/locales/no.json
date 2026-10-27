@@ -1389,6 +1389,7 @@
     "boq_pdf": {
       "strings": {
         "ai_generated": "KI-generert",
+        "drawing": "Tegning",
         "cost_estimate": "KOSTNADSOVERSLAG",
         "summary": "SAMMENDRAG",
         "project": "Prosjekt:",

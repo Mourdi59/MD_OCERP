@@ -1389,6 +1389,7 @@
     "boq_pdf": {
       "strings": {
         "ai_generated": "Door AI gegenereerd",
+        "drawing": "Tekening",
         "cost_estimate": "KOSTENRAMING",
         "summary": "SAMENVATTING",
         "project": "Project:",

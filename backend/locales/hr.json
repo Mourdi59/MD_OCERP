@@ -1389,6 +1389,7 @@
     "boq_pdf": {
       "strings": {
         "ai_generated": "Generirao AI",
+        "drawing": "Nacrt",
         "cost_estimate": "PROCJENA TROŠKOVA",
         "summary": "SAŽETAK",
         "project": "Projekt:",

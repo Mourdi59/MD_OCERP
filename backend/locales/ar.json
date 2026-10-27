@@ -1394,6 +1394,7 @@
     "boq_pdf": {
       "strings": {
         "ai_generated": "أنشأه الذكاء الاصطناعي",
+        "drawing": "رسم",
         "cost_estimate": "تقدير التكلفة",
         "summary": "الملخص",
         "project": "المشروع:",

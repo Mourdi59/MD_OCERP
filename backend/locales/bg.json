@@ -1389,6 +1389,7 @@
     "boq_pdf": {
       "strings": {
         "ai_generated": "Генерирано с ИИ",
+        "drawing": "Чертеж",
         "cost_estimate": "КОСТОВА ОЦЕНКА",
         "summary": "ОБОБЩЕНИЕ",
         "project": "Проект:",

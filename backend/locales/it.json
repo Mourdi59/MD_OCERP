@@ -1389,6 +1389,7 @@
     "boq_pdf": {
       "strings": {
         "ai_generated": "Generato dall'IA",
+        "drawing": "Disegno",
         "cost_estimate": "COMPUTO METRICO ESTIMATIVO",
         "summary": "RIEPILOGO",
         "project": "Progetto:",

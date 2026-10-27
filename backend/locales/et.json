@@ -1389,6 +1389,7 @@
     "boq_pdf": {
       "strings": {
         "ai_generated": "AI genereeritud",
+        "drawing": "Joonis",
         "cost_estimate": "MAKSUMUSE HINDAMINE",
         "summary": "KOKKUVÕTE",
         "project": "Projekt:",

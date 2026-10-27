@@ -1389,6 +1389,7 @@
     "boq_pdf": {
       "strings": {
         "ai_generated": "AI 생성",
+        "drawing": "도면",
         "cost_estimate": "공사비 견적서",
         "summary": "요약",
         "project": "프로젝트:",

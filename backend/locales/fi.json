@@ -1389,6 +1389,7 @@
     "boq_pdf": {
       "strings": {
         "ai_generated": "Tekoälyn luoma",
+        "drawing": "Piirustus",
         "cost_estimate": "KUSTANNUSARVIO",
         "summary": "YHTEENVETO",
         "project": "Projekti:",

@@ -1389,6 +1389,7 @@
     "boq_pdf": {
       "strings": {
         "ai_generated": "AI生成",
+        "drawing": "図面",
         "cost_estimate": "コスト見積書",
         "summary": "概要",
         "project": "プロジェクト:",

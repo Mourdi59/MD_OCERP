@@ -1394,6 +1394,7 @@
     "boq_pdf": {
       "strings": {
         "ai_generated": "تولیدشده با هوش مصنوعی",
+        "drawing": "نقشه",
         "cost_estimate": "برآورد هزینه",
         "summary": "خلاصه",
         "project": "پروژه:",

@@ -1389,6 +1389,7 @@
     "boq_pdf": {
       "strings": {
         "ai_generated": "Generat de AI",
+        "drawing": "Desen",
         "cost_estimate": "DEVIZ ESTIMATIV",
         "summary": "REZUMAT",
         "project": "Proiect:",

@@ -1389,6 +1389,7 @@
     "boq_pdf": {
       "strings": {
         "ai_generated": "Vygenerováno AI",
+        "drawing": "Výkres",
         "cost_estimate": "ROZPOČET NÁKLADŮ",
         "summary": "SOUHRN",
         "project": "Projekt:",

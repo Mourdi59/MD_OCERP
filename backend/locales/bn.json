@@ -1303,6 +1303,7 @@
     "boq_pdf": {
       "strings": {
         "ai_generated": "এআই-দ্বারা তৈরি",
+        "drawing": "অঙ্কন",
         "cost_estimate": "ব্যয় প্রাক্কলন",
         "summary": "সারসংক্ষেপ",
         "project": "প্রকল্প:",

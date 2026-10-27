@@ -1389,6 +1389,7 @@
     "boq_pdf": {
       "strings": {
         "ai_generated": "Wygenerowano przez AI",
+        "drawing": "Rysunek",
         "cost_estimate": "KOSZTORYS",
         "summary": "PODSUMOWANIE",
         "project": "Projekt:",
