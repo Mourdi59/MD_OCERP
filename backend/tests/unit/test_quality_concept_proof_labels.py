@@ -34,7 +34,7 @@ async def test_untitled_proof_is_named_by_evidence_type_and_package_in_german() 
 
 @pytest.mark.asyncio
 async def test_untitled_proof_falls_back_to_english_for_other_locales() -> None:
-    msg = await _message("fr", evidence_type="weld_inspection", package="")
+    msg = await _message("sw", evidence_type="weld_inspection", package="")
     assert "Weld inspection" in msg
     assert UUID not in msg and "{" not in msg
 

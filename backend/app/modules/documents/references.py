@@ -99,6 +99,7 @@ class DocumentReference:
 DOCUMENT_REFERENCES: tuple[DocumentReference, ...] = (
     DocumentReference("cde", "DocumentRevision", "oe_cde_revision", "document_id", "scalar", "unlinks"),
     DocumentReference("closeout", "CloseoutBinding", "oe_closeout_binding", "document_id", "scalar", "unlinks"),
+    DocumentReference("closeout", "CloseoutDossier", "oe_closeout_dossier", "document_id", "scalar", "unlinks"),
     DocumentReference(
         "construction_control",
         "MaterialRecord",

@@ -48,13 +48,15 @@ RENDERING_ROUTES: dict[str, set[str]] = {
     # The Excel export is not a PDF, but it builds a document in the request, and
     # the search below finds it through a comment that mentions the PDF export.
     # Listing it here rather than narrowing the search keeps the search broad.
-    "modules/boq/router.py": {"export_boq_pdf", "export_boq_excel"},
+    "modules/boq/branch_router.py": {"export_branch_compare"},
+    "modules/boq/router.py": {"export_boq_pdf", "_build_excel_export"},
     "modules/commitment_release/router.py": {"export_matrix"},
     "modules/contracts/router.py": {"export_aia_application_pdf", "export_claim_hakedis_pdf"},
     "modules/costmodel/router.py": {"export_cost_control"},
     "modules/daily_diary/router.py": {"diary_pdf"},
     "modules/delivery_model/router.py": {"export"},
     "modules/design_management/router.py": {"export"},
+    "modules/drawing_compare/router.py": {"comparison_report_pdf"},
     "modules/economics/router.py": {"export"},
     "modules/einvoice/router.py": {"generate_invoice"},
     "modules/fieldreports/router.py": {"export_pdf"},

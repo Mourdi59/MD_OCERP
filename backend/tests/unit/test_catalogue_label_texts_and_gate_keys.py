@@ -64,6 +64,6 @@ def test_unshipped_locale_falls_back_without_warning(caplog) -> None:
 
     key = "delivery_model.catalogue.neutral.contract_kind.land_tenure.leasehold"
     with caplog.at_level(logging.INFO):
-        for locale in ("fr", "pt-BR", "zh"):
+        for locale in ("sw", "sw-KE", "ha"):
             assert translate(key, locale=locale) == translate(key, locale="en")
     assert not [r for r in caplog.records if r.levelno >= logging.WARNING]

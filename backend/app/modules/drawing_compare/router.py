@@ -31,6 +31,8 @@ import uuid
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
 
+from app.core.document_locale import normalize_document_locale
+from app.core.i18n import SUPPORTED_LOCALES, get_locale
 from app.dependencies import CurrentUserId, RequirePermission, SessionDep, verify_project_access
 from app.modules.drawing_compare.models import DrawingChange, DrawingComparison
 from app.modules.drawing_compare.schemas import (
@@ -194,11 +196,12 @@ async def comparison_report_pdf(
 ) -> Response:
     """The printable change report."""
     cmp = await _comparison(comparison_id, user_id, session, service, changes=True)
-    pdf, filename = await service.report_pdf(cmp)
+    language = normalize_document_locale(get_locale(), SUPPORTED_LOCALES, "en")
+    pdf, filename = await service.report_pdf(cmp, locale=language)
     return Response(
         content=pdf,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": f'attachment; filename="{filename}"', "Content-Language": language},
     )
 
 

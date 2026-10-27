@@ -28,7 +28,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 
 from app.core.content_disposition import attachment_disposition
-from app.core.i18n import get_locale
+from app.core.document_locale import normalize_document_locale
+from app.core.i18n import SUPPORTED_LOCALES, get_locale
 from app.core.permissions import permission_registry
 from app.dependencies import (
     CurrentUserId,
@@ -196,17 +197,19 @@ async def export_branch_compare(
     from app.modules.projects.models import Project
 
     project = await session.get(Project, project_id)
+    language = normalize_document_locale(locale or get_locale(), SUPPORTED_LOCALES, "en")
     document = branch_export.comparison_document(
         compare,
         view=view,
         project_name=project.name if project else "",
         country=getattr(project, "country_code", None) if project else None,
-        locale=(locale or get_locale()).strip() or "en",
+        locale=language,
     )
     content = await asyncio.to_thread(branch_export.render, document, fmt)
     media = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if fmt == "xlsx" else "application/pdf"
     name = branch_export.filename(compare["a_name"], compare["b_name"], fmt)
-    return Response(content=content, media_type=media, headers={"Content-Disposition": attachment_disposition(name)})
+    headers = {"Content-Disposition": attachment_disposition(name), "Content-Language": language}
+    return Response(content=content, media_type=media, headers=headers)
 
 
 @branch_router.post(

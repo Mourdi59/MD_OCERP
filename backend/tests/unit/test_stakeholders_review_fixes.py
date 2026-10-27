@@ -127,7 +127,7 @@ def test_every_unknown_item_has_a_stable_code_and_says_what_to_do_in_each_locale
             item = unknown_item(subject, reason, ("stakeholders", "p"))
             codes.add(item.code)
             assert (item.state, item.detail) == ("unknown", reason)
-            assert set(item.labels) == {"en", "de"}
+            assert {"en", "de"} <= set(item.labels)
             for text in item.labels.values():
                 # A sentence, not a raw key, and it ends with an instruction.
                 assert text != item.label_key and "stakeholders." not in text

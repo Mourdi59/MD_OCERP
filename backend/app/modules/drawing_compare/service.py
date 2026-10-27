@@ -785,7 +785,7 @@ class DrawingCompareService:
 
     # ── Report ──────────────────────────────────────────────────────────
 
-    async def report_pdf(self, cmp: DrawingComparison) -> tuple[bytes, str]:
+    async def report_pdf(self, cmp: DrawingComparison, *, locale: str | None = None) -> tuple[bytes, str]:
         """The printable change report and its file name."""
         from app.modules.drawing_compare.pdf_export import build_change_report_pdf
         from app.modules.projects.models import Project
@@ -806,6 +806,7 @@ class DrawingCompareService:
             list(cmp.changes),
             project_name=getattr(project, "name", "") or "",
             rfi_numbers=rfi_numbers,
+            locale=locale,
         )
         stem = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in (cmp.new_label or "drawing"))[:60]
         return pdf, f"revision_compare_{stem}_{str(cmp.id)[:8]}.pdf"
