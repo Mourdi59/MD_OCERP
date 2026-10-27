@@ -156,7 +156,7 @@
       "maintenance": "Karbantartás",
       "termination": "Felmondás"
     },
-    "use_clause_text": "A Bérlő az ingatlant kizárólag a saját és a közvetlen családtagjai lakhatására használhatja. Az albérletbe adás és a kereskedelmi célú használat a Bérbeadó előzetes írásbeli hozzájárulása nélkül tilos.",
+    "use_clause_text": "A Bérlő az ingatlant kizárólag a saját és a közvetlen családtagjai lakhatására használhatja. Az albérletbe adás és a kereskedelmi célú használat a Bérbeadó előzetes írásbeli hozzájárulása nélkül nem megengedett.",
     "maintenance_text": "A Bérbeadó felel a szerkezeti karbantartásért és a Fejlesztő által beépített nagy értékű készülékekért. A Bérlő felel a napi tisztaságért, az észszerű határon belüli kisebb javításokért és a rendeltetéstől eltérő használatból eredő károkért.",
     "termination_text": "Bármelyik fél a bérleti időszak végén felmondhatja a szerződést, legalább 30 nappal a lejárat előtt írásban közölt felmondással. A Bérlő általi korai felmondás esetén az óvadék elvész, hacsak a Bérbeadó írásban nem egyezik bele másként."
   },

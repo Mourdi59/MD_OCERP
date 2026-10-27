@@ -97,6 +97,7 @@ class QuoteCaptureService:
             return None
         from app.modules.ai.ai_client import call_ai, resolve_provider_key_model
         from app.modules.ai.repository import AISettingsRepository
+        from app.modules.quote_capture.extraction import SYSTEM_PROMPT
 
         try:
             settings = await AISettingsRepository(self.session).get_by_user_id(uuid.UUID(str(user_id)))
@@ -104,9 +105,10 @@ class QuoteCaptureService:
         except (ValueError, TypeError):
             return None
 
-        async def _call(system: str, prompt: str) -> str | None:
+        # The instruction is always the module's fixed extraction prompt, never caller text.
+        async def _call(_system: str, prompt: str) -> str | None:
             raw, _tokens = await call_ai(
-                provider=provider, api_key=api_key, system=system, prompt=prompt, model=model, max_tokens=8192
+                provider=provider, api_key=api_key, system=SYSTEM_PROMPT, prompt=prompt, model=model, max_tokens=8192
             )
             return raw
 

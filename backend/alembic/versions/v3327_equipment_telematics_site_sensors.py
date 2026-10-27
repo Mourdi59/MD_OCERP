@@ -35,17 +35,34 @@ def _base() -> list[sa.Column]:
     ]
 
 
-def upgrade() -> None:
-    with op.batch_alter_table("oe_equipment_telemetry") as b:
-        b.add_column(sa.Column("idle_hours", sa.Numeric(18, 4), nullable=True))
-        b.add_column(sa.Column("fuel_used_l", sa.Numeric(18, 4), nullable=True))
-        b.add_column(sa.Column("fault_codes", sa.JSON(), nullable=False, server_default="[]"))
-        b.add_column(sa.Column("source", sa.String(20), nullable=False, server_default="manual"))
-    with op.batch_alter_table("oe_equipment_equipment") as b:
-        b.add_column(sa.Column("cost_code", sa.String(100), nullable=False, server_default=""))
-        b.add_column(sa.Column("emission_class", sa.String(30), nullable=True))
+def _inspector() -> sa.engine.reflection.Inspector:
+    return sa.inspect(op.get_bind())
 
-    op.create_table(
+
+def _add_column(table: str, column: sa.Column) -> None:
+    if column.name not in {c["name"] for c in _inspector().get_columns(table)}:
+        op.add_column(table, column)
+
+
+def _create_table(name: str, *columns: object, **kw: object) -> None:
+    if not _inspector().has_table(name):
+        op.create_table(name, *columns, **kw)
+
+
+def _create_index(name: str, table: str, columns: list[str], **kw: object) -> None:
+    if name not in {ix["name"] for ix in _inspector().get_indexes(table)}:
+        op.create_index(name, table, columns, **kw)
+
+
+def upgrade() -> None:
+    _add_column("oe_equipment_telemetry", sa.Column("idle_hours", sa.Numeric(18, 4), nullable=True))
+    _add_column("oe_equipment_telemetry", sa.Column("fuel_used_l", sa.Numeric(18, 4), nullable=True))
+    _add_column("oe_equipment_telemetry", sa.Column("fault_codes", sa.JSON(), nullable=False, server_default="[]"))
+    _add_column("oe_equipment_telemetry", sa.Column("source", sa.String(20), nullable=False, server_default="manual"))
+    _add_column("oe_equipment_equipment", sa.Column("cost_code", sa.String(100), nullable=False, server_default=""))
+    _add_column("oe_equipment_equipment", sa.Column("emission_class", sa.String(30), nullable=True))
+
+    _create_table(
         "oe_equipment_telematics_device",
         *_base(),
         sa.Column(
@@ -60,14 +77,12 @@ def upgrade() -> None:
         sa.Column("active", sa.Boolean(), nullable=False, server_default=sa.true()),
         sa.Column("last_seen_at", sa.DateTime(timezone=True), nullable=True),
     )
-    op.create_index(
-        "ix_oe_equipment_telematics_device_equipment_id", "oe_equipment_telematics_device", ["equipment_id"]
-    )
-    op.create_index(
+    _create_index("ix_oe_equipment_telematics_device_equipment_id", "oe_equipment_telematics_device", ["equipment_id"])
+    _create_index(
         "ix_oe_equipment_telematics_device_token_hash", "oe_equipment_telematics_device", ["token_hash"], unique=True
     )
 
-    op.create_table(
+    _create_table(
         "oe_equipment_utilisation_day",
         *_base(),
         sa.Column(
@@ -93,12 +108,10 @@ def upgrade() -> None:
         sa.Column("allocated_at", sa.DateTime(timezone=True), nullable=True),
         sa.UniqueConstraint("equipment_id", "day", name="uq_oe_equipment_utilisation_day"),
     )
-    op.create_index("ix_oe_equipment_utilisation_day_equipment_id", "oe_equipment_utilisation_day", ["equipment_id"])
-    op.create_index(
-        "ix_oe_equipment_utilisation_day_project_day", "oe_equipment_utilisation_day", ["project_id", "day"]
-    )
+    _create_index("ix_oe_equipment_utilisation_day_equipment_id", "oe_equipment_utilisation_day", ["equipment_id"])
+    _create_index("ix_oe_equipment_utilisation_day_project_day", "oe_equipment_utilisation_day", ["project_id", "day"])
 
-    op.create_table(
+    _create_table(
         "oe_site_sensors_mix",
         *_base(),
         sa.Column(
@@ -112,9 +125,9 @@ def upgrade() -> None:
         sa.Column("strip_strength_mpa", sa.Numeric(8, 2), nullable=True),
         sa.Column("notes", sa.Text(), nullable=True),
     )
-    op.create_index("ix_oe_site_sensors_mix_project_id", "oe_site_sensors_mix", ["project_id"])
+    _create_index("ix_oe_site_sensors_mix_project_id", "oe_site_sensors_mix", ["project_id"])
 
-    op.create_table(
+    _create_table(
         "oe_site_sensors_device",
         *_base(),
         sa.Column(
@@ -141,9 +154,9 @@ def upgrade() -> None:
         sa.Column("metadata", sa.JSON(), nullable=False, server_default="{}"),
         sa.UniqueConstraint("project_id", "code", name="uq_oe_site_sensors_device_code"),
     )
-    op.create_index("ix_oe_site_sensors_device_project_id", "oe_site_sensors_device", ["project_id"])
+    _create_index("ix_oe_site_sensors_device_project_id", "oe_site_sensors_device", ["project_id"])
 
-    op.create_table(
+    _create_table(
         "oe_site_sensors_reading",
         sa.Column(
             "device_id",
@@ -154,7 +167,7 @@ def upgrade() -> None:
         sa.Column("recorded_at", sa.DateTime(timezone=True), primary_key=True),
         sa.Column("value", sa.Float(), nullable=False),
     )
-    op.create_table(
+    _create_table(
         "oe_site_sensors_reading_hourly",
         sa.Column(
             "device_id",
@@ -169,7 +182,7 @@ def upgrade() -> None:
         sa.Column("v_avg", sa.Float(), nullable=False),
     )
 
-    op.create_table(
+    _create_table(
         "oe_site_sensors_alert",
         *_base(),
         sa.Column(
@@ -191,10 +204,10 @@ def upgrade() -> None:
         sa.Column("inspection_id", sa.String(36), nullable=True),
         sa.Column("punch_item_id", sa.String(36), nullable=True),
     )
-    op.create_index("ix_oe_site_sensors_alert_project_status", "oe_site_sensors_alert", ["project_id", "status"])
-    op.create_index("ix_oe_site_sensors_alert_device_kind", "oe_site_sensors_alert", ["device_id", "kind"])
+    _create_index("ix_oe_site_sensors_alert_project_status", "oe_site_sensors_alert", ["project_id", "status"])
+    _create_index("ix_oe_site_sensors_alert_device_kind", "oe_site_sensors_alert", ["device_id", "kind"])
 
-    op.create_table(
+    _create_table(
         "oe_site_sensors_strip",
         *_base(),
         sa.Column(
@@ -212,8 +225,8 @@ def upgrade() -> None:
         sa.Column("strength_at_strike_mpa", sa.Numeric(8, 2), nullable=True),
         sa.Column("status", sa.String(20), nullable=False, server_default="planned"),
     )
-    op.create_index("ix_oe_site_sensors_strip_project_id", "oe_site_sensors_strip", ["project_id"])
-    op.create_index("ix_oe_site_sensors_strip_device_id", "oe_site_sensors_strip", ["device_id"])
+    _create_index("ix_oe_site_sensors_strip_project_id", "oe_site_sensors_strip", ["project_id"])
+    _create_index("ix_oe_site_sensors_strip_device_id", "oe_site_sensors_strip", ["device_id"])
 
 
 def downgrade() -> None:
