@@ -168,11 +168,12 @@ export function InvoiceInboxTab({ projectId }: { projectId: string }) {
 
   const listQuery = useQuery({
     queryKey: ['finance-invoice-inbox', projectId, statusFilter],
-    queryFn: () =>
-      apiGet<{ items: Capture[]; total: number }>(
-        `/v1/finance/inbox?project_id=${encodeURIComponent(projectId)}` +
-          (statusFilter ? `&status=${encodeURIComponent(statusFilter)}` : ''),
-      ),
+    queryFn: () => {
+      const qs = statusFilter ? `&status=${encodeURIComponent(statusFilter)}` : '';
+      return apiGet<{ items: Capture[]; total: number }>(
+        `/v1/finance/inbox?project_id=${encodeURIComponent(projectId)}${qs}`,
+      );
+    },
   });
 
   const accountsQuery = useQuery({

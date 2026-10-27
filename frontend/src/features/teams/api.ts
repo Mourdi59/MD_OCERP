@@ -466,8 +466,8 @@ export async function listRosterCandidates(
   const qs = new URLSearchParams();
   if (opts.q) qs.set('q', opts.q);
   if (opts.limit) qs.set('limit', String(opts.limit));
-  const suffix = qs.toString() ? `?${qs.toString()}` : '';
-  return apiGet<Page<RosterCandidate>>(`${BASE}/project/${projectId}/roster/candidates${suffix}`);
+  const query = qs.toString() ? `?${qs.toString()}` : '';
+  return apiGet<Page<RosterCandidate>>(`${BASE}/project/${projectId}/roster/candidates${query}`);
 }
 
 export async function getRosterVocabulary(): Promise<RosterVocabulary> {

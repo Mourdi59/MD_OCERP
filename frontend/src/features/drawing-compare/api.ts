@@ -167,11 +167,10 @@ export interface PreviousRevision {
 }
 
 export const drawingCompareApi = {
-  list: (projectId: string, refId?: string) =>
-    apiGet<ComparisonSummary[]>(
-      `${BASE}/comparisons/?project_id=${encodeURIComponent(projectId)}` +
-        (refId ? `&ref_id=${encodeURIComponent(refId)}` : ''),
-    ),
+  list: (projectId: string, refId?: string) => {
+    const qs = refId ? `&ref_id=${encodeURIComponent(refId)}` : '';
+    return apiGet<ComparisonSummary[]>(`${BASE}/comparisons/?project_id=${encodeURIComponent(projectId)}${qs}`);
+  },
   get: (id: string) => apiGet<Comparison>(`${BASE}/comparisons/${id}`),
   createPdf: (payload: PdfComparisonPayload) => apiPost<Comparison>(`${BASE}/comparisons/`, payload),
   createDwg: (payload: DwgComparisonPayload) => apiPost<Comparison>(`${BASE}/comparisons/dwg/`, payload),

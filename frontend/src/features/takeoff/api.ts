@@ -602,9 +602,7 @@ export const takeoffApi = {
    *  plus a money cost impact for linked-to-BOQ measurements that changed. */
   compare: (projectId: string, fromDocumentId: string, toDocumentId: string) =>
     apiPost<TakeoffCompareResponse>(
-      `/v1/takeoff/measurements/compare/?project_id=${encodeURIComponent(projectId)}`
-        + `&from_document_id=${encodeURIComponent(fromDocumentId)}`
-        + `&to_document_id=${encodeURIComponent(toDocumentId)}`,
+      `/v1/takeoff/measurements/compare/?project_id=${encodeURIComponent(projectId)}&from_document_id=${encodeURIComponent(fromDocumentId)}&to_document_id=${encodeURIComponent(toDocumentId)}`,
     ),
 
   /** Turn a PDF revision-compare delta into a DRAFT variation request.

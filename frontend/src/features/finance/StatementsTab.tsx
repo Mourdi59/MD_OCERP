@@ -671,11 +671,10 @@ export function StatementsTab({ projectId }: { projectId: string }) {
   });
   const balanceQ = useQuery({
     queryKey: ['finance-stmt-balance', projectId, currency, dateTo],
-    queryFn: () =>
-      apiGet<BalanceSheet>(
-        `/v1/finance/gaap/statements/balance-sheet?${scope}` +
-          (dateTo ? `&as_of=${encodeURIComponent(dateTo)}` : ''),
-      ),
+    queryFn: () => {
+      const qs = dateTo ? `&as_of=${encodeURIComponent(dateTo)}` : '';
+      return apiGet<BalanceSheet>(`/v1/finance/gaap/statements/balance-sheet?${scope}${qs}`);
+    },
     enabled: statement === 'balance',
   });
   const cashFlowQ = useQuery({

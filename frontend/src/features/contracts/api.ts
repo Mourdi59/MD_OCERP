@@ -888,9 +888,9 @@ export function populateClaimPreview(
 ): Promise<ProgressClaimPopulatePreview> {
   const qs = new URLSearchParams();
   (boqPositionIds ?? []).forEach((id) => qs.append('boq_position_ids', id));
-  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  const query = qs.toString() ? `?${qs.toString()}` : '';
   return apiGet<ProgressClaimPopulatePreview>(
-    `/v1/contracts/progress-claims/${claimId}/populate-from-progress${suffix}`,
+    `/v1/contracts/progress-claims/${claimId}/populate-from-progress${query}`,
   );
 }
 

@@ -110,8 +110,7 @@ export const portfolioApi = {
   /** Org-wide resource utilization heatmap across every project. */
   getCapacity: (params: { start: string; end: string; bucket: 'week' | 'month' }) =>
     apiGet<PortfolioCapacityResponse>(
-      `/v1/resources/portfolio/capacity?start=${encodeURIComponent(params.start)}` +
-        `&end=${encodeURIComponent(params.end)}&bucket=${params.bucket}`,
+      `/v1/resources/portfolio/capacity?start=${encodeURIComponent(params.start)}&end=${encodeURIComponent(params.end)}&bucket=${params.bucket}`,
     ),
 
   /**
@@ -126,8 +125,8 @@ export const portfolioApi = {
     projectId?: string;
   }) =>
     apiGet<PortfolioLevelingResponse>(
-      `/v1/resources/portfolio/leveling?start=${encodeURIComponent(params.start)}` +
-        `&end=${encodeURIComponent(params.end)}&bucket=${params.bucket}` +
-        (params.projectId ? `&project_id=${encodeURIComponent(params.projectId)}` : ''),
+      `/v1/resources/portfolio/leveling?start=${encodeURIComponent(params.start)}&end=${encodeURIComponent(params.end)}&bucket=${params.bucket}${
+        params.projectId ? `&project_id=${encodeURIComponent(params.projectId)}` : ''
+      }`,
     ),
 };

@@ -1173,8 +1173,8 @@ export const scheduleApi = {
     const qs = new URLSearchParams();
     if (params?.asOfDate) qs.set('as_of_date', params.asOfDate);
     if (params?.modelVersionId) qs.set('model_version_id', params.modelVersionId);
-    const suffix = qs.toString() ? `?${qs.toString()}` : '';
-    return apiGet<ScheduleSnapshot>(`/v2/schedules/${scheduleId}/snapshot${suffix}`);
+    const query = qs.toString() ? `?${qs.toString()}` : '';
+    return apiGet<ScheduleSnapshot>(`/v2/schedules/${scheduleId}/snapshot${query}`);
   },
 
   // Work Orders

@@ -335,11 +335,12 @@ export async function importFile(jobId: string, file: File): Promise<ImportResul
   return (await res.json()) as ImportResult;
 }
 
-export const fetchInventoryOffcuts = (projectId: string, kind: JobKind, material: string) =>
-  apiGet<InventoryOffcut[]>(
-    `${BASE}/inventory-offcuts/?project_id=${encodeURIComponent(projectId)}&kind=${kind}` +
-      (material ? `&material=${encodeURIComponent(material)}` : ''),
+export const fetchInventoryOffcuts = (projectId: string, kind: JobKind, material: string) => {
+  const qs = material ? `&material=${encodeURIComponent(material)}` : '';
+  return apiGet<InventoryOffcut[]>(
+    `${BASE}/inventory-offcuts/?project_id=${encodeURIComponent(projectId)}&kind=${kind}${qs}`,
   );
+};
 
 export const addInventoryStock = (jobId: string, itemIds: string[]) =>
   apiPost<CuttingJob>(`${BASE}/jobs/${jobId}/stocks/from-inventory`, { inventory_item_ids: itemIds });

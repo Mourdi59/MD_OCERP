@@ -53,11 +53,10 @@ export function LatestSitePhotosCard() {
   // scope changes.
   const { data: photos, isLoading } = useQuery({
     queryKey: ['dashboard-recent-photos', RECENT_LIMIT, activeProjectId],
-    queryFn: () =>
-      apiGet<RecentPhoto[]>(
-        `/v1/documents/photos/recent/?limit=${RECENT_LIMIT}` +
-          (activeProjectId ? `&project_id=${encodeURIComponent(activeProjectId)}` : ''),
-      ).catch(() => []),
+    queryFn: () => {
+      const qs = activeProjectId ? `&project_id=${encodeURIComponent(activeProjectId)}` : '';
+      return apiGet<RecentPhoto[]>(`/v1/documents/photos/recent/?limit=${RECENT_LIMIT}${qs}`).catch(() => []);
+    },
     retry: false,
     staleTime: 60_000,
   });

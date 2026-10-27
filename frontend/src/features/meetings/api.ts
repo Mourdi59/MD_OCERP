@@ -343,9 +343,8 @@ async function _importSummaryRequest(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const url =
-    `/api/v1/meetings/import-summary/?project_id=${encodeURIComponent(projectId)}` +
-    (preview ? '&preview=true' : '');
+  const qs = preview ? '&preview=true' : '';
+  const url = `/api/v1/meetings/import-summary/?project_id=${encodeURIComponent(projectId)}${qs}`;
 
   const response = await fetch(url, {
     method: 'POST',

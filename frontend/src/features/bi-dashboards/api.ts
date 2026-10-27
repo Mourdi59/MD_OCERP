@@ -506,8 +506,8 @@ export function installStarterPack(): Promise<StarterPackResult> {
 
 /** List dashboards; `projectId` scopes to that project plus company-wide. */
 export function listDashboards(projectId?: string): Promise<Dashboard[]> {
-  const q = projectId ? `?project_id=${encodeURIComponent(projectId)}` : '';
-  return apiGet<Dashboard[]>(`${BASE}/dashboards${q}`);
+  const qs = projectId ? `?project_id=${encodeURIComponent(projectId)}` : '';
+  return apiGet<Dashboard[]>(`${BASE}/dashboards${qs}`);
 }
 
 export function createDashboard(data: CreateDashboardPayload): Promise<Dashboard> {
@@ -574,8 +574,8 @@ export function deleteWidget(id: string): Promise<void> {
 
 /** List reports; `projectId` scopes to that project plus company-wide. */
 export function listReports(projectId?: string): Promise<ReportDefinition[]> {
-  const q = projectId ? `?project_id=${encodeURIComponent(projectId)}` : '';
-  return apiGet<ReportDefinition[]>(`${BASE}/reports${q}`);
+  const qs = projectId ? `?project_id=${encodeURIComponent(projectId)}` : '';
+  return apiGet<ReportDefinition[]>(`${BASE}/reports${qs}`);
 }
 
 export function createReport(data: CreateReportPayload): Promise<ReportDefinition> {
@@ -590,8 +590,8 @@ export function runReport(id: string): Promise<ReportRunResponse> {
 
 /** List schedules; `projectId` scopes to that project plus company-wide. */
 export function listSchedules(projectId?: string): Promise<ReportSchedule[]> {
-  const q = projectId ? `?project_id=${encodeURIComponent(projectId)}` : '';
-  return apiGet<ReportSchedule[]>(`${BASE}/report-schedules${q}`);
+  const qs = projectId ? `?project_id=${encodeURIComponent(projectId)}` : '';
+  return apiGet<ReportSchedule[]>(`${BASE}/report-schedules${qs}`);
 }
 
 export function createSchedule(data: {
