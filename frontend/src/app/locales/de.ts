@@ -57415,6 +57415,10 @@ const resource = {
     "modules.catalog.hse_frame": "Arbeitsschutzrahmen (HSE)",
     "modules.catalog.project_handbook": "Projekthandbuch",
     "modules.catalog.guarantees": "Bürgschaften und Garantien",
+    "modules.catalog.mcp": "MCP-Server",
+    "modules.catalog.condition": "Zustands- und Wartungsplan",
+    "modules.catalog.cutting": "Zuschnitt-Optimierung",
+    "modules.catalog.drawing_compare": "Planrevisionsvergleich",
     "modules.pp_name_pakistan_pk": "Pakistan-Baupaket",
     // stakeholders (module 8) frontend keys: start
     "notifications.stakeholders.commitment_overdue.body": "Zusage {{code}} war am {{due}} fällig.",

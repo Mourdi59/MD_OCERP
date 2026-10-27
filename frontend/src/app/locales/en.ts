@@ -48964,6 +48964,10 @@ const resource = {
     "modules.catalog.hse_frame": "HSE frame",
     "modules.catalog.project_handbook": "Project handbook",
     "modules.catalog.guarantees": "Guarantees and Bonds",
+    "modules.catalog.condition": "Condition & Maintenance Plan",
+    "modules.catalog.cutting": "Cutting Optimisation",
+    "modules.catalog.drawing_compare": "Drawing Revision Compare",
+    "modules.catalog.mcp": "MCP server",
     "modules.pp_name_pakistan_pk": "Pakistan Construction Pack",
     // stakeholders (module 8) frontend keys: start
     "notifications.stakeholders.commitment_overdue.body": "Commitment {{code}} was due on {{due}}.",
