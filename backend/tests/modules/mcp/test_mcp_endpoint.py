@@ -100,6 +100,10 @@ async def test_unsupported_protocol_header_parse_errors_and_foreign_origins_are_
         )
         assert broken.status_code == 400
         assert broken.json()["error"]["code"] == -32700
+        huge = await client.post(
+            URL, content=b" " * (1024 * 1024 + 1), headers={**auth(token), "Content-Type": "application/json"}
+        )
+        assert huge.status_code == 413
         foreign = await client.post(URL, json=rpc("ping"), headers={**auth(token), "Origin": "https://evil.example"})
         assert foreign.status_code == 403
 

@@ -53,6 +53,8 @@ router = APIRouter()
 
 _AUTH_ERROR = -32000
 _USE = Depends(RequirePermission("mcp.use"))
+# A JSON-RPC batch of tool calls is small; 1 MB leaves room without letting a client fill memory.
+MAX_BODY_BYTES = 1024 * 1024
 
 
 def _origin_allowed(request: Request) -> bool:
@@ -93,8 +95,16 @@ async def mcp_endpoint(request: Request, session: SessionDep) -> Response:
     # End the auth transaction so the next one starts with the owner bound as RLS tenant.
     await session.commit()
 
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > MAX_BODY_BYTES:
+        return _rpc_error(413, INVALID_REQUEST, "Request body too large.")
+    raw = b""
+    async for chunk in request.stream():
+        raw += chunk
+        if len(raw) > MAX_BODY_BYTES:
+            return _rpc_error(413, INVALID_REQUEST, "Request body too large.")
     try:
-        body = json.loads(await request.body())
+        body = json.loads(raw)
     except (ValueError, UnicodeDecodeError):
         return _rpc_error(400, PARSE_ERROR, "Parse error.")
 
