@@ -867,8 +867,8 @@ def test_the_export_declares_the_language_it_was_written_in() -> None:
     assert export.rendered_language("de") == "de"
     assert export.rendered_language("de-AT") == "de"
     assert export.rendered_language("en") == "en"
-    # No French texts ship: the document comes out in English and says so.
-    assert export.rendered_language("fr") == "en"
+    # No texts ship for an unknown code: the document comes out in English and says so.
+    assert export.rendered_language("zz") == "en"
     assert export.rendered_language("") == "en"
     source = inspect.getsource(qc_router.export)
     assert ast.parse(source) is not None

@@ -94,7 +94,7 @@ def test_the_subscribers_come_back_after_the_bus_was_emptied(empty_bus: None, mo
 
 @pytest.mark.parametrize(
     ("asked", "written"),
-    [("en", "en"), ("de", "de"), ("fr", "en"), ("", "en"), (None, "en"), ("zz", "en")],
+    [("en", "en"), ("de", "de"), ("fr", "fr"), ("", "en"), (None, "en"), ("zz", "en")],
 )
 def test_the_export_names_the_language_it_can_write(asked: str | None, written: str) -> None:
     """The bundle answers a missing locale in English, so that is what the header must say."""

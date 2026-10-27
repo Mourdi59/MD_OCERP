@@ -335,7 +335,7 @@ def test_the_register_export_declares_the_language_it_was_written_in() -> None:
 
     from app.modules.permits import export, router
 
-    for asked, written in (("en", "en"), ("de", "de"), ("fr", "en"), ("", "en"), (None, "en"), ("zz", "en")):
+    for asked, written in (("en", "en"), ("de", "de"), ("fr", "fr"), ("", "en"), (None, "en"), ("zz", "en")):
         assert export.written_locale(asked) == written, asked
     source = inspect.getsource(router.export)
     assert "Content-Language" in source and "written_locale" in source

@@ -288,6 +288,8 @@ class _Scan:
             return [node.value] if isinstance(node.value, str) else []
         if isinstance(node, ast.Name):
             return list(consts.get(node.id, []))
+        if isinstance(node, ast.IfExp):
+            return self._strings(node.body, consts) + self._strings(node.orelse, consts)
         if isinstance(node, (ast.Tuple, ast.List, ast.Set)):
             out: list[str] = []
             for element in node.elts:
@@ -309,6 +311,8 @@ class _Scan:
             return [node.id] if _is_constant_name(node.id) else []
         if isinstance(node, ast.Attribute):
             return [node.attr] if _is_constant_name(node.attr) else []
+        if isinstance(node, ast.IfExp):
+            return self._unresolved_names(node.body, consts) + self._unresolved_names(node.orelse, consts)
         if isinstance(node, (ast.Tuple, ast.List, ast.Set)):
             out: list[str] = []
             for element in node.elts:

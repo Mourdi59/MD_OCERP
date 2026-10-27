@@ -878,5 +878,5 @@ def test_the_export_declares_the_language_it_was_written_in() -> None:
     assert export.written_locale("de") == "de"
     assert export.written_locale("en") == "en"
     # A language the module has no texts for is written in English, and says so.
-    assert export.written_locale("fr") == "en"
+    assert export.written_locale("zz") == "en"
     assert export.written_locale(None) == "en"

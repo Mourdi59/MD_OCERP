@@ -18,6 +18,7 @@ async def test_claim_currency_drives_engine_and_flat_accrual(currency, gross, ex
     svc = ContractsService(SimpleNamespace())
     svc.retention_policy = AsyncMock(return_value=flat_policy("5"))
     svc._flat_retention_cap = AsyncMock(return_value=None)
+    svc._cash_retention_replaced_by_bond = AsyncMock(return_value=False)
     svc.claim_line_repo = SimpleNamespace(prior_period_value_by_line=AsyncMock(return_value={}))
     svc.claim_repo = SimpleNamespace(prior_claims=AsyncMock(return_value=[]))
     svc.release_repo = SimpleNamespace(billed_on_claims=AsyncMock(return_value=[]))

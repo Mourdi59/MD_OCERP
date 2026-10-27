@@ -220,7 +220,7 @@ class CuttingService:
     def _require_widths(kind: str, *, pieces: Sequence[Any] = (), stocks: Sequence[Any] = ()) -> None:
         if kind == "sheet" and (any(p.width_mm is None for p in pieces) or any(s.width_mm is None for s in stocks)):
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Sheet jobs need width_mm on every piece and stock entry",
             )
 
@@ -266,7 +266,7 @@ class CuttingService:
         """
         if not job.pieces or not job.stocks:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Add at least one piece and one stock entry before optimising",
             )
         self._require_widths(job.kind, pieces=job.pieces, stocks=job.stocks)

@@ -132,6 +132,8 @@ class _StubRepo:
         assigned_to: str | None = None,
         category: str | None = None,
         trade: str | None = None,
+        area: str | None = None,
+        asset_ref: str | None = None,
     ) -> tuple[list[Any], int]:
         rows = [r for r in self.rows.values() if r.project_id == project_id]
         if status:

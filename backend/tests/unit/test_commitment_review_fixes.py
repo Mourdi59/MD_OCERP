@@ -86,7 +86,7 @@ def test_every_refusal_code_has_a_message_in_every_language_the_module_ships() -
     codes |= {"release_pending", "invalid_transition", "no_pending_release", "item_closed"}
     assert len(codes) > 60
     files = sorted((root / "messages").glob("*.json"))
-    assert [f.name for f in files] == ["de.json", "en.json"]
+    assert {"de.json", "en.json"} <= {f.name for f in files}
     for file in files:
         keys = _flat(json.loads(file.read_text(encoding="utf-8")))
         missing = sorted(c for c in codes if f"commitment.errors.{c}" not in keys)

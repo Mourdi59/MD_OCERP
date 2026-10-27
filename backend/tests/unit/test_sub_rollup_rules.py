@@ -306,8 +306,10 @@ async def test_every_certificate_type_the_api_accepts_has_a_word() -> None:
     from app.modules.subcontractors.schemas import _CERT_TYPE_PATTERN
 
     types = _CERT_TYPE_PATTERN.removeprefix("^(").removesuffix(")$").split("|")
-    documents = json.loads(_EN.read_text(encoding="utf-8"))["pay_application"]["sub_certificate_lapsed"]["documents"]
-    assert sorted(types) == sorted(documents)
+    bundle = json.loads(_EN.read_text(encoding="utf-8"))
+    documents = bundle["pay_application"]["sub_certificate_lapsed"]["documents"]
+    # The insurance types are worded by the insurance gate's bundle, which the rule falls back to.
+    assert sorted(types) == sorted({*documents, *bundle["subcontractor_insurance"]["cert_types"]})
 
 
 # ── Registration and the engine ─────────────────────────────────────────────

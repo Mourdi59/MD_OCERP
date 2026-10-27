@@ -59,8 +59,8 @@ _X84_DIRECT_COST = Decimal("1915000.00")
 _X84_MARKUP_IT = Decimal("85000.00")
 _X83_UNITS = {"lsum": 1, "m": 4, "m2": 7, "m3": 6, "pcs": 8, "t": 1}
 
-# The response keys this route has always returned. Frozen: the frontend reads
-# imported, skipped, errors.length, sections.length, source_format and currency.
+# The response keys this route returns: the historic ones plus the additive fidelity report.
+# The frontend reads imported, skipped, errors.length, sections.length, source_format and currency.
 _RESPONSE_KEYS = {
     "imported",
     "skipped",
@@ -69,6 +69,7 @@ _RESPONSE_KEYS = {
     "source_format",
     "currency",
     "validation_report",
+    "fidelity",
 }
 
 

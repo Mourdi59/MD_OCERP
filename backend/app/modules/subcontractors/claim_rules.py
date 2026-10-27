@@ -86,6 +86,10 @@ def _rows(rollup: dict[str, Any], key: str) -> list[dict[str, Any]]:
     return [row for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
 
 
+#: The insurance gate already words every insurance certificate type; a document token falls back to it.
+_INSURANCE_WORDS = "subcontractor_insurance.cert_types"
+
+
 def _token(key_prefix: str, token: str, locale: str) -> str:
     """Word a status or document token, or print it as it is when the bundle has no word for it.
 
@@ -93,8 +97,11 @@ def _token(key_prefix: str, token: str, locale: str) -> str:
     still has to appear in the message; the raw token is ugly but true, where
     the raw message key the bundle would fall back to is neither.
     """
-    key = f"{key_prefix}.{token}"
-    return translate(key, locale=locale) if token and is_key_present(key, "en") else token
+    for prefix in (key_prefix, _INSURANCE_WORDS):
+        key = f"{prefix}.{token}"
+        if token and is_key_present(key, "en"):
+            return translate(key, locale=locale)
+    return token
 
 
 class _SubRollupRule(ValidationRule):

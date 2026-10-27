@@ -75,7 +75,7 @@ def _not_found(key: str) -> HTTPException:
 
 def _unprocessable(key: str, **params: Any) -> HTTPException:
     return HTTPException(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         detail=t(f"drawing_compare.errors.{key}", **params),
     )
 

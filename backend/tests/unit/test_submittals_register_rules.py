@@ -353,9 +353,9 @@ class TestMessages:
         assert english != turkish
         assert sorted(re.findall(r"\{[a-z_]+\}", english)) == sorted(re.findall(r"\{[a-z_]+\}", turkish))
 
-    def test_another_language_reads_the_english(self) -> None:
+    def test_an_untranslated_language_reads_the_english(self) -> None:
         key = "submittal.long_lead_has_lead_time.fail"
-        assert translate(key, locale="de") == translate(key, locale="en")
+        assert translate(key, locale="zz") == translate(key, locale="en")
 
 
 # ── Reachability ──────────────────────────────────────────────────────────
