@@ -56223,7 +56223,7 @@ const resource = {
     "modules.catalog.hse_frame": "Rámec BOZP (HSE)",
     "modules.catalog.project_handbook": "Projektová příručka",
     "modules.catalog.guarantees": "Záruky a garance",
-    "modules.catalog.mcp": "MCP server",
+    "modules.catalog.mcp": "Server MCP",
     "modules.catalog.condition": "Plán stavu a údržby",
     "modules.catalog.cutting": "Optimalizace řezu",
     "modules.catalog.drawing_compare": "Porovnání revizí výkresů",
