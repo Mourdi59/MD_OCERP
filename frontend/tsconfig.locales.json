@@ -1,0 +1,17 @@
+{
+  // The locale bundles as their own project. They are hundreds of MB of string
+  // literals; checked here once, the app program reads only the emitted .d.ts.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "rootDir": "src/app/locales",
+    "outDir": "node_modules/.cache/locales-dts",
+    "tsBuildInfoFile": "node_modules/.cache/locales.tsbuildinfo"
+  },
+  "include": ["src/app/locales/*.ts"],
+  "exclude": [],
+  "references": []
+}

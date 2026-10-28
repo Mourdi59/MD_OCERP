@@ -229,7 +229,7 @@ function ComplianceChips({ bid }: { bid: Parameters<typeof bidComplianceChips>[0
             : c.kind === 'missing_addenda'
               ? t('tendering.compliance.missing_addenda', {
                   defaultValue: 'Missing addendum {{list}}',
-                  list: fmtList(c.missing ?? []),
+                  list: fmtList((c.missing ?? []).map(String)),
                 })
               : t('tendering.compliance.compliant', { defaultValue: 'Compliant' })}
         </Badge>
