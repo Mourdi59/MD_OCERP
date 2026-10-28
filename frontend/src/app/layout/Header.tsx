@@ -285,8 +285,6 @@ export const TITLE_I18N_MAP: Record<string, string> = {
   'Commissioning': 'nav.commissioning',
   'Handover & Closeout': 'closeout.title',
   'Defects Liability': 'defects_liability.title',
-  'Condition & Maintenance Plan': 'condition.title',
-  'Cutting Optimisation': 'cutting.title',
   'ESG Site Performance': 'nav.esg',
   // Communication & documentation
   'Inbox': 'inbox.title',
@@ -313,9 +311,6 @@ export const TITLE_I18N_MAP: Record<string, string> = {
   'Post-calculation': 'postcalc.title',
   'Public Funding': 'funding.title',
   'Commitments and releases': 'commitment.page.title',
-  'Guarantees': 'guarantees.title',
-  'Guarantee': 'guarantees.title',
-  'Guarantee exposure': 'guarantees.exposure_title',
   'Delivery model': 'delivery_model.ui.title',
   'Economics': 'economics.ui.title',
   'HSE frame': 'hseFrame.title',

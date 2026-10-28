@@ -88,10 +88,6 @@ const DASH_SPAN_CLASS: Record<number, string> = {
  * so an empty widget never flashes a skeleton before it removes itself.
  * ─────────────────────────────────────────────────────────────────────── */
 const InboxPanel = lazy(() => import('@/features/inbox/InboxPanel'));
-// The case art (every scene of every playbook) is megabytes; keep it out of the entry chunk.
-const DashboardCasesCard = lazy(() =>
-  import('./DashboardCasesCard').then((m) => ({ default: m.DashboardCasesCard })),
-);
 const BIMCoverageCard = lazy(() => import('./BIMCoverageCard'));
 const FinanceSummaryCard = lazy(() =>
   import('./FinanceSummaryCard').then((m) => ({ default: m.FinanceSummaryCard })),
