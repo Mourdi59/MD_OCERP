@@ -1369,7 +1369,7 @@ jobs:
           OE_CONVERTER_REPO: ${{ vars.OE_CONVERTER_REPO || 'datadrivenconstruction/cad2data-Revit-IFC-DWG' }}
           OE_CONVERTER_TAG: ${{ vars.OE_CONVERTER_TAG || 'v2026.10.0' }}
           OE_CONVERTER_IFC_ASSET: DDC-IFC-to-Excel-2.0.0-portable.zip
-          OE_CONVERTER_IFC_SHA256: 0238bae0cf4cf5ae717c180d6f286e451189d6a78402068d9bb3b5e065061ea0
+          OE_CONVERTER_IFC_SHA256: 1fc8e8120a8be0923da0484733bb42566c3ec08e6acc751180a9f68b961e93a2
         run: |
           $ErrorActionPreference = 'Stop'
           $repo  = $env:OE_CONVERTER_REPO
