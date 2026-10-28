@@ -45,7 +45,7 @@ export function editText(p: Position, col: ColumnId, locale: string): string {
       const f = storedFormula(p, col);
       if (f) return f.startsWith('=') ? f : `=${f}`;
       const n = Number(p[col] ?? 0);
-      return Number.isFinite(n) ? formatLocaleNumber(n, locale, 6).replace(/[\s  ]/g, '') : '';
+      return Number.isFinite(n) ? formatLocaleNumber(n, locale, 6).replace(/[\s\u00a0\u202f]/g, '') : '';
     }
     default:
       return displayText(p, col, locale);

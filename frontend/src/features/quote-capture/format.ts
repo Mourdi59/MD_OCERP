@@ -33,7 +33,7 @@ export function formatDecimal(value: string | null | undefined, digits = 2, loca
 
 /** Read a number typed in the user's locale ("1.234,5" or "1,234.5") back to a wire decimal. */
 export function parseLocaleDecimal(text: string, locale?: string): string | null {
-  const raw = text.trim().replace(/[\s  ']/g, '');
+  const raw = text.trim().replace(/[\s\u00a0\u202f']/g, '');
   if (!raw) return null;
   const parts = new Intl.NumberFormat(locale || getNumberLocale()).formatToParts(1234.5);
   const decimal = parts.find((p) => p.type === 'decimal')?.value ?? '.';

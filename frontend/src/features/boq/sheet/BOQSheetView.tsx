@@ -434,7 +434,7 @@ export function BOQSheetView({
         for (let r = r0; r <= r1; r += 1) seeds.push(textAt(r, c));
         const numeric = columns[c]?.numeric ?? false;
         const values = fillSeries(seeds, toRow - r1, numeric ? parse : () => null, (n) =>
-          formatLocaleNumber(n, locale, 6).replace(/[\s  ]/g, ''),
+          formatLocaleNumber(n, locale, 6).replace(/[\s\u00a0\u202f]/g, ''),
         );
         values.forEach((v, i) => {
           const ch = changeFor(r1 + 1 + i, c, v);
