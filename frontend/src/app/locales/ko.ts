@@ -61219,7 +61219,7 @@ const resource = {
     "quote_capture.loading": "불러오는 중...",
     "quote_capture.levelling_empty": "이 패키지에는 아직 견적이 없습니다.",
     "quote_capture.plug_price_list": "대체 단가: 단가표",
-    "quote_capture.plug_boq": "대체 단가: BOQ 단가",
+    "quote_capture.plug_boq": "대체 단가: 내역서 단가",
     "quote_capture.plug_median": "대체 단가: 견적 중앙값",
     "quote_capture.plug_none": "대체 단가 없음",
     "quote_capture.off_currency": "다른 통화의 견적 {{count}}건은 제외되었습니다.",

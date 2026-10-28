@@ -52,6 +52,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RegionalPackCard } from '../RegionalPackCard';
 import { isOnboardingCompleted } from '@/features/onboarding';
 import { apiGet } from '@/shared/lib/api';
+import { useAuthStore } from '@/stores/useAuthStore';
+
+// The pack query waits for a session, so every test here starts signed in.
+beforeEach(() => {
+  useAuthStore.setState({ isAuthenticated: true });
+});
 
 // The shared setup (`src/test/setup.ts`) replaces `useNavigate` with a fresh
 // no-op spy for every test in the suite. That is why no existing test could

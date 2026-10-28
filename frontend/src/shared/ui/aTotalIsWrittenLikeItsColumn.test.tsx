@@ -729,6 +729,10 @@ const HAND_INSPECTED: Record<string, string> = {
   'features/delivery_model/ComparisonPanel.tsx':
     'CORRECT. The sum of the criteria weights (must reach 100) and a weighted score from 1 to 5 ' +
     'per compared form; the comparison holds no amount and the file names no currency anywhere.',
+  'features/equipment/components/TelematicsTab.tsx':
+    'CORRECT. Hours, percentages, litres and kg CO2 are quantities; the one money column (hire_cost) ' +
+    'is a bare decimal because the telematics payload carries no currency to name, and it goes through ' +
+    'fmtNumber like the rows above it.',
 };
 
 describe('no money footer in the product', () => {

@@ -36,6 +36,12 @@ import { useDashboardLayoutStore } from '@/stores/useDashboardLayoutStore';
 import { useCasesStore } from '@/features/cases/useCasesStore';
 import { PLAYBOOKS } from '@/features/cases/playbooks';
 import { regionDisplayName } from '@/features/cases/regions';
+import { useAuthStore } from '@/stores/useAuthStore';
+
+// The pack query waits for a session, so every test here starts signed in.
+beforeEach(() => {
+  useAuthStore.setState({ isAuthenticated: true });
+});
 
 // The interpolating stand-in the sibling card's test uses: these assertions
 // read finished sentences, and a `t` that returned the key would hide the

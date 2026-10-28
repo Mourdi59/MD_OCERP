@@ -477,6 +477,11 @@ const FIXED_ALLOWED: ReadonlyArray<{ file: string; snippet: string; why: string 
     snippet: 'return v.toFixed(4);',
     why: 'Rounds a latitude or longitude into the snapshot cache key, so two cards a few metres apart share one render. Compared as a string and never shown, and the geo-coordinate rule cannot see it because the line is the whole body of roundCoord.',
   },
+  {
+    file: 'features/cost-benchmarks/CostBenchmarksPage.tsx',
+    snippet: 'const pct = (x: number) => `${(((x - lo) / span) * 100).toFixed(2)}%`;',
+    why: 'A CSS percentage for the left and width of the band bar; the CSS grammar takes a dot and rejects a grouped number.',
+  },
   ];
 /* FIXED-ALLOWED:END */
 
@@ -699,6 +704,7 @@ describe('every number and date is written in the language the reader picked', (
       'features/takeoff/lib/takeoff-export.ts :: return n.toFixed(precision);',
       'features/geo-hub/utils.ts :: return `${sign}${Math.abs(value).toFixed(4)}°`;',
       'shared/ui/ProjectMap/streetThumbnail.ts :: return v.toFixed(4);',
+      'features/cost-benchmarks/CostBenchmarksPage.tsx :: const pct = (x: number) => `${(((x - lo) / span) * 100).toFixed(2)}%`;',
     ]);
     expect(FIXED_ALLOWED.filter((a) => a.why.length < 20)).toEqual([]);
     const stale = FIXED_ALLOWED.filter(

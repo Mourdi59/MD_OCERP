@@ -12,6 +12,7 @@ import { AlertTriangle, Download, FileUp, Flame, Truck } from 'lucide-react';
 
 import { Badge, Button, Card, EmptyState } from '@/shared/ui';
 import { getErrorMessage } from '@/shared/lib/api';
+import { fmtNumber } from '@/shared/lib/formatters';
 
 import { listInventories } from './api';
 import {
@@ -195,7 +196,7 @@ export function LifecyclePanel({ projectId }: { projectId: string }) {
                       : h.group}
                   </td>
                   <td className="py-1 text-right tabular-nums">{kgToTonnes(h.carbon_kg, i18n.language)}</td>
-                  <td className="py-1 text-right tabular-nums">{h.share_pct.toFixed(1)}</td>
+                  <td className="py-1 text-right tabular-nums">{fmtNumber(h.share_pct, 1)}</td>
                 </tr>
               ))}
             </tbody>

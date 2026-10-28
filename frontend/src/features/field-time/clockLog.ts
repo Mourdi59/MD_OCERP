@@ -4,6 +4,7 @@
 
 import { compareNames } from '@/shared/lib/collator';
 import { todayLocalISO } from '@/shared/lib/dates';
+import { compareNames } from '@/shared/lib/collator';
 import type { ClockEvent } from './clockApi';
 
 export interface WorkerDay {
