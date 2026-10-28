@@ -96,6 +96,16 @@ REMEDIATOR = os.path.join("scripts", "strip_zero_width.py")
 ESCAPE_RE = re.compile(r"\\(?:x\{([0-9A-Fa-f]{1,6})\}|u\{([0-9A-Fa-f]{1,6})\}|u([0-9A-Fa-f]{4}))")
 GOVERNED = {ord(c) for c in STRAY_CHARS} | {ord(c) for c in SPELLING_CHARS}
 
+# The provenance watermark (signature A), the same sequence as DDC_WATERMARK in
+# frontend/src/shared/lib/ddc-integrity.ts doubled. Only the whole run is exempt; a partial one is stray.
+WATERMARK = (chr(0x200B) + chr(0x200C) + chr(0x200D) + chr(0x2060)) * 4
+
+
+def stray_in_line(line: str) -> list[str]:
+    """Names of the stray characters in ``line`` once every whole watermark is set aside."""
+    rest = line.replace(WATERMARK, "")
+    return [name for ch, name in STRAY_CHARS.items() if ch in rest]
+
 
 # What is in scope has to be decided by the repository, not by how much
 # unversioned material happens to be sitting in the working copy. marketing-site
@@ -207,9 +217,7 @@ def scan(repo_root: str, roots: list[str]) -> tuple[list[tuple[str, int, str]], 
                 text = blob.decode("utf-8", "replace")
             rel = os.path.relpath(path, repo_root).replace(os.sep, "/")
             for lineno, line in enumerate(text.splitlines(), start=1):
-                for ch, name in STRAY_CHARS.items():
-                    if ch in line:
-                        hits.append((rel, lineno, name))
+                hits.extend((rel, lineno, name) for name in stray_in_line(line))
         counted[root] = seen
     return hits, counted
 

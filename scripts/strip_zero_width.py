@@ -57,7 +57,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # is what it counts and leaves alone, and both are defined once, in the detector.
 # A remediation tool that keeps its own copy of the rule is how the 2026-08-17
 # loss happened.
-from check_zero_width import SPELLING_CHARS, STRAY_CHARS  # noqa: E402
+from check_zero_width import SPELLING_CHARS, STRAY_CHARS, WATERMARK  # noqa: E402
 
 TARGETS = [
     ("frontend/src", (".ts", ".tsx", ".js", ".jsx", ".css", ".html", ".md", ".snap")),
@@ -78,12 +78,14 @@ def strip_file(path: str, stats: dict[str, int], kept: dict[str, int]) -> bool:
     if not any(c in data for c in STRAY_CHARS):
         return False
 
-    new_data = data
+    # The watermark is never stray: strip around each whole run, never inside it.
+    pieces = data.split(WATERMARK)
     for ch in STRAY_CHARS:
-        n = new_data.count(ch)
+        n = sum(piece.count(ch) for piece in pieces)
         if n:
             stats[ch] = stats.get(ch, 0) + n
-            new_data = new_data.replace(ch, "")
+            pieces = [piece.replace(ch, "") for piece in pieces]
+    new_data = WATERMARK.join(pieces)
 
     if new_data != data:
         with open(path, "w", encoding="utf-8", newline="") as fh:
