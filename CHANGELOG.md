@@ -9,21 +9,90 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [18.9.0] - 2026-10-28
+
 ### Added
 
-- BIM models can be grouped by category, level, type, family, material, IFC class or any parameter, two levels deep, with counts, length, area and volume per group, isolate and colour by group, and CSV or Excel export.
-- Property filters on the BIM page (equals, contains, not, range) show as chips and are kept in the `?bf=` link, so a shared link opens the same view.
-- Sealed tender submissions: bids stay hidden from staff, exports and backups until an audited opening after the deadline, with an optional two-person opening and a SHA-256 receipt for every bidder.
+New modules
+
+- Quote capture: read supplier quotes from PDF, scan, Excel, email or pasted text, with a confidence for every field and a link back to where it was read. Quotes are matched to the tender scope, levelled with plug rates for missing lines (from a price list, the bill or the median), ranked, and confirmed into a bid, a price list or a draft purchase order. A person confirms every figure, and the audit keeps the machine value next to the human one.
+- Cutting optimisation for bars and sheets: cut lists from bending schedules, takeoff, bill lines or a spreadsheet become cutting patterns with kerf, trim and grain. The measured waste factor and quantities are proposed to the bill line and a draft requisition, and written only when you confirm. Offcuts return to site inventory. Cutting list PDF and workbook included.
+- Drawing compare: put two revisions of a drawing on top of each other (old in red, new in blue) or side by side. PDF sheets are compared in the browser, DWG and DXF entity by entity. Each change can raise a draft RFI or a revision cloud and flags the takeoff measurements, markups and bill positions that need re-measuring.
+- Bank guarantee and bond register: bid, performance, advance, retention, warranty and parent company guarantees with documents, bank credit lines and expiry alerts at 60, 30 and 14 days. Advance guarantees reduce on certified claims, bid bonds release at award, and the first claim waits for a performance bond.
+- WIP schedule: percentage of completion on the cost-to-cost method per project and for the portfolio, with over billing, under billing and fade, month-end snapshots, a project view, a dashboard widget and Excel and PDF export.
+- Cost benchmarks: cost per square metre and per unit with P10, P50 and P90 bands, outliers flagged, and an anonymised export.
+- Site sensors: concrete maturity with mix curves and formwork strike times, noise, dust, vibration, weather and water level, each against the limit of the project's country, with alerts you acknowledge.
+- Condition and maintenance plan: rate asset condition from inspections on a configurable scale and get a maintenance plan with inflation and present value.
+- MCP server: connect an AI client to your projects with read tools and proposals that wait for a person to review them. Switch it on per user in Settings, Integrations, with scoped tokens, a rate limit and a log of every call.
+
+Estimating
+
+- Estimate branches: fork a bill, compare any two branches by position, section or cost group, and cherry-pick or merge changes against the common ancestor. Conflicts must be resolved and the target is saved as a snapshot first.
+- Spreadsheet mode in the bill: arrows, Tab, Enter, F2, fill handle, range selection, find and replace, undo per bulk action, formulas in quantity and rate cells, and pasting from a spreadsheet with a preview before positions are created. Sheet edits are saved all together or not at all.
+- Every bill quantity can be traced to its drawing sheet and revision. Positions are flagged when a newer revision exists, and the drawing line appears in Excel, PDF and GAEB exports.
+- Exchange fidelity reports: every GAEB, BC3, Excel and CSV export and import records what did not survive (shortened texts, rounded values, dropped attributes, unmapped units, lost levels), with a round-trip check, a list and a CSV or Excel download.
+- Proportional scaling: set a section or resource group to a target of hours, cost or quantity, preview it, lock lines you do not want touched, and apply with a snapshot saved first.
+- Export sale rates with the chosen markups folded into the unit rates (CSV, Excel, PDF, GAEB and BC3), with a preview of the rounding gap against the bill total and a tolerance you set. The bill itself is never changed.
+- A Formula tab in the linked geometry popover: write a formula over model properties, including Revit type parameters, see the value per element, and either set it as the quantity or link it to the model after confirming the result.
+- Choose and order the bill columns per user, and bill rows follow the compact or comfortable density.
+- BIM models can be grouped by category, level, type, family, material, IFC class or any parameter, two levels deep, with counts, length, area and volume per group, isolate and colour by group, and CSV or Excel export. Property filters show as chips and travel in the link.
+- Carbon: life-cycle stages A4 and A5 with transport, site energy, equipment fuel and waste, EPD import (EN 15804), a carbon budget with a dashboard widget, a CO2 column in the bid comparison, and company reporting for ESRS E1 and SECR.
+- Schedule: an Excel progress sheet to send out and read back with a per-activity preview, scheduling profiles with a recalculation preview, and imported XER, MSPDI or spreadsheet files keep their original dates until you accept the change.
+- Equipment: machine telematics (AEMP 2.0 and CSV) with worked, idle and off hours, fuel and CO2, and hire cost allocated per machine-day to the project budget.
+
+Finance
+
+- Portfolio cash-flow forecast: monthly cash in and out per project, actuals against plan, the peak funding requirement, and scenarios for delayed receipts or cost overrun. Currencies are never mixed.
+- Payroll periods from approved timesheets, with a lock, reopening with a reason, CSV, Excel, DATEV LODAS and neutral JSON exports, and labour cost posted to actuals.
+- Lapsed mandatory insurance of a subcontractor blocks payment approval, with a manager override that needs a reason and is logged.
+
+Procurement and tendering
+
+- Sealed tender submissions: bids stay hidden from staff, exports, backups and events until an authorised opening after the deadline, optionally by two people. Late submissions are refused, every bidder gets a receipt with a time stamp and checksum, and every opening is logged. Informal requests for quotation work as before. This is a tool for running a sealed procedure and does not by itself make a procedure comply with any procurement law.
+- Priced GAEB X84 files can be imported as bids. The check names unknown positions, unit mismatches, changed quantities, unpriced lines, duplicates and currency differences, and nothing is imported while a blocking problem remains.
+- Tender addenda carry bill differences, document revisions and a new deadline; publishing mails the invited firms in the project language. Bidders can ask questions, answers are published to all anonymously, and the bid comparison flags bids priced on an older revision or without an acknowledgement.
 - A procurement procedure keeps a frozen snapshot of the rules it was decided on, and overriding a rule outcome needs a written reason that is recorded.
-- Settings: workspace logo with an optional dark variant, a free company colour checked for contrast, start page after sign-in, first day of week, text size from 87.5% to 137.5%, and personal motion and contrast options.
+- Supplier price list import from Excel, CSV and SAP condition exports with preview, gross and net prices, contractor discount agreements, and product and datasheet links.
+- South Africa: the contract price adjustment regime CPAP (Haylett) and an upload of the Stats SA P0151.1 work group indices into price index series, with the source acknowledged.
+
+Field
+
+- Geofenced time clock with consent, flags for clocking outside the fence that a supervisor approves, and draft timesheets feeding payroll, cost actuals and the diary. Diary, punch and inspection records keep working offline and merge with conflict detection when the connection returns.
+- Photo evidence on punch items and defects (position, accuracy, time, heading), a map view, BCF export and import, and punch items located by area and asset.
+- Handover dossier: checklist, scope per area or asset, index PDF and ZIP filed in Documents, and delivery by download, webhook, chat connector or e-mail with a log and resend.
+- Last planner: look-ahead board, constraints log linked to RFIs, submittals and orders, PPC trend and variance Pareto.
+- Meeting minutes from audio after a consent notice, with a project glossary and AI proposals (summary, decisions, actions with owner and due date) that you confirm one by one. Audio is deleted after transcription or after a retention window.
+
+Packs and demo
+
+- Country packs for Pakistan (provincial sales tax, withholding, interim payment terms, PEC bidding defaults, marla and kanal, Urdu terms, two demo projects) and Egypt (VAT, Sunday to Thursday week, FIDIC limits, e-invoicing, a Cairo demo project). Rates are not shipped in either pack, and every figure is marked for review by a local specialist.
+- The hosted demo offers a company profile picker after sign-in, each with its own menu.
+- An Azure installation guide in English, German and Russian.
+
+Everyday use
+
+- An action palette with rebindable shortcuts, an Ask AI hand-off and badge counts on menu rows. Work modes (Estimator, Site manager, Finance, Manager), an arrangeable menu, a bottom bar on phones, ready-made dashboard widget sets, a start page per project role, saved default filters for tasks, RFIs and inbox, and a choice of which sidebar footer and floating buttons to show.
+- Settings: workspace logo with a dark variant, a company colour checked for contrast, text size from 87.5% to 137.5%, motion and contrast options, and page, header, footer and watermark settings that reach your PDFs.
+- First-run setup: set the company name and logo, browse ready-made packs by country and company type, and move between steps while a pack installs.
+
+### Changed
+
+- Documents and outgoing text follow the reader's language. Registers, forms, report and e-invoice PDFs, page numbers, print stamps, emails, exports and imports are available in the platform languages, and Urdu, Hindi, Thai, Japanese and Korean text is drawn in the right script instead of boxes.
+- Single sign-on works with any compliant OpenID Connect provider: endpoints come from discovery, the ID token is verified, and roles are read from the token. Direct Microsoft Entra ID sign-in is documented as needing a broker today.
 
 ### Fixed
 
-- Linux and macOS converter packages are pinned to fresh digests, so installs on those systems work again.
-- IFC files exported from authoring tools now bring their area, volume, length and height quantities.
-- A Revit file the converter rejects is reported as an error instead of asking for a converter.
-- Saved BIM groups no longer show zero elements.
-- The desktop zoom setting is now called Window zoom, so it is not confused with the new text size.
+- After switching project, pages no longer show the previous project's model, bill or filter, and the switcher lands on the module list instead of another project's record.
+- Child positions of a bill line are shown and counted in the section subtotal.
+- The embedded database on Windows starts again after a restart that left a database process running.
+- Identical family instances in a DAE model get their own geometry, so every element shows in the viewer and the linked geometry preview. Revit type rows are no longer counted as elements, and quantity rules read `[Type]` parameters.
+- Machinery is counted in the direct cost of the flat methodologies.
+- The 3D preview and view cube no longer say there is no 3D context after a redraw, and the linked geometry popover and row menu stay on screen.
+- Resource scaling writes exact decimals, a bill branch update carries net cost, target and sale rates, and a cut-list upload stops reading at its 8 MB limit.
+- Security: requests to the MCP endpoint over 1 MB are refused, device ingest is rate limited, untrusted file path parts are confined to their folder, and error responses no longer carry internal exception text.
+- Linux and macOS converter packages are pinned to fresh digests, IFC files bring their area, volume, length and height quantities, and a Revit file the converter rejects is reported as an error.
+
+- Windows DWG and IFC converter packages are pinned to the files re-uploaded upstream, so installs no longer fail the checksum.
 
 ## [18.8.2] - 2026-10-22
 

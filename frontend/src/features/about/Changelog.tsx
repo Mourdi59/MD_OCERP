@@ -53,13 +53,7 @@ interface ChangelogEntry {
  * claims to be, so anything numeric-looking here would be read as a release
  * that nothing else in the tree has been bumped to.
  */
-const UNRELEASED: ChangelogEntry | null = {
-  version: 'Unreleased',
-  date: '2026-10-23',
-  tag: 'NEW',
-  summary:
-    'Group BIM models by category, level, type or any parameter, filter them with chips and share the view as a link. Sealed tender submissions stay hidden until an audited opening, procurement keeps a frozen rule snapshot, and Settings gain a workspace logo, company colour and text size; Linux and macOS converter installs and IFC quantities are fixed.',
-};
+const UNRELEASED: ChangelogEntry | null = null;
 
 // Sorted newest to oldest. Sort is enforced at runtime below (semver-aware) so
 // out-of-order entries here still display correctly.
@@ -72,6 +66,13 @@ const UNRELEASED: ChangelogEntry | null = {
 // The entries from 15.3.0 up read at the new length; the older ones below still
 // carry the long form and are left alone as the record of what shipped.
 const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '18.9.0',
+    date: '2026-10-28',
+    tag: 'NEW',
+    summary:
+      'New modules for supplier quote capture, cutting optimisation, drawing compare, bank guarantees, WIP schedule, cost benchmarks, site sensors and an MCP server for AI clients. Estimate branches with merge, a spreadsheet mode in the bill, sealed tender submissions, priced GAEB X84 bids, a geofenced time clock with offline field records, country packs for Pakistan and Egypt, and documents in the reader\'s language.',
+  },
   {
     version: '18.8.2',
     date: '2026-10-22',
