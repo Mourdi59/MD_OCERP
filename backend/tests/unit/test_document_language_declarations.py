@@ -50,6 +50,8 @@ RENDERING_ROUTES: dict[str, set[str]] = {
     # Listing it here rather than narrowing the search keeps the search broad.
     "modules/boq/branch_router.py": {"export_branch_compare"},
     "modules/boq/router.py": {"export_boq_pdf", "export_boq_excel"},
+    "modules/carbon/lifecycle_router.py": {"export_report"},
+    "modules/wip_report/router.py": {"export_portfolio"},
     "modules/commitment_release/router.py": {"export_matrix"},
     "modules/contracts/router.py": {"export_aia_application_pdf", "export_claim_hakedis_pdf"},
     "modules/costmodel/router.py": {"export_cost_control"},

@@ -161,6 +161,11 @@ CANNOT_TRUNCATE: frozenset[str] = frozenset(
         # picker has to offer every one, so a short answer would make a
         # supported language impossible to choose.
         "meetings/audio_router.py::minutes_pdf_languages",
+        # The overtime, allowance and burden profiles per country or agreement,
+        # loaded from the packaged rule files, not user data. A payroll period
+        # is built under exactly one of them, so a short answer would hide the
+        # statute a worker's pay has to follow, a correctness bug.
+        "payroll/period_router.py::rule_profiles",
     }
 )
 

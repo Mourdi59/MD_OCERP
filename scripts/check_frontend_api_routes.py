@@ -105,7 +105,7 @@ NAVIGATION_CALLEES = frozenset({"href", "src", "window.open", "EventSource"})
 # ratchet, not a target: lower it when the count drops, never raise it to pass.
 # 237: the offline record registry (shared/lib/offline/recordSync.ts, nine paths chosen by entity kind), the clock
 # queue path and one const base cannot be handed to a single call; every one of them resolves to a real route.
-MAX_PREFIX_ONLY = 237
+MAX_PREFIX_ONLY = 221
 
 # Known unmatched calls that are right as they are. Key format:
 #   "<VERDICT> <METHOD|*> <path as written> @ <file under frontend/src>"
