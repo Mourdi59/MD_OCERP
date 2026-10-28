@@ -27,6 +27,7 @@ import { getErrorMessage } from '@/shared/lib/api';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import type { InsightDataset, InsightDef } from '@/features/insights';
+import { fmtList } from '@/shared/lib/formatters';
 import {
   captureProject,
   compareEstimate,
@@ -344,7 +345,7 @@ function CompareResultView({ result, onExport }: { result: CompareResult; onExpo
         <p className="text-xs text-content-tertiary">
           {t('cost_benchmarks.missing_quantity', {
             defaultValue: 'Left out for missing floor area or quantity: {{names}}',
-            names: cohort.missing_quantity.join(', '),
+            names: fmtList(cohort.missing_quantity),
           })}
         </p>
       )}

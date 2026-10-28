@@ -723,6 +723,7 @@ async def test_the_router_answers_with_structured_refusals_and_counts(pg_session
         status="proposed",
         session_id=None,
         batch_id=None,
+        source=None,
         limit=50,
         offset=0,
     )
