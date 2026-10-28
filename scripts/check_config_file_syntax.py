@@ -50,7 +50,8 @@ JSON_SUFFIX = ".json"
 # and TypeScript checks far more of them than syntax. So they are skipped by
 # name and counted out loud.
 JSONC_PREFIX = "tsconfig"
-EXPECTED_JSONC = 4
+# tsconfig.locales.json is the fifth: npm run typecheck builds it first with tsc -b.
+EXPECTED_JSONC = 5
 
 # Anchored to this file rather than to the caller's working directory. git
 # ls-files answers about the directory it is run in, so from backend/ it lists
