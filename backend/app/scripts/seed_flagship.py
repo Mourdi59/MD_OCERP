@@ -6,7 +6,7 @@ therefore dialect-agnostic (works on the embedded-PostgreSQL default AND on
 SQLite). It restores a real CAD-to-BOQ project from committed assets:
 
     app/scripts/flagship_assets/flagship.json        spec (built by _bake_flagship.py)
-    app/scripts/flagship_assets/geometry_{ifc,rvt}.dae.gz   real DDC geometry
+    app/scripts/flagship_assets/geometry_{ifc,rvt}.dae.xz   real DDC geometry
     app/scripts/flagship_assets/house_plans.pdf      reference plan set
 
 It creates: the project (+ WGS84 geo anchor so it shows on the map), the IFC
@@ -23,9 +23,9 @@ showcase export references the same rows.
 
 from __future__ import annotations
 
-import gzip
 import json
 import logging
+import lzma
 import uuid
 from decimal import Decimal
 from pathlib import Path
@@ -736,7 +736,7 @@ async def install_flagship(
         if m.get("geometry_asset"):
             gpath = ASSETS / m["geometry_asset"]
             if gpath.exists():
-                content = gzip.decompress(gpath.read_bytes())
+                content = lzma.decompress(gpath.read_bytes())
                 canonical_key = await save_geometry(pid, mid, ".dae", content)
         # Status must match what is actually on storage. Only a model whose
         # geometry blob was written can be "ready" - the geometry endpoint

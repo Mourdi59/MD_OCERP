@@ -20,8 +20,8 @@ Every demo project receives, consistently:
 No CAD conversion ever runs here. We reuse the already-baked, committed assets:
 
     app/scripts/flagship_assets/flagship.json        spec (built by _bake_flagship.py)
-    app/scripts/flagship_assets/geometry_ifc.dae.gz  real DDC IFC geometry
-    app/scripts/flagship_assets/geometry_rvt.dae.gz  real DDC Revit geometry
+    app/scripts/flagship_assets/geometry_ifc.dae.xz  real DDC IFC geometry
+    app/scripts/flagship_assets/geometry_rvt.dae.xz  real DDC Revit geometry
     app/scripts/flagship_assets/house_plans.pdf      reference plan set
     app/scripts/flagship_assets/housing_standards.pdf  reference spec
     frontend/e2e/fixtures/dashboards/sample-project.ifc  committed native IFC
@@ -40,6 +40,7 @@ import gzip
 import hashlib
 import json
 import logging
+import lzma
 import os
 import uuid
 from pathlib import Path
@@ -212,14 +213,14 @@ _NATIVE_SOURCE_DOCS = [dict(_IFC_SOURCE_DOC), dict(_RVT_SOURCE_DOC), dict(_DWG_S
 _BIM_MODELS: list[dict[str, Any]] = [
     {
         "source_format": "rvt",
-        "geometry_asset": "geometry_rvt.dae.gz",
+        "geometry_asset": "geometry_rvt.dae.xz",
         "model_name": "Coordinated model (Revit)",
         "discipline": "structural",
         "model_format": "rvt",
     },
     {
         "source_format": "ifc",
-        "geometry_asset": "geometry_ifc.dae.gz",
+        "geometry_asset": "geometry_ifc.dae.xz",
         "model_name": "Architectural model (IFC)",
         "discipline": "architectural",
         "model_format": "ifc",
@@ -548,7 +549,7 @@ async def _attach_one_bim_model(
     if geom_name:
         gpath = ASSETS / geom_name
         if gpath.exists():
-            content = gzip.decompress(gpath.read_bytes())
+            content = lzma.decompress(gpath.read_bytes())
             canonical_key = await save_geometry(pid, mid, ".dae", content)
 
     model_status = "ready" if canonical_key else "needs_converter"
